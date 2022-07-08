@@ -1,0 +1,13 @@
+[
+        "SEEEEEES",
+        "EEESEEES",
+        "WEEWEEEE",
+        "EEEEEWEG",
+]
+---
+{
+    b'E': -1.0,
+    b'S': -0.0,
+    b'W': -5.0,
+    b'G': 5.0,
+}
