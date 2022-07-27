@@ -1,8 +1,8 @@
 [
-        "SEEEEEES",
-        "EEESEEES",
+        "SDEEEEES",
+        "REESEUES",
         "WEEWEEEE",
-        "EEEEEWEG",
+        "EELEEWEG",
 ]
 ---
 {
@@ -10,4 +10,10 @@
     b'S': -0.0,
     b'W': -5.0,
     b'G': 5.0,
+    b'U': 0.0,
+    b'R': 0.0,
+    b"L": 0.0,
+    b"D": 0.0,
 }
+---
+0.999
