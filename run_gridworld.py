@@ -37,7 +37,10 @@ if __name__=="__main__":
     grid_desc, rew_map, wind_p = read_gridworld(args.filename)
     env = gym.make('SimpleGrid-v0', desc=grid_desc, reward_map = rew_map, wind_p = wind_p)
     env.reset()
-    pic = env.render(mode="ansi")
-    print(pic)
+    for i in range(100):
+        pic = env.render(mode="ansi")
+        print(pic)
+        action = int(input("- 0: LEFT - 1: DOWN - 2: RIGHT - 3: UP"))
+        env.step(action)
     # plt.imsave("test.png", pic)
     
