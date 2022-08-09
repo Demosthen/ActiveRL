@@ -26,7 +26,7 @@ def add_args(parser):
     parser.add_argument(
         "--filename",
         type=str,
-        help="filename to read gridworld specs from",
+        help="filename to read gridworld specs from. pass an int if you want to auto generate one.",
         default="gridworlds/sample_grid.txt"
         )
 if __name__=="__main__":
@@ -34,13 +34,19 @@ if __name__=="__main__":
     add_args(parser)
     args = parser.parse_args()
 
-    grid_desc, rew_map, wind_p = read_gridworld(args.filename)
-    env = gym.make('SimpleGrid-v0', desc=grid_desc, reward_map = rew_map, wind_p = wind_p)
+    print(args.filename, args.filename.strip().isnumeric())
+
+    if args.filename.strip().isnumeric():
+        env = gym.make('SimpleGrid-v0', desc=int(args.filename))
+    else:
+        grid_desc, rew_map, wind_p = read_gridworld(args.filename)
+        env = gym.make('SimpleGrid-v0', desc=grid_desc, reward_map = rew_map, wind_p = wind_p)
     env.reset()
     for i in range(100):
         pic = env.render(mode="ansi")
         print(pic)
         action = int(input("- 0: LEFT - 1: DOWN - 2: RIGHT - 3: UP"))
-        env.step(action)
+        _, r, done, _ = env.step(action)
+        print("rew", r,"done", done)
     # plt.imsave("test.png", pic)
     
