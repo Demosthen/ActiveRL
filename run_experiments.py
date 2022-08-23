@@ -24,7 +24,8 @@ without colliding with any Wall(W) (black tiles) by walking over the Empty(E) (w
 cells. The yellow circle denotes the agent's current position.
 
 Optionally, it is possible to introduce a noise in the environment that makes the agent move 
-in a random direction that can be different than the desired one."""
+in a random direction that can be different than the desired one.
+"""
 
 
 def read_gridworld(filename):
