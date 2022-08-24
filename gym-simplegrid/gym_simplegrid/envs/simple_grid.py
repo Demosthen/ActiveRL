@@ -11,6 +11,7 @@ from gym_simplegrid.window import Window
 
 from gym import Env, spaces, utils
 from gym.envs.toy_text.utils import categorical_sample
+import torch
 
 MAPS = {
     "4x4": ["SEEE", "EWEW", "EEEW", "WEEG"],
@@ -351,6 +352,8 @@ class SimpleGridEnv(Env):
         return P
 
     def step(self, a):
+        if self.s not in self.P:
+            return (int(self.s), -10000, True, {"prob": 1.0})
         transitions = self.P[self.s][a]
         i = categorical_sample([t[0] for t in transitions], self.np_random)
         p, s, r, d = transitions[i]
@@ -360,14 +363,18 @@ class SimpleGridEnv(Env):
 
     def reset(
         self,
+        initial_state = None,
         *,
         seed: Optional[int] = None,
         return_info: bool = False,
         options: Optional[dict] = None,
     ):
         super().reset(seed=seed)
-        # sample initial state from the initial state distribution
-        self.s = categorical_sample(self.initial_state_distrib, self.np_random)
+        if initial_state:
+            self.s = initial_state
+        else:
+            # sample initial state from the initial state distribution
+            self.s = categorical_sample(self.initial_state_distrib, self.np_random)
         # set the starting red tile on the grid to render
         
         if self.initial_state is not None:
@@ -381,6 +388,16 @@ class SimpleGridEnv(Env):
             return int(self.s)
         else:
             return int(self.s), {"prob": 1}
+
+    def project(self, obs):
+        """
+            Function added for ActiveRL:
+            projects the observation onto the observation space
+        """
+        int_obs = torch.round(obs).int()
+        if int_obs < 0:
+            return torch.tensor([categorical_sample(self.initial_state_distrib, self.np_random)])
+        return int_obs
 
     def render(self, mode="human"):
         if mode == "ansi":
