@@ -18,6 +18,7 @@ import utils
 from ray.rllib.algorithms.ppo import DEFAULT_CONFIG
 from ray.rllib.models.catalog import MODEL_DEFAULTS
 from ray.rllib.algorithms.callbacks import MultiCallbacks
+from simple_grid_wrapper import SimpleGridEnvWrapper
 # from stable_baselines3 import PPO
 # from stable_baselines3.common.env_checker import check_env
 # from callbacks import ActiveRLCallback
@@ -172,7 +173,7 @@ if __name__=="__main__":
             "schema": Path("sample_schema.json")
         }
     else: 
-        env = SimpleGridEnvRLLib
+        env = SimpleGridEnvWrapper
         env_config = {}
         if args.gw_filename.strip().isnumeric():
             env_config["desc"] = int(args.gw_filename)

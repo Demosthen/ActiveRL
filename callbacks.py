@@ -75,7 +75,7 @@ class ActiveRLCallback(DefaultCallbacks):
             # new_states, uncertainties = generate_states(self.model, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
             #     batch_size=self.batch_size, projection_fn=self.projection_fn, use_coop=self.use_coop)
             # new_states = new_states.item()
-            print("YAYY THIS IS GETTING RUN")
+            print(env.observation_space)
             #env.reset(initial_state=new_states)
 
     def _on_step(self) -> bool:
