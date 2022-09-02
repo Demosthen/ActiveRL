@@ -77,6 +77,10 @@ def get_agent(env, env_config):
     config["framework"] = "torch"
     config["env"] = env
     config["env_config"] = env_config
+    config["horizon"] = 100
+    config["evaluation_config"]["render_env"] = True
+    config["create_env_on_driver"] = True
+    
     # config["model"] = MODEL_DEFAULTS
     config["env_config"]["num_dropouts_evals"] = 10
     agent = UncertainPPO(config=config)
@@ -149,9 +153,13 @@ if __name__=="__main__":
     
     train_agent(agent, timesteps=1, env=env)
 
+    agent.evaluate(duration_fn=lambda x: 4 - x)
+
+
+    # env = SimpleGridEnvRLLib(env_config)
     # obs = env.reset()
     # for i in range(16):
-    #     action, _state = agent.predict(obs)
+    #     action, _state = agent.compute_actions(obs)
     #     pic = env.render(mode="ansi")
     #     print(pic)
     #     #action = int(input("- 0: LEFT - 1: DOWN - 2: RIGHT - 3: UP"))
