@@ -1,18 +1,27 @@
-from typing import Tuple
+from ast import Call
+from typing import Callable, Dict, Tuple, Union
 from stable_baselines3.common.callbacks import BaseCallback
-from state_generation import generate_states
+# from state_generation import generate_states
+from ray.rllib.algorithms.callbacks import DefaultCallbacks
+from ray.rllib.env.base_env import BaseEnv
+from ray.rllib.evaluation.episode import Episode
+from ray.rllib.evaluation.episode_v2 import EpisodeV2
+from ray.rllib.utils.typing import PolicyID
+from ray.rllib.policy import Policy
+from ray.rllib.evaluation import RolloutWorker
 
-class ActiveRLCallback(BaseCallback):
+class ActiveRLCallback(DefaultCallbacks):
     """
-    A custom callback that derives from ``BaseCallback``.
+    A custom callback that derives from ``DefaultCallbacks``.
 
     :param verbose: (int) Verbosity level 0: not output 1: info 2: debug
     """
-    def __init__(self, num_descent_steps=10, batch_size=64, projection_fn = lambda x: x, verbose=0):
-        super(ActiveRLCallback, self).__init__(verbose)
+    def __init__(self, num_descent_steps: int=10, batch_size: int=64, projection_fn: Callable = lambda x: x, use_coop: bool=True):
+        super(ActiveRLCallback, self).__init__()
         self.num_descent_steps = num_descent_steps
         self.batch_size = batch_size
         self.projection_fn = projection_fn
+        self.use_coop = use_coop
         # Those variables will be accessible in the callback
         # (they are defined in the base class)
         # The RL model
@@ -37,17 +46,37 @@ class ActiveRLCallback(BaseCallback):
         """
         pass
 
-    def _on_rollout_start(self) -> None:
+    def on_episode_start(
+        self,
+        *,
+        worker: RolloutWorker,
+        base_env: BaseEnv,
+        policies: Dict[PolicyID, Policy],
+        episode: Union[Episode, EpisodeV2],
+        **kwargs,
+    ) -> None:
+        """Callback run on the rollout worker before each episode starts.
+
+        Args:
+            worker: Reference to the current rollout worker.
+            base_env: BaseEnv running the episode. The underlying
+                sub environment objects can be retrieved by calling
+                `base_env.get_sub_environments()`.
+            policies: Mapping of policy id to policy objects. In single
+                agent mode there will only be a single "default" policy.
+            episode: Episode object which contains the episode's
+                state. You can use the `episode.user_data` dict to store
+                temporary data, and `episode.custom_metrics` to store custom
+                metrics for the episode.
+            kwargs: Forward compatibility placeholder.
         """
-        A rollout is the collection of environment interaction
-        using the current policy.
-        This event is triggered before collecting new samples.
-        """
-        env = self.training_env
-        obs_space = env.observation_space
-        new_states = generate_states(self.model, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
-            batch_size=self.batch_size, projection_fn=self.projection_fn).item()
-        env.env_method("reset", initial_state=new_states)
+        envs = base_env.get_sub_environments()
+        for env in envs:
+            # new_states, uncertainties = generate_states(self.model, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
+            #     batch_size=self.batch_size, projection_fn=self.projection_fn, use_coop=self.use_coop)
+            # new_states = new_states.item()
+            print("YAYY THIS IS GETTING RUN")
+            #env.reset(initial_state=new_states)
 
     def _on_step(self) -> bool:
         """

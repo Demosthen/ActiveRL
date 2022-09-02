@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import argparse
 import ray
 from citylearn.citylearn import CityLearnEnv
+from callbacks import ActiveRLCallback
 from uncertain_ppo import UncertainPPOTorchPolicy
 from uncertain_ppo_trainer import UncertainPPO
 from ray.air.callbacks.wandb import WandbLoggerCallback
@@ -70,7 +71,7 @@ def initialize_citylearn_params():
             'save_memory': False }
     return params
 
-def get_agent(env, env_config):
+def get_agent(env, env_config, args):
     #TODO: get dropout working
     # activation_fn = lambda : nn.Sequential(nn.Tanh(), nn.Dropout())
     # policy_kwargs = {
@@ -86,7 +87,11 @@ def get_agent(env, env_config):
 
     # TODO: add callbacks
     callbacks = []
+    if args.use_activerl:
+        callbacks.append(lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, projection_fn=env.project))
+
     config["callbacks"] = MultiCallbacks(callbacks)
+    
     agent = UncertainPPO(config = config, logger_creator = utils.custom_logger_creator(args.log_path))
 
     # agent = UncertainPPO('MlpPolicy', env, verbose=1, policy_kwargs=policy_kwargs, device="cpu")
@@ -177,14 +182,11 @@ if __name__=="__main__":
             env_config["reward_map"] = rew_map
             env_config["wind_p"] = wind_p
 
-    agent = get_agent(env, env_config)
+    agent = get_agent(env, env_config, args)
 
 
     
-    # if args.use_activerl:
-    #     callbacks.append(ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, projection_fn=env.project))
-    # print(agent.policy)
-    
+
     train_agent(agent, timesteps=5000, env=env)
 
     # obs = env.reset()
