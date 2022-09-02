@@ -455,6 +455,11 @@ class SimpleGridEnv(Env):
             self.window.close()
         return
 
+class SimpleGridEnvRLLib(SimpleGridEnv):
+
+    def __init__(self, config):
+        del config["num_dropouts_evals"]
+        super().__init__(**config)
 
 def generate_random_map(size=8, p=0.8):
     """
