@@ -10,9 +10,13 @@ import ray
 from citylearn.citylearn import CityLearnEnv
 from uncertain_ppo import UncertainPPOTorchPolicy
 from uncertain_ppo_trainer import UncertainPPO
+from ray.air.callbacks.wandb import WandbLoggerCallback
+import wandb
+import utils
 # from state_generation import generate_states
 from ray.rllib.algorithms.ppo import DEFAULT_CONFIG
 from ray.rllib.models.catalog import MODEL_DEFAULTS
+from ray.rllib.algorithms.callbacks import MultiCallbacks
 # from stable_baselines3 import PPO
 # from stable_baselines3.common.env_checker import check_env
 # from callbacks import ActiveRLCallback
@@ -79,7 +83,11 @@ def get_agent(env, env_config):
     config["env_config"] = env_config
     # config["model"] = MODEL_DEFAULTS
     config["env_config"]["num_dropouts_evals"] = 10
-    agent = UncertainPPO(config=config)
+
+    # TODO: add callbacks
+    callbacks = []
+    config["callbacks"] = MultiCallbacks(callbacks)
+    agent = UncertainPPO(config = config, logger_creator = utils.custom_logger_creator(args.log_path))
 
     # agent = UncertainPPO('MlpPolicy', env, verbose=1, policy_kwargs=policy_kwargs, device="cpu")
     return agent
@@ -91,6 +99,12 @@ def train_agent(agent, timesteps, env):
         training_steps = result["timesteps_total"]
 
 def add_args(parser):
+    parser.add_argument(
+        "--log_path",
+        type=str,
+        help="filename to read gridworld specs from. pass an int if you want to auto generate one.",
+        default="./logs"
+        )
     parser.add_argument(
         "--gw_filename",
         type=str,
@@ -116,11 +130,23 @@ def add_args(parser):
         help="set to 1 to use the Active RL callback and 0 to not",
         default=0
     )
+    parser.add_argument(
+        "--wandb",
+        action="store_true",
+        help="whether or not to log with wandb"
+    )
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
     add_args(parser)
     args = parser.parse_args()
+
+    if args.wandb:
+        wandb.init(project="active-rl", entity="social-game-rl")
+        wandb.tensorboard.patch(root_logdir=args.log_path) # patching the logdir directly seems to work
+        wandb.config.update(args)
+        
+
     ray.init()
 
     if args.env == "cl":
@@ -128,7 +154,6 @@ if __name__=="__main__":
         env_config = {
             "schema": Path("sample_schema.json")
         }
-
     else: 
         env = SimpleGridEnvRLLib
         env_config = {}
@@ -141,13 +166,14 @@ if __name__=="__main__":
             env_config["wind_p"] = wind_p
 
     agent = get_agent(env, env_config)
-    # TODO: add callbacks
-    # callbacks = []
+
+
+    
     # if args.use_activerl:
     #     callbacks.append(ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, projection_fn=env.project))
     # print(agent.policy)
     
-    train_agent(agent, timesteps=1, env=env)
+    train_agent(agent, timesteps=5000, env=env)
 
     # obs = env.reset()
     # for i in range(16):
