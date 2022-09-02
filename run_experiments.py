@@ -102,8 +102,7 @@ if __name__=="__main__":
     args = parser.parse_args()
 
     if args.env == "cl":
-        p = initialize_citylearn_params()
-        env = CityLearnEnv(schema=Path("sample_schema.json"), **p)
+        env = CityLearnEnv(schema="./data/citylearn_challenge_2022_phase_1/schema.json")
         check_env(env) # stable baselines gym interface check
 
     else: 
@@ -116,7 +115,7 @@ if __name__=="__main__":
     agent = get_agent(env)
     callbacks = []
     if args.use_activerl:
-        callbacks.append(ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, projection_fn=env.project))
+        callbacks.append(ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, projection_fn=env.project, use_coop=False))
     print(agent.policy)
     agent.learn(total_timesteps=30000, callback=callbacks)
 
