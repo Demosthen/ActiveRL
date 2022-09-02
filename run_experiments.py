@@ -99,6 +99,7 @@ def train_agent(agent, timesteps, env):
         training_steps = result["timesteps_total"]
 
 def add_args(parser):
+    # LOGGING PARAMS
     parser.add_argument(
         "--log_path",
         type=str,
@@ -106,11 +107,12 @@ def add_args(parser):
         default="./logs"
         )
     parser.add_argument(
-        "--gw_filename",
-        type=str,
-        help="filename to read gridworld specs from. pass an int if you want to auto generate one.",
-        default="gridworlds/sample_grid.txt"
-        )
+        "--wandb",
+        action="store_true",
+        help="whether or not to log with wandb"
+    )
+    
+    # GENERAL ENV PARAMS
     parser.add_argument(
         "--env",
         type=str,
@@ -119,11 +121,21 @@ def add_args(parser):
         choices=[env.value for env in Environments]
     )
     parser.add_argument(
-        "--num_descent_steps",
+        "--num_timesteps",
         type=int,
-        help="How many steps to do gradient descent on state for Active RL",
-        default=10
+        help="Number of timesteps to collect from environment during training",
+        default=5000
     )
+
+    # GRIDWORLD ENV PARAMS
+    parser.add_argument(
+        "--gw_filename",
+        type=str,
+        help="filename to read gridworld specs from. pass an int if you want to auto generate one.",
+        default="gridworlds/sample_grid.txt"
+        )
+
+    # ACTIVE RL PARAMS
     parser.add_argument(
         "--use_activerl",
         type=int,
@@ -131,9 +143,10 @@ def add_args(parser):
         default=0
     )
     parser.add_argument(
-        "--wandb",
-        action="store_true",
-        help="whether or not to log with wandb"
+        "--num_descent_steps",
+        type=int,
+        help="How many steps to do gradient descent on state for Active RL",
+        default=10
     )
 
 if __name__=="__main__":
@@ -146,7 +159,6 @@ if __name__=="__main__":
         wandb.tensorboard.patch(root_logdir=args.log_path) # patching the logdir directly seems to work
         wandb.config.update(args)
         
-
     ray.init()
 
     if args.env == "cl":
