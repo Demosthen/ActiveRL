@@ -3,15 +3,21 @@ from pathlib import Path
 import gym 
 import torch
 import torch.nn as nn
-from gym_simplegrid.envs import simple_grid
+from gym_simplegrid.envs.simple_grid import SimpleGridEnvRLLib 
 import matplotlib.pyplot as plt
 import argparse
+import ray
 from citylearn.citylearn import CityLearnEnv
-from uncertain_ppo import UncertainPPO
-from state_generation import generate_states
-#from stable_baselines3 import PPO
-from stable_baselines3.common.env_checker import check_env
-from callbacks import ActiveRLCallback
+from uncertain_ppo import UncertainPPOTorchPolicy
+from uncertain_ppo_trainer import UncertainPPO
+# from state_generation import generate_states
+from ray.rllib.algorithms.ppo import DEFAULT_CONFIG
+from ray.rllib.models.catalog import MODEL_DEFAULTS
+# from stable_baselines3 import PPO
+# from stable_baselines3.common.env_checker import check_env
+# from callbacks import ActiveRLCallback
+
+
 
 class Environments(Enum):
     GRIDWORLD = "gw"
@@ -60,14 +66,29 @@ def initialize_citylearn_params():
             'save_memory': False }
     return params
 
-def get_agent(env: gym.Env):
-    activation_fn = lambda : nn.Sequential(nn.Tanh(), nn.Dropout())
-    policy_kwargs = {
-        "activation_fn": activation_fn
-    }
+def get_agent(env, env_config):
+    #TODO: get dropout working
+    # activation_fn = lambda : nn.Sequential(nn.Tanh(), nn.Dropout())
+    # policy_kwargs = {
+    #     "activation_fn": activation_fn
+    # }
 
-    agent = UncertainPPO('MlpPolicy', env, verbose=1, policy_kwargs=policy_kwargs, device="cpu")
+    config = DEFAULT_CONFIG.copy()
+    config["framework"] = "torch"
+    config["env"] = env
+    config["env_config"] = env_config
+    # config["model"] = MODEL_DEFAULTS
+    config["env_config"]["num_dropouts_evals"] = 10
+    agent = UncertainPPO(config=config)
+
+    # agent = UncertainPPO('MlpPolicy', env, verbose=1, policy_kwargs=policy_kwargs, device="cpu")
     return agent
+
+def train_agent(agent, timesteps, env):
+    training_steps = 0
+    while training_steps < timesteps:
+        result = agent.train()
+        training_steps = result["timesteps_total"]
 
 def add_args(parser):
     parser.add_argument(
@@ -100,33 +121,42 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser()
     add_args(parser)
     args = parser.parse_args()
+    ray.init()
 
     if args.env == "cl":
-        env = CityLearnEnv(schema="./data/citylearn_challenge_2022_phase_1/schema.json")
-        check_env(env) # stable baselines gym interface check
+        env = CityLearnEnv
+        env_config = {
+            "schema": Path("sample_schema.json")
+        }
 
     else: 
+        env = SimpleGridEnvRLLib
+        env_config = {}
         if args.gw_filename.strip().isnumeric():
-            env = gym.make('SimpleGrid-v0', desc=int(args.gw_filename))
+            env_config["desc"] = int(args.gw_filename)
         else:
             grid_desc, rew_map, wind_p = read_gridworld(args.gw_filename)
-            env = gym.make('SimpleGrid-v0', desc=grid_desc, reward_map = rew_map, wind_p = wind_p)
+            env_config["desc"] = grid_desc
+            env_config["reward_map"] = rew_map
+            env_config["wind_p"] = wind_p
 
-    agent = get_agent(env)
-    callbacks = []
-    if args.use_activerl:
-        callbacks.append(ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, projection_fn=env.project, use_coop=False))
-    print(agent.policy)
-    agent.learn(total_timesteps=30000, callback=callbacks)
+    agent = get_agent(env, env_config)
+    # TODO: add callbacks
+    # callbacks = []
+    # if args.use_activerl:
+    #     callbacks.append(ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, projection_fn=env.project))
+    # print(agent.policy)
+    
+    train_agent(agent, timesteps=1, env=env)
 
-    obs = env.reset()
-    for i in range(16):
-        action, _state = agent.predict(obs)
-        pic = env.render(mode="ansi")
-        print(pic)
-        #action = int(input("- 0: LEFT - 1: DOWN - 2: RIGHT - 3: UP"))
-        obs, r, done, info = env.step(action)
-        if done:
-            obs = env.reset()
+    # obs = env.reset()
+    # for i in range(16):
+    #     action, _state = agent.predict(obs)
+    #     pic = env.render(mode="ansi")
+    #     print(pic)
+    #     #action = int(input("- 0: LEFT - 1: DOWN - 2: RIGHT - 3: UP"))
+    #     obs, r, done, info = env.step(action)
+    #     if done:
+    #         obs = env.reset()
     # plt.imsave("test.png", pic)
     
