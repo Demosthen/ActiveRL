@@ -10,6 +10,8 @@ from ray.rllib.utils.typing import PolicyID
 from ray.rllib.policy import Policy
 from ray.rllib.evaluation import RolloutWorker
 
+from state_generation import generate_states
+
 class ActiveRLCallback(DefaultCallbacks):
     """
     A custom callback that derives from ``DefaultCallbacks``.
@@ -22,23 +24,6 @@ class ActiveRLCallback(DefaultCallbacks):
         self.batch_size = batch_size
         self.projection_fn = projection_fn
         self.use_coop = use_coop
-        # Those variables will be accessible in the callback
-        # (they are defined in the base class)
-        # The RL model
-        # self.model = None  # type: BaseAlgorithm
-        # An alias for self.model.get_env(), the environment used for training
-        # self.training_env = None  # type: Union[gym.Env, VecEnv, None]
-        # Number of time the callback was called
-        # self.n_calls = 0  # type: int
-        # self.num_timesteps = 0  # type: int
-        # local and global variables
-        # self.locals = None  # type: Dict[str, Any]
-        # self.globals = None  # type: Dict[str, Any]
-        # The logger object, used to report things in the terminal
-        # self.logger = None  # stable_baselines3.common.logger
-        # # Sometimes, for event callback, it is useful
-        # # to have access to the parent object
-        # self.parent = None  # type: Optional[BaseCallback]
 
     def _on_training_start(self) -> None:
         """
@@ -71,12 +56,16 @@ class ActiveRLCallback(DefaultCallbacks):
             kwargs: Forward compatibility placeholder.
         """
         envs = base_env.get_sub_environments()
+        # Get the single "default policy"
+        policy = next(policies.values())
         for env in envs:
-            # new_states, uncertainties = generate_states(self.model, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
-            #     batch_size=self.batch_size, projection_fn=self.projection_fn, use_coop=self.use_coop)
-            # new_states = new_states.item()
-            print(env.observation_space)
-            #env.reset(initial_state=new_states)
+            
+            new_states, uncertainties = generate_states(policy, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
+                batch_size=self.batch_size, projection_fn=self.projection_fn, use_coop=self.use_coop)
+            new_states = new_states.detach()
+
+            # print(env.observation_space)
+            env.reset(initial_state=new_states)
 
     def _on_step(self) -> bool:
         """

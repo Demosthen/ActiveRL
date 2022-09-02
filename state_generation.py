@@ -48,13 +48,9 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
 #                                 discrete then you can round the features in the observation vector)
 #     """
 #     #TODO: make everything work with batches
-#     agent.policy.train()
-    for param in agent.policy.parameters():
-        param.requires_grad = True
     lower_bounds, upper_bounds = get_space_bounds(obs_space)
     lower_bounded_idxs = np.logical_not(np.isinf(lower_bounds))
     upper_bounded_idxs = np.logical_not(np.isinf(upper_bounds))
-    print(lower_bounds, upper_bounds)
     obs = []
     with torch.no_grad():
         for i in range(batch_size):
@@ -84,9 +80,8 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
     uncertainties = []
     
     for _ in range(num_descent_steps):
-        print(obs,_)
         optimizer.zero_grad()
-        agent.policy.zero_grad()
+        agent.model.zero_grad()
         uncertainty = agent.compute_uncertainty(obs)
         if use_coop:
             lagrangian = formulation.composite_objective(cmp.closure, obs)
@@ -98,6 +93,6 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
             #print(obs.grad, next(agent.policy..parameters()).grad)
             optimizer.step()
         uncertainties.append(uncertainty)
-    projected_obs = projection_fn(obs)
+    # projected_obs = projection_fn(obs)
     #print(projected_obs)
-    return projected_obs, uncertainties
+    return obs, uncertainties

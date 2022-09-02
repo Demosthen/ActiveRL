@@ -3,6 +3,7 @@ from pathlib import Path
 import gym 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from gym_simplegrid.envs.simple_grid import SimpleGridEnvRLLib 
 import matplotlib.pyplot as plt
 import argparse
@@ -71,6 +72,18 @@ def initialize_citylearn_params():
             'central_agent': False,
             'save_memory': False }
     return params
+    
+class Custom_Activation(nn.Module):
+    def __init__(self, p = 0.5, training = True) -> None:
+        super().__init__()
+        self.p = p
+        self.training = training
+
+    def forward(self, x):
+        x = torch.tanh(x)
+        if self.training:
+            return F.dropout(x)
+        return x
 
 def get_agent(env, env_config, args):
     #TODO: get dropout working
@@ -82,14 +95,17 @@ def get_agent(env, env_config, args):
     config = DEFAULT_CONFIG.copy()
     config["framework"] = "torch"
     config["env"] = env
+    # Disable default preprocessors, we preprocess ourselves with env wrappers
+    config["_disable_preprocessor_api"] = True
     config["env_config"] = env_config
-    # config["model"] = MODEL_DEFAULTS
-    config["env_config"]["num_dropouts_evals"] = 10
+    config["model"] = MODEL_DEFAULTS
+    config["model"]["fcnet_activation"] = lambda: nn.Sequential(nn.Tanh(), nn.Dropout())#Custom_Activation
+    config["env_config"]["num_dropout_evals"] = 10
 
     # TODO: add callbacks
     callbacks = []
     if args.use_activerl:
-        callbacks.append(lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, projection_fn=env.project))
+        callbacks.append(lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, projection_fn=env.project, use_coop=False))
 
     config["callbacks"] = MultiCallbacks(callbacks)
     

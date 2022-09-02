@@ -120,7 +120,7 @@ class SimpleGridEnv(Env):
 
     metadata = {"render_modes": ["human", "ansi", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, desc: list[str] =None, map_name: str =None, reward_map: dict[bytes, float] =None, p_noise: float =None, wind_p: float=0.0):
+    def __init__(self, desc: list[str] =None, map_name: str =None, reward_map: dict[bytes, float] =None, p_noise: float =None, wind_p: float=0.0, **kwargs):
         """
         Parameters
         ----------
@@ -447,7 +447,6 @@ class SimpleGridEnv(Env):
 class SimpleGridEnvRLLib(SimpleGridEnv):
 
     def __init__(self, config):
-        del config["num_dropouts_evals"]
         super().__init__(**config)
 
 def generate_random_map(size=8, p=0.8):
