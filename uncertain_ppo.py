@@ -45,7 +45,6 @@ class UncertainPPOTorchPolicy(PPOTorchPolicy):
             values.append(vals)
         values = th.concat(values)
         uncertainty = th.std(values, dim=0)
-        print("uncertainty", uncertainty)
         self.model.train(orig_mode)
         return uncertainty
 

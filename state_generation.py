@@ -19,7 +19,7 @@ class BoundedUncertaintyMaximization(cooper.ConstrainedMinimizationProblem):
     def closure(self, obs):
 
         # Negative sign added since we want to *maximize* the entropy
-        uncertainty = - self.agent.compute_uncertainty(obs)
+        uncertainty = - self.agent.compute_uncertainty(obs).sum()
 
         # Entries of p >= 0 (equiv. -p <= 0)
         ineq_defect = (obs[self.lower_bounded_idxs] - self.lower_bounds) + (self.upper_bounds - obs[self.upper_bounded_idxs])
@@ -62,8 +62,8 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
         cmp = BoundedUncertaintyMaximization(
                                                 torch.tensor(lower_bounds[lower_bounded_idxs], device=agent.device), 
                                                 torch.tensor(upper_bounds[upper_bounded_idxs], device=agent.device), 
-                                                torch.tensor(lower_bounded_idxs, device=agent.device), 
-                                                torch.tensor(upper_bounded_idxs, device=agent.device), 
+                                                torch.tensor(lower_bounded_idxs[None, :], device=agent.device), 
+                                                torch.tensor(upper_bounded_idxs[None, :], device=agent.device), 
                                                 agent)
         formulation = cooper.LagrangianFormulation(cmp)
 
@@ -76,7 +76,7 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
 #         # Wrap the formulation and both optimizers inside a ConstrainedOptimizer
         optimizer = cooper.ConstrainedOptimizer(formulation, primal_optimizer, dual_optimizer)
     else:
-        optimizer = optim.Adam([obs])
+        optimizer = optim.Adam([obs], lr=0.1)
     uncertainties = []
     
     for _ in range(num_descent_steps):
@@ -95,4 +95,5 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
         uncertainties.append(uncertainty)
     # projected_obs = projection_fn(obs)
     #print(projected_obs)
+    print(obs.max())
     return obs, uncertainties
