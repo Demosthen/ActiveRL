@@ -22,7 +22,7 @@ class BoundedUncertaintyMaximization(cooper.ConstrainedMinimizationProblem):
         uncertainty = - self.agent.compute_uncertainty(obs).sum()
 
         # Entries of p >= 0 (equiv. -p <= 0)
-        ineq_defect = (obs[self.lower_bounded_idxs] - self.lower_bounds) + (self.upper_bounds - obs[self.upper_bounded_idxs])
+        ineq_defect = torch.cat([obs[self.lower_bounded_idxs] - self.lower_bounds, self.upper_bounds - obs[self.upper_bounded_idxs]])
 
         return cooper.CMPState(loss=uncertainty, ineq_defect=ineq_defect)
 
@@ -67,11 +67,11 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
                                                 agent)
         formulation = cooper.LagrangianFormulation(cmp)
 
-        primal_optimizer = cooper.optim.ExtraAdam([obs])
+        primal_optimizer = cooper.optim.ExtraAdam([obs], lr=0.1)
 
         # Define the dual optimizer. Note that this optimizer has NOT been fully instantiated
         # yet. Cooper takes care of this, once it has initialized the formulation state.
-        dual_optimizer = cooper.optim.partial_optimizer(cooper.optim.ExtraAdam)
+        dual_optimizer = cooper.optim.partial_optimizer(cooper.optim.ExtraAdam, lr=0.1)
 
 #         # Wrap the formulation and both optimizers inside a ConstrainedOptimizer
         optimizer = cooper.ConstrainedOptimizer(formulation, primal_optimizer, dual_optimizer)

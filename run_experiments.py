@@ -105,7 +105,7 @@ def get_agent(env, env_config, args):
     # TODO: add callbacks
     callbacks = []
     if args.use_activerl:
-        callbacks.append(lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, projection_fn=env.project, use_coop=False))
+        callbacks.append(lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, projection_fn=env.project, use_coop=args.use_coop))
 
     config["callbacks"] = MultiCallbacks(callbacks)
     
@@ -169,6 +169,11 @@ def add_args(parser):
         type=int,
         help="How many steps to do gradient descent on state for Active RL",
         default=10
+    )
+    parser.add_argument(
+        "--use_coop",
+        action="store_true",
+        help="Whether or not to use the constrained optimizer for Active RL optimization"
     )
 
 if __name__=="__main__":
