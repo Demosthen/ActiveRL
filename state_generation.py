@@ -34,7 +34,7 @@ def get_space_bounds(obs_space: Space):
     else:
         raise NotImplementedError
 
-def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descent_steps: int = 10, batch_size: int = 64, projection_fn: Callable = lambda x: x, use_coop=True):
+def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descent_steps: int = 10, batch_size: int = 64, use_coop=True):
     """
         Generates states by doing gradient descent to increase an agent's uncertainty
         on states starting from random noise
@@ -57,7 +57,6 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
             random_obs = obs_space.sample()
             obs.append(torch.tensor(random_obs, device = agent.device, dtype=torch.float32))
     obs = torch.nn.Parameter(torch.stack(obs), requires_grad=True)
-    #projected_obs = projection_fn(obs)
     if use_coop:
         cmp = BoundedUncertaintyMaximization(
                                                 torch.tensor(lower_bounds[lower_bounded_idxs], device=agent.device), 
@@ -93,7 +92,4 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
             #print(obs.grad, next(agent.policy..parameters()).grad)
             optimizer.step()
         uncertainties.append(uncertainty)
-    # projected_obs = projection_fn(obs)
-    #print(projected_obs)
-    print(obs.max())
     return obs, uncertainties

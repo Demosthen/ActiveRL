@@ -33,6 +33,7 @@ class SimpleGridEnvWrapper(gym.core.ObservationWrapper):
         """
             Function added for ActiveRL:
             projects the observation onto the observation space
+            [DEPRECATED, USE INVERSE_OBSERVATION INSTEAD]
         """
         int_obs = torch.round(obs).int()
         if int_obs < 0:

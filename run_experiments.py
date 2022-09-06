@@ -105,7 +105,7 @@ def get_agent(env, env_config, args):
     # TODO: add callbacks
     callbacks = []
     if args.use_activerl:
-        callbacks.append(lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, projection_fn=env.project, use_coop=args.use_coop))
+        callbacks.append(lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, use_coop=args.use_coop))
 
     config["callbacks"] = MultiCallbacks(callbacks)
     
@@ -191,7 +191,7 @@ if __name__=="__main__":
     if args.env == "cl":
         env = CityLearnEnv
         env_config = {
-            "schema": Path("sample_schema.json")
+            "schema": Path("./data/citylearn_challenge_2022_phase_1/schema.json")
         }
     else: 
         env = SimpleGridEnvWrapper
