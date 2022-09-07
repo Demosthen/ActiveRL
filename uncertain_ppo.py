@@ -16,7 +16,8 @@ class UncertainPPOTorchPolicy(PPOTorchPolicy):
             config,
         )
         print(self.model)
-        self.num_dropout_evals = config["env_config"]["num_dropout_evals"]
+        print(observation_space)
+        self.num_dropout_evals = config["model"]["num_dropout_evals"]
     
     def get_value(self, **input_dict):
             input_dict = SampleBatch(input_dict)
@@ -37,6 +38,7 @@ class UncertainPPOTorchPolicy(PPOTorchPolicy):
             :return: How uncertain the model is about the value for each
                     observation
         """
+        print(obs_tensor)
         orig_mode = self.model.training
         self.model.train()
         values = []

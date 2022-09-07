@@ -10,6 +10,7 @@ import argparse
 import ray
 from citylearn.citylearn import CityLearnEnv
 from callbacks import ActiveRLCallback
+from citylearn_wrapper import CityLearnEnvWrapper
 from uncertain_ppo import UncertainPPOTorchPolicy
 from uncertain_ppo_trainer import UncertainPPO
 from ray.air.callbacks.wandb import WandbLoggerCallback
@@ -69,7 +70,7 @@ def initialize_citylearn_params():
             'buildings_states_actions': 'buildings_state_action_space.json', 
             'simulation_period': (0, 8760*1-1),
             'cost_function': ['ramping','1-load_factor','average_daily_peak','peak_demand','net_electricity_consumption','carbon_emissions'], 
-            'central_agent': False,
+            'central_agent': True,
             'save_memory': False }
     return params
     
@@ -100,7 +101,7 @@ def get_agent(env, env_config, args):
     config["env_config"] = env_config
     config["model"] = MODEL_DEFAULTS
     config["model"]["fcnet_activation"] = lambda: nn.Sequential(nn.Tanh(), nn.Dropout())#Custom_Activation
-    config["env_config"]["num_dropout_evals"] = 10
+    config["model"]["num_dropout_evals"] = 10
 
     # TODO: add callbacks
     callbacks = []
@@ -189,9 +190,9 @@ if __name__=="__main__":
     ray.init()
 
     if args.env == "cl":
-        env = CityLearnEnv
+        env = CityLearnEnvWrapper
         env_config = {
-            "schema": Path("./data/citylearn_challenge_2022_phase_1/schema.json")
+            "schema": Path("./data/citylearn_challenge_2022_phase_1/schema.json"),
         }
     else: 
         env = SimpleGridEnvWrapper
