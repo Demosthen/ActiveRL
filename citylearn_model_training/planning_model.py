@@ -19,6 +19,7 @@ class LitPlanningModel(pl.LightningModule):
             self.get_unit(hidden_size, hidden_size),
             self.get_unit(hidden_size, hidden_size),
             nn.Linear(hidden_size, obs_size)
+            
         ])
         self.save_hyperparameters()
     
@@ -72,7 +73,7 @@ class LitPlanningModel(pl.LightningModule):
         self.log("val_loss", loss)
         self.log("val_mae", mae_loss)
 
-    def get_reward(self, x):
+    def get_reward(self, x, ):
         self.eval()
         electricity_consumption_index = 23
         carbon_emission_index = 19
@@ -95,3 +96,9 @@ class LitPlanningModel(pl.LightningModule):
         uncertainty = torch.std(rewards, dim=0)
         self.train(orig_mode)
         return uncertainty
+
+def get_planning_model(ckpt_file):
+    if ckpt_file is None:
+        return None
+    model = LitPlanningModel.load_from_checkpoint(ckpt_file)
+    return model

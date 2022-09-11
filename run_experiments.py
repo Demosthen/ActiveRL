@@ -21,7 +21,7 @@ from ray.rllib.algorithms.ppo import DEFAULT_CONFIG
 from ray.rllib.models.catalog import MODEL_DEFAULTS
 from ray.rllib.algorithms.callbacks import MultiCallbacks
 from simple_grid_wrapper import SimpleGridEnvWrapper
-from citylearn_model_training.planning_model import LitPlanningModel
+from citylearn_model_training.planning_model import get_planning_model
 # from stable_baselines3 import PPO
 # from stable_baselines3.common.env_checker import check_env
 # from callbacks import ActiveRLCallback
@@ -75,11 +75,6 @@ def initialize_citylearn_params():
             'save_memory': False }
     return params
 
-def get_planning_model(ckpt_file):
-    if ckpt_file is None:
-        return None
-    model = LitPlanningModel.load_from_checkpoint(ckpt_file)
-    return model
 
 def get_agent(env, env_config, args, planning_model=None):
 

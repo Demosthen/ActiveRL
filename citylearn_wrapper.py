@@ -1,5 +1,7 @@
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Mapping, Union
+from webbrowser import get
 from citylearn.citylearn import CityLearnEnv
 from citylearn.building import Building
 import gym
@@ -11,14 +13,25 @@ from citylearn.base import Environment
 from citylearn.data import EnergySimulation, CarbonIntensity, Pricing, Weather
 from citylearn.energy_model import Battery, ElectricHeater, HeatPump, PV, StorageTank
 from gym.envs.toy_text.utils import categorical_sample
+from citylearn_model_training.planning_model import get_planning_model
 
 class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, gym.core.RewardWrapper):
     """
         Wraps the SimpleGridEnv to make discrete observations one hot encoded. Also provides an inverse_observations
         function that can transform the one hot encoded observations back to the original discrete space.
+        If you specify a planning_model_ckpt in the config function, will output state transitions from the planning model
+        instead of the environment.
 
     """
     def __init__(self, config):
+        planning_model_ckpt = config["planning_model_ckpt"] if "planning_model_ckpt" in config else None
+        if planning_model_ckpt is not None:
+            self.planning_model = get_planning_model(planning_model_ckpt)
+        else:
+            self.planning_model = None
+        config = deepcopy(config)
+        if "planning_model_ckpt" in config:
+            del config["planning_model_ckpt"] # Citylearn will complain if you pass it this extra parameter
         env = CityLearnEnv(**config)
         super().__init__(env)
         self.env = env
@@ -26,6 +39,7 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
         #self.obs_space_max = obs_space.n
         self.observation_space = self.env.observation_space[0]
         self.action_space = self.env.action_space[0]
+        self.curr_obs = self.env.reset()
 
 
     # Override `observation` to custom process the original observation
@@ -40,10 +54,32 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
     def action(self, action):
         return [action]
 
-    def step(self, action):
-        obs, rew, done, info = self.env.step(self.action(action))
+    def compute_reward(self, obs):
+        """
+            Computes the reward from CityLearn given an observation.
+            Painstakingly reverse engineered and tested against CityLearn's default reward behavior
+        """
+        electricity_consumption_index = 23
+        carbon_emission_index = 19
+        electricity_pricing_index = 24
+        num_buildings = len(self.env.buildings)
+        offset = (len(obs) - len(self.env.shared_observations)) // num_buildings
+        net_electricity_consumptions = [obs[i] for i in range(electricity_consumption_index, electricity_consumption_index + offset * num_buildings, offset)]
+        # NOTE: citylearn clips carbon emissions PER BUILDING but electricity cost IN AGGREGATE
+        carbon_emission = (sum([np.clip(obs[carbon_emission_index] * net_electricity_consumptions[j], 0, None) for j in range(num_buildings)]))
+        price = sum([obs[i] * net_electricity_consumptions[j] for j, i in enumerate(range(electricity_pricing_index, electricity_pricing_index + offset * num_buildings, offset))])
+        price = np.clip(price, 0, None)
+        return - (carbon_emission + price)
 
-        return self.observation(obs), self.reward(rew), done, info
+    def step(self, action):
+        if self.planning_model is None:
+            obs, rew, done, info = self.env.step(self.action(action))
+
+            return self.observation(obs), self.reward(rew), done, info
+        else:
+            planning_input = np.concatenate([self.curr_obs, action])
+            next_obs = self.planning_model(planning_input)
+            rew = self.compute_reward(next_obs)
 
     #TODO
     def inverse_observation(self, wrapped_obs):
