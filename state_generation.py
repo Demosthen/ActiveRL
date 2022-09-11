@@ -8,23 +8,29 @@ from uncertain_ppo import UncertainPPOTorchPolicy
 from uncertain_ppo_trainer import UncertainPPO
 
 class BoundedUncertaintyMaximization(cooper.ConstrainedMinimizationProblem):
-    def __init__(self, lower_bounds, upper_bounds, lower_bounded_idxs, upper_bounded_idxs, agent):
+    def __init__(self, lower_bounds, upper_bounds, lower_bounded_idxs, upper_bounded_idxs, agent, planning_model=None):
         self.lower_bounds = lower_bounds
         self.upper_bounds = upper_bounds
         self.lower_bounded_idxs = lower_bounded_idxs
         self.upper_bounded_idxs = upper_bounded_idxs
         self.agent = agent
+        self.planning_model = planning_model
         super().__init__(is_constrained=True)
 
     def closure(self, obs):
 
-        # Negative sign added since we want to *maximize* the entropy
-        uncertainty = - self.agent.compute_uncertainty(obs).sum()
+        if self.planning_model is None:
+            # Negative sign added since we want to *maximize* the entropy
+            loss = - self.agent.compute_uncertainty(obs).sum()
+        else:
+            action = self.agent.get_action(obs=obs)
+            loss = - self.agent.compute_uncertainty(obs).sum() + self.planning_model.compute_uncertainty(obs, action).sum()
+            print("IS THIS LOSS? ", loss, loss.shape)
 
         # Entries of p >= 0 (equiv. -p <= 0)
         ineq_defect = torch.cat([obs[self.lower_bounded_idxs] - self.lower_bounds, self.upper_bounds - obs[self.upper_bounded_idxs]])
 
-        return cooper.CMPState(loss=uncertainty, ineq_defect=ineq_defect)
+        return cooper.CMPState(loss=loss, ineq_defect=ineq_defect)
 
 def get_space_bounds(obs_space: Space):
     if isinstance(obs_space, Box):
@@ -34,7 +40,7 @@ def get_space_bounds(obs_space: Space):
     else:
         raise NotImplementedError
 
-def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descent_steps: int = 10, batch_size: int = 64, use_coop=True):
+def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descent_steps: int = 10, batch_size: int = 64, use_coop=True, planning_model=None):
     """
         Generates states by doing gradient descent to increase an agent's uncertainty
         on states starting from random noise
@@ -63,7 +69,9 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
                                                 torch.tensor(upper_bounds[upper_bounded_idxs], device=agent.device), 
                                                 torch.tensor(lower_bounded_idxs[None, :], device=agent.device), 
                                                 torch.tensor(upper_bounded_idxs[None, :], device=agent.device), 
-                                                agent)
+                                                agent,
+                                                planning_model
+                                                )
         formulation = cooper.LagrangianFormulation(cmp)
 
         primal_optimizer = cooper.optim.ExtraAdam([obs], lr=0.1)

@@ -21,6 +21,7 @@ from ray.rllib.algorithms.ppo import DEFAULT_CONFIG
 from ray.rllib.models.catalog import MODEL_DEFAULTS
 from ray.rllib.algorithms.callbacks import MultiCallbacks
 from simple_grid_wrapper import SimpleGridEnvWrapper
+from citylearn_model_training.planning_model import LitPlanningModel
 # from stable_baselines3 import PPO
 # from stable_baselines3.common.env_checker import check_env
 # from callbacks import ActiveRLCallback
@@ -73,25 +74,14 @@ def initialize_citylearn_params():
             'central_agent': True,
             'save_memory': False }
     return params
-    
-class Custom_Activation(nn.Module):
-    def __init__(self, p = 0.5, training = True) -> None:
-        super().__init__()
-        self.p = p
-        self.training = training
 
-    def forward(self, x):
-        x = torch.tanh(x)
-        if self.training:
-            return F.dropout(x)
-        return x
+def get_planning_model(ckpt_file):
+    if ckpt_file is None:
+        return None
+    model = LitPlanningModel.load_from_checkpoint(ckpt_file)
+    return model
 
-def get_agent(env, env_config, args):
-    #TODO: get dropout working
-    # activation_fn = lambda : nn.Sequential(nn.Tanh(), nn.Dropout())
-    # policy_kwargs = {
-    #     "activation_fn": activation_fn
-    # }
+def get_agent(env, env_config, args, planning_model=None):
 
     config = DEFAULT_CONFIG.copy()
     config["framework"] = "torch"
@@ -99,6 +89,8 @@ def get_agent(env, env_config, args):
     # Disable default preprocessors, we preprocess ourselves with env wrappers
     config["_disable_preprocessor_api"] = True
     config["env_config"] = env_config
+    if args.env == "cl":
+        config["horizon"] = 8760
     config["model"] = MODEL_DEFAULTS
     config["model"]["fcnet_activation"] = lambda: nn.Sequential(nn.Tanh(), nn.Dropout())#Custom_Activation
     config["model"]["num_dropout_evals"] = 10
@@ -106,7 +98,7 @@ def get_agent(env, env_config, args):
     # TODO: add callbacks
     callbacks = []
     if args.use_activerl:
-        callbacks.append(lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, use_coop=args.use_coop))
+        callbacks.append(lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, use_coop=args.use_coop, planning_model=planning_model))
 
     config["callbacks"] = MultiCallbacks(callbacks)
     
@@ -176,6 +168,12 @@ def add_args(parser):
         action="store_true",
         help="Whether or not to use the constrained optimizer for Active RL optimization"
     )
+    parser.add_argument(
+        "--planning_model_ckpt",
+        type=str,
+        help="File path to planning model checkpoint. Leave as None to not use the planning model",
+        default=None
+    )
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
@@ -183,7 +181,7 @@ if __name__=="__main__":
     args = parser.parse_args()
 
     if args.wandb:
-        wandb.init(project="active-rl", entity="social-game-rl")
+        run = wandb.init(project="active-rl", entity="social-game-rl")
         wandb.tensorboard.patch(root_logdir=args.log_path) # patching the logdir directly seems to work
         wandb.config.update(args)
         
@@ -192,7 +190,7 @@ if __name__=="__main__":
     if args.env == "cl":
         env = CityLearnEnvWrapper
         env_config = {
-            "schema": Path("./data/citylearn_challenge_2022_phase_1/schema.json"),
+            "schema": Path("./data/citylearn_challenge_2022_phase_1/schema.json")
         }
     else: 
         env = SimpleGridEnvWrapper
@@ -205,12 +203,12 @@ if __name__=="__main__":
             env_config["reward_map"] = rew_map
             env_config["wind_p"] = wind_p
 
-    agent = get_agent(env, env_config, args)
+    # planning model is None if the ckpt file path is None
+    planning_model = get_planning_model(args.planning_model_ckpt)
 
-
+    agent = get_agent(env, env_config, args, planning_model)
     
-
-    train_agent(agent, timesteps=5000, env=env)
+    train_agent(agent, timesteps=args.num_timesteps, env=env)
 
     # obs = env.reset()
     # for i in range(16):

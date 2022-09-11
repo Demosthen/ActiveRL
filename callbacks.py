@@ -18,11 +18,12 @@ class ActiveRLCallback(DefaultCallbacks):
 
     :param verbose: (int) Verbosity level 0: not output 1: info 2: debug
     """
-    def __init__(self, num_descent_steps: int=10, batch_size: int=64, use_coop: bool=True):
+    def __init__(self, num_descent_steps: int=10, batch_size: int=64, use_coop: bool=True, planning_model=None):
         super(ActiveRLCallback, self).__init__()
         self.num_descent_steps = num_descent_steps
         self.batch_size = batch_size
         self.use_coop = use_coop
+        self.planning_model = planning_model
 
     def _on_training_start(self) -> None:
         """
@@ -60,7 +61,7 @@ class ActiveRLCallback(DefaultCallbacks):
         for env in envs:
             
             new_states, uncertainties = generate_states(policy, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
-                batch_size=self.batch_size, use_coop=self.use_coop)
+            batch_size=self.batch_size, use_coop=self.use_coop, planning_model=self.planning_model)
             new_states = new_states.detach()
 
             # print(env.observation_space)

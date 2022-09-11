@@ -20,10 +20,15 @@ class UncertainPPOTorchPolicy(PPOTorchPolicy):
         self.num_dropout_evals = config["model"]["num_dropout_evals"]
     
     def get_value(self, **input_dict):
-            input_dict = SampleBatch(input_dict)
-            input_dict = self._lazy_tensor_dict(input_dict)
-            model_out, _ = self.model(input_dict)
-            return self.model.value_function()
+        input_dict = SampleBatch(input_dict)
+        input_dict = self._lazy_tensor_dict(input_dict)
+        model_out, _ = self.model(input_dict)
+        return self.model.value_function()
+
+    def get_action(self, **input_dict):
+        input_dict = SampleBatch(input_dict)
+        #input_dict = self._lazy_tensor_dict(input_dict)
+        return self.compute_actions_from_input_dict(input_dict)[0]
 
     def compute_uncertainty(self, obs_tensor: th.Tensor):
         """
@@ -38,7 +43,6 @@ class UncertainPPOTorchPolicy(PPOTorchPolicy):
             :return: How uncertain the model is about the value for each
                     observation
         """
-        print(obs_tensor)
         orig_mode = self.model.training
         self.model.train()
         values = []
