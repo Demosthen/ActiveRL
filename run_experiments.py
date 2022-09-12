@@ -89,6 +89,8 @@ def get_agent(env, env_config, args, planning_model=None):
     config["model"] = MODEL_DEFAULTS
     config["model"]["fcnet_activation"] = lambda: nn.Sequential(nn.Tanh(), nn.Dropout())#Custom_Activation
     config["model"]["num_dropout_evals"] = 10
+    config["disable_env_checking"] = True
+    config["num_gpus"] = 1
 
     # TODO: add callbacks
     callbacks = []
@@ -185,7 +187,8 @@ if __name__=="__main__":
     if args.env == "cl":
         env = CityLearnEnvWrapper
         env_config = {
-            "schema": Path("./data/citylearn_challenge_2022_phase_1/schema.json")
+            "schema": Path("./data/citylearn_challenge_2022_phase_1/schema.json"),
+            "planning_model_ckpt": args.planning_model_ckpt
         }
     else: 
         env = SimpleGridEnvWrapper

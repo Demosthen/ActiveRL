@@ -1,9 +1,14 @@
+from typing import Union
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from gym.spaces.box import Box
+import numpy as np
 class LitPlanningModel(pl.LightningModule):
-    def __init__(self, obs_size = 1, act_size = 1, hidden_size = 1, lr = 0.0001, X_mean = 0, X_std = 1, y_mean = 0, y_std = 1, batch_norm=True) -> None:
+    def __init__(self, obs_size: int = 1, act_size: int = 1, hidden_size: int = 1, lr: float = 0.0001, 
+                    X_mean: Union[float, np.ndarray] = 0, X_std: Union[float, np.ndarray] = 1, y_mean: Union[float, np.ndarray] = 0, 
+                    y_std: Union[float, np.ndarray] = 1, batch_norm: bool=True) -> None:
         super().__init__()
         self.lr = lr
         if None in [obs_size, act_size, hidden_size]:
@@ -19,7 +24,6 @@ class LitPlanningModel(pl.LightningModule):
             self.get_unit(hidden_size, hidden_size),
             self.get_unit(hidden_size, hidden_size),
             nn.Linear(hidden_size, obs_size)
-            
         ])
         self.save_hyperparameters()
     
@@ -37,6 +41,12 @@ class LitPlanningModel(pl.LightningModule):
     def postprocess(self, y):
         return y * self.y_std.to(self.device) + self.y_mean.to(self.device)
 
+    def from_np(self, x):
+        return torch.tensor(x, device=self.device, dtype=torch.float32)
+
+    def to_np(self, y):
+        return y.detach().cpu().numpy()
+
     def forward(self, x):
         x = self.preprocess(x)
         for i, layer in enumerate(self.layers):
@@ -48,6 +58,21 @@ class LitPlanningModel(pl.LightningModule):
             x = layer(x) + base
         return self.postprocess(x)
 
+    def forward_np(self, x):
+        x = self.from_np(x)
+        y = self.forward(x)
+        return self.to_np(y)
+
+    def eval_batchnorm(self):
+        for layer in self.layers:
+            if isinstance(layer, nn.BatchNorm1d):
+                layer.eval()
+            if isinstance(layer, nn.Sequential):
+                for sublayer in layer:
+                    if isinstance(sublayer, nn.BatchNorm1d):
+                        sublayer.eval()
+            
+
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
@@ -58,7 +83,6 @@ class LitPlanningModel(pl.LightningModule):
         y_hat = self.forward(x)
         loss = F.mse_loss(y_hat, y)
         if return_mae:
-            eps = 0.00001
             mae_loss = torch.mean(torch.abs(y_hat - y))
             return loss, mae_loss
         return loss
