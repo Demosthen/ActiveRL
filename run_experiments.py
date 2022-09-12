@@ -1,3 +1,4 @@
+import os
 from enum import Enum
 from pathlib import Path
 import gym 
@@ -25,8 +26,7 @@ from citylearn_model_training.planning_model import get_planning_model
 # from stable_baselines3 import PPO
 # from stable_baselines3.common.env_checker import check_env
 # from callbacks import ActiveRLCallback
-
-
+from datetime import datetime
 
 class Environments(Enum):
     GRIDWORLD = "gw"
@@ -110,6 +110,14 @@ def train_agent(agent, timesteps, env):
         result = agent.train()
         training_steps = result["timesteps_total"]
 
+def get_log_path(log_dir):
+    now = datetime.now()
+    date_time = now.strftime("%m|%d|%Y,%H:%M:%S")
+    
+    path = os.path.join(log_dir, date_time)
+    os.makedirs(path, exist_ok=True)
+    return path
+
 def add_args(parser):
     # LOGGING PARAMS
     parser.add_argument(
@@ -179,6 +187,7 @@ if __name__=="__main__":
 
     if args.wandb:
         run = wandb.init(project="active-rl", entity="social-game-rl")
+        args.log_path = get_log_path(args.log_path)
         wandb.tensorboard.patch(root_logdir=args.log_path) # patching the logdir directly seems to work
         wandb.config.update(args)
         

@@ -97,8 +97,8 @@ class LitPlanningModel(pl.LightningModule):
         self.log("val_loss", loss)
         self.log("val_mae", mae_loss)
 
-    def get_reward(self, x, ):
-        self.eval()
+    def get_reward(self, x, return_next_obs=False):
+        self.eval_batchnorm()
         electricity_consumption_index = 23
         carbon_emission_index = 19
         electricity_pricing_index = 24
@@ -106,20 +106,29 @@ class LitPlanningModel(pl.LightningModule):
         net_electricity_consumption = next_obs[:, electricity_consumption_index]
         carbon_emission = torch.clip(next_obs[:, carbon_emission_index] * net_electricity_consumption, min=0)
         price = torch.clip(next_obs[:, electricity_pricing_index] * net_electricity_consumption, min=0)
-        return torch.sum(carbon_emission + price)
+        if return_next_obs:
+            return torch.sum(carbon_emission + price), next_obs
+        else:
+            return torch.sum(carbon_emission + price)
 
-    def compute_uncertainty(self, obs, action, num_dropout_evals=10):
+    def compute_reward_uncertainty(self, obs, action, num_dropout_evals=10, return_avg_state=False):
         in_tensor = torch.concat([torch.tensor(obs, device=self.device), torch.tensor(action, device=self.device)], dim=-1)
         orig_mode = self.training
         self.train()
         rewards = []
+        next_obss = []
         for _ in range(num_dropout_evals):
-            rew = self.get_reward(in_tensor)
+            rew, next_obs = self.get_reward(in_tensor, return_next_obs=True)
             rewards.append(rew)
+            next_obss.append(next_obs)
         rewards = torch.stack(rewards)
+        next_obss = torch.stack(next_obss)
         uncertainty = torch.std(rewards, dim=0)
         self.train(orig_mode)
-        return uncertainty
+        if return_avg_state:
+            return uncertainty, torch.mean(next_obss, dim=0)
+        else:
+            return uncertainty
 
 def get_planning_model(ckpt_file):
     if ckpt_file is None:

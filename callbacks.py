@@ -62,7 +62,6 @@ class ActiveRLCallback(DefaultCallbacks):
             
             new_states, uncertainties = generate_states(policy, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
             batch_size=self.batch_size, use_coop=self.use_coop, planning_model=self.planning_model)
-            print(new_states.shape)
             new_states = new_states.detach().cpu().flatten()
 
             # print(env.observation_space)

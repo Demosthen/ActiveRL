@@ -83,7 +83,6 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
         else:
 
             planning_input = np.atleast_2d(np.concatenate([self.curr_obs, action]))
-            print(planning_input.shape)
             self.curr_obs = self.planning_model.forward_np(planning_input).flatten()
             rew = self.compute_reward(self.curr_obs)
             self.next_time_step()

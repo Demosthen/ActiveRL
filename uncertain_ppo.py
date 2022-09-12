@@ -1,4 +1,5 @@
-from typing import Any, Dict, Optional, Type, Union, List
+from ast import Call
+from typing import Any, Callable, Dict, Optional, Type, Union, List
 
 import numpy as np
 import torch as th
@@ -16,7 +17,6 @@ class UncertainPPOTorchPolicy(PPOTorchPolicy):
             config,
         )
         print(self.model)
-        print(observation_space)
         self.num_dropout_evals = config["model"]["num_dropout_evals"]
     
     def get_value(self, **input_dict):
@@ -30,7 +30,7 @@ class UncertainPPOTorchPolicy(PPOTorchPolicy):
         #input_dict = self._lazy_tensor_dict(input_dict)
         return self.compute_actions_from_input_dict(input_dict)[0]
 
-    def compute_uncertainty(self, obs_tensor: th.Tensor):
+    def compute_value_uncertainty(self, obs_tensor: th.Tensor):
         """
             Computes the uncertainty of the neural network
             for this observation by running inference with different
@@ -50,9 +50,24 @@ class UncertainPPOTorchPolicy(PPOTorchPolicy):
             vals = self.get_value(obs=obs_tensor, training=True)
             values.append(vals)
         values = th.concat(values)
-        uncertainty = th.std(values, dim=0)
+        uncertainty = th.var(values, dim=0)
         self.model.train(orig_mode)
         return uncertainty
 
-
+    def compute_reward_uncertainty(self, obs_tensor: th.Tensor, next_obs_tensor: th.Tensor):
+        orig_mode = self.model.training
+        self.model.train()
+        rewards = []
+        for _ in range(self.num_dropout_evals):
+            curr_val = self.get_value(obs=obs_tensor, training=True)
+            next_val = self.get_value(obs=next_obs_tensor, training=True)
+            rew = curr_val - self.config["gamma"] * next_val
+            rewards.append(rew)
+        rewards = th.concat(rewards)
+        # Since curr_val and next_val are sampled independently
+        # the variance of their sum should be the sum of their variances
+        # so divide by two so it's still comparable to the planning model's reward uncertainty
+        uncertainty = th.var(rewards, dim=0) / 2
+        self.model.train(orig_mode)
+        return uncertainty
 

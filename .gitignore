@@ -127,3 +127,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+logs/
+citylearn_model_training/active-rl-planning-model/
+citylearn_model_training/wandb/
+wandb/
+__pycache__
+citylearn_model_training/__pycache__
+citylearn_model_training/planning_model_data.csv

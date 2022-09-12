@@ -6,9 +6,10 @@ import cooper
 import numpy as np
 from uncertain_ppo import UncertainPPOTorchPolicy
 from uncertain_ppo_trainer import UncertainPPO
+from citylearn_model_training.planning_model import LitPlanningModel
 
 class BoundedUncertaintyMaximization(cooper.ConstrainedMinimizationProblem):
-    def __init__(self, lower_bounds, upper_bounds, lower_bounded_idxs, upper_bounded_idxs, agent, planning_model=None):
+    def __init__(self, lower_bounds, upper_bounds, lower_bounded_idxs, upper_bounded_idxs, agent: UncertainPPOTorchPolicy, planning_model: LitPlanningModel=None):
         self.lower_bounds = lower_bounds
         self.upper_bounds = upper_bounds
         self.lower_bounded_idxs = lower_bounded_idxs
@@ -20,11 +21,13 @@ class BoundedUncertaintyMaximization(cooper.ConstrainedMinimizationProblem):
     def closure(self, obs):
 
         if self.planning_model is None:
-            # Negative sign added since we want to *maximize* the entropy
-            loss = - self.agent.compute_uncertainty(obs).sum()
+            # Negative sign added since we want to *maximize* the uncertainty
+            loss = - self.agent.compute_value_uncertainty(obs).sum()
         else:
             action = self.agent.get_action(obs=obs)
-            loss = - self.agent.compute_uncertainty(obs).sum() + self.planning_model.compute_uncertainty(obs, action).sum()
+            planning_uncertainty, next_obs = self.planning_model.compute_reward_uncertainty(obs, action, return_avg_state=True)
+            agent_uncertainty = self.agent.compute_reward_uncertainty(obs, next_obs)
+            loss = - agent_uncertainty + planning_uncertainty
             print("IS THIS LOSS? ", loss, loss.shape)
 
         # Entries of p >= 0 (equiv. -p <= 0)
@@ -89,7 +92,7 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
     for _ in range(num_descent_steps):
         optimizer.zero_grad()
         agent.model.zero_grad()
-        uncertainty = agent.compute_uncertainty(obs)
+        uncertainty = agent.compute_value_uncertainty(obs)
         if use_coop:
             lagrangian = formulation.composite_objective(cmp.closure, obs)
             formulation.custom_backward(lagrangian)
