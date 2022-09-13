@@ -5,6 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from gym.spaces.box import Box
 import numpy as np
+from model_utils import get_unit
+
 class LitPlanningModel(pl.LightningModule):
     def __init__(self, obs_size: int = 1, act_size: int = 1, hidden_size: int = 1, lr: float = 0.0001, 
                     X_mean: Union[float, np.ndarray] = 0, X_std: Union[float, np.ndarray] = 1, y_mean: Union[float, np.ndarray] = 0, 
@@ -13,27 +15,22 @@ class LitPlanningModel(pl.LightningModule):
         self.lr = lr
         if None in [obs_size, act_size, hidden_size]:
             return
+        self.obs_size = obs_size
+        self.act_size = act_size
+        self.hidden_size = hidden_size
         self.X_mean = torch.tensor(X_mean, device=self.device, dtype=torch.float16)
         self.X_std = torch.tensor(X_std, device=self.device, dtype=torch.float16)
         self.y_mean = torch.tensor(y_mean, device=self.device, dtype=torch.float16)
         self.y_std = torch.tensor(y_std, device=self.device, dtype=torch.float16)
         self.batch_norm = batch_norm
         self.layers = nn.ModuleList([
-            self.get_unit(obs_size + act_size, hidden_size),
-            self.get_unit(hidden_size, hidden_size),
-            self.get_unit(hidden_size, hidden_size),
-            self.get_unit(hidden_size, hidden_size),
+            get_unit(obs_size + act_size, hidden_size, batch_norm),
+            get_unit(hidden_size, hidden_size, batch_norm),
+            get_unit(hidden_size, hidden_size, batch_norm),
+            get_unit(hidden_size, hidden_size, batch_norm),
             nn.Linear(hidden_size, obs_size)
         ])
         self.save_hyperparameters()
-    
-    def get_unit(self, in_size, out_size):
-        return nn.Sequential(
-            nn.Linear(in_size, out_size), 
-            nn.ReLU(),
-            nn.BatchNorm1d(out_size) if self.batch_norm else nn.Identity(),
-            nn.Dropout(),
-            )
 
     def preprocess(self, x):
         return (x - self.X_mean.to(self.device)) / self.X_std.to(self.device)
