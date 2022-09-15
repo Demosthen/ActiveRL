@@ -1,6 +1,7 @@
 import os
 from enum import Enum
 from pathlib import Path
+from unittest import result
 import gym 
 import torch
 import torch.nn as nn
@@ -90,18 +91,22 @@ def get_agent(env, env_config, args, planning_model=None):
     config["model"]["fcnet_activation"] = lambda: nn.Sequential(nn.Tanh(), nn.Dropout())#Custom_Activation
     config["model"]["num_dropout_evals"] = 10
     config["disable_env_checking"] = True
-    config["num_gpus"] = 1
+    config["num_gpus"] = args.num_gpus
+    if args.num_gpus == 0:
+        config["num_gpus_per_worker"] = 0
+    config["evaluation_interval"] = 1
+    config["evaluation_num_workers"] = 0
+    config["evaluation_duration"] = max(1, args.gw_steps_per_cell) * 64 # TODO: is there a better way of counting this?
+    config["evaluation_duration_unit"] = "episodes"
+
+    
 
     # TODO: add callbacks
-    callbacks = []
-    if args.use_activerl:
-        callbacks.append(lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, use_coop=args.use_coop, planning_model=planning_model))
 
-    config["callbacks"] = MultiCallbacks(callbacks)
-    
+    if args.use_activerl:
+        config["callbacks"] = lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, use_coop=args.use_coop, planning_model=planning_model, config=config)
     agent = UncertainPPO(config = config, logger_creator = utils.custom_logger_creator(args.log_path))
 
-    # agent = UncertainPPO('MlpPolicy', env, verbose=1, policy_kwargs=policy_kwargs, device="cpu")
     return agent
 
 def train_agent(agent, timesteps, env):
@@ -112,19 +117,27 @@ def train_agent(agent, timesteps, env):
 
 def get_log_path(log_dir):
     now = datetime.now()
-    date_time = now.strftime("%m|%d|%Y,%H:%M:%S")
+    date_time = now.strftime("%m-%d-%Y,%H-%M-%S")
     
-    path = os.path.join(log_dir, date_time)
+    path = os.path.join(".", log_dir, date_time)
     os.makedirs(path, exist_ok=True)
     return path
 
 def add_args(parser):
+    # GENERAL PARAMS
+    parser.add_argument(
+        "--num_gpus",
+        type=int,
+        help="number of gpus to use, default = 1",
+        default="1"
+        )
+
     # LOGGING PARAMS
     parser.add_argument(
         "--log_path",
         type=str,
         help="filename to read gridworld specs from. pass an int if you want to auto generate one.",
-        default="./logs"
+        default="logs"
         )
     parser.add_argument(
         "--wandb",
@@ -153,6 +166,12 @@ def add_args(parser):
         type=str,
         help="filename to read gridworld specs from. pass an int if you want to auto generate one.",
         default="gridworlds/sample_grid.txt"
+        )
+    parser.add_argument(
+        "--gw_steps_per_cell",
+        type=int,
+        help="number of times to evaluate each cell, min=1",
+        default=1
         )
 
     # ACTIVE RL PARAMS
@@ -216,6 +235,10 @@ if __name__=="__main__":
     agent = get_agent(env, env_config, args, planning_model)
     
     train_agent(agent, timesteps=args.num_timesteps, env=env)
+
+    result_dict = agent.evaluate()
+
+    print(result_dict["evaluation"]["custom_metrics"].keys())
 
     # obs = env.reset()
     # for i in range(16):
