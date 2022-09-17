@@ -4,7 +4,7 @@ from gym.spaces import Space, Box, Discrete
 import torch.optim as optim
 import cooper
 import numpy as np
-from callbacks import RewardPredictor
+from reward_predictor import RewardPredictor
 from uncertain_ppo import UncertainPPOTorchPolicy
 from uncertain_ppo_trainer import UncertainPPO
 from citylearn_model_training.planning_model import LitPlanningModel
@@ -78,7 +78,8 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
                                                 torch.tensor(lower_bounded_idxs[None, :], device=agent.device), 
                                                 torch.tensor(upper_bounded_idxs[None, :], device=agent.device), 
                                                 agent,
-                                                planning_model
+                                                planning_model,
+                                                reward_model
                                                 )
         formulation = cooper.LagrangianFormulation(cmp)
 

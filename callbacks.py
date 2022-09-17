@@ -10,78 +10,14 @@ from ray.rllib.utils.typing import PolicyID
 from ray.rllib.policy import Policy
 from ray.rllib.policy.sample_batch import SampleBatch
 from ray.rllib.evaluation import RolloutWorker
-from model_utils import get_unit
+
 from state_generation import generate_states
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+from reward_predictor import RewardPredictor
 
-class RewardPredictor(nn.Module):
-    def __init__(self, in_size, hidden_size, batch_norm: bool=True) -> None:
-        super().__init__()
-        self.X_mean = nn.Parameter(torch.zeros(in_size), requires_grad=False)
-        self.X_std = nn.Parameter(torch.ones(in_size), requires_grad=False)
-        self.batch_norm = batch_norm
-        self.y_mean = nn.Parameter(torch.zeros([1]), requires_grad=False)
-        self.y_std = nn.Parameter(torch.ones([1]), requires_grad=False)
-        self.momentum = 0.9
-        self.layers = nn.ModuleList([
-            get_unit(in_size, hidden_size, batch_norm),
-            get_unit(hidden_size, hidden_size, batch_norm),
-            get_unit(hidden_size, hidden_size, batch_norm),
-            get_unit(hidden_size, hidden_size, batch_norm),
-            nn.Linear(hidden_size, 1)
-        ])
-
-    def preprocess(self, x):
-        ret = (x - self.X_mean.to(self.device)) / self.X_std.to(self.device)
-        # Do not update on single samples
-        if self.training and len(x) > 1:
-            self.X_mean = self.momentum * self.X_mean + (1 - self.momentum) * torch.mean(x)
-            self.X_std = self.momentum * self.X_std + (1 - self.momentum) * torch.std(x)
-        return ret
-
-    def postprocess(self, y):
-        ret = y * self.y_std.to(self.device) + self.y_mean.to(self.device)
-        # Do not update on single samples
-        if self.training and len(y) > 1:
-            self.y_mean = self.momentum * self.y_mean + (1 - self.momentum) * torch.mean(y)
-            self.y_std = self.momentum * self.y_std + (1 - self.momentum) * torch.std(y)
-        return ret
-    
-    def forward(self):
-        x = self.preprocess(x)
-        for i, layer in enumerate(self.layers):
-            base = 0
-            # Add residual connection if this is not
-            # the first or last layer
-            if i != 0 and i != len(self.layers) - 1:
-                base = x
-            x = layer(x) + base
-        return self.postprocess(x)
-
-    def eval_batchnorm(self):
-        for layer in self.layers:
-            if isinstance(layer, nn.BatchNorm1d):
-                layer.eval()
-            if isinstance(layer, nn.Sequential):
-                for sublayer in layer:
-                    if isinstance(sublayer, nn.BatchNorm1d):
-                        sublayer.eval()
-
-    def compute_uncertainty(self, in_tensor, num_dropout_evals=10):
-        orig_mode = self.training
-        self.train()
-        self.eval_batchnorm()
-        rewards = []
-        for _ in range(num_dropout_evals):
-            rew = self.forward(in_tensor)
-            rewards.append(rew)
-        rewards = torch.stack(rewards)
-        uncertainty = torch.var(rewards)
-        self.train(orig_mode)
-        return uncertainty
 
 class ActiveRLCallback(DefaultCallbacks):
     """
@@ -99,7 +35,7 @@ class ActiveRLCallback(DefaultCallbacks):
         if self.planning_model is not None:
             device = torch.device("cuda:0") if self.use_gpu else torch.device("cpu")
             self.reward_model = RewardPredictor(self.planning_model.obs_size, self.planning_model.hidden_size, self.planning_model.batch_norm, device=device)
-            self.reward_optim = torch.optim.Adam(self.reward_model.parameters(), device=device)
+            self.reward_optim = torch.optim.Adam(self.reward_model.parameters())
         else:
             self.reward_model = None
             self.reward_optim = None
@@ -143,10 +79,10 @@ class ActiveRLCallback(DefaultCallbacks):
 
     def on_learn_on_batch(self, policy: Policy, train_batch: SampleBatch, result: dict, **kwargs):
         if self.reward_model is not None:
-            obs = torch.tensor(train_batch[SampleBatch.OBS], self.reward_model.device)
-            rew = torch.tensor(train_batch[SampleBatch.REWARDS], self.reward_model.device)
+            obs = torch.tensor(train_batch[SampleBatch.OBS], device=self.reward_model.device)
+            rew = torch.tensor(train_batch[SampleBatch.REWARDS], device=self.reward_model.device)
             self.reward_optim.zero_grad()
-            rew_hat = self.reward_model(obs)
+            rew_hat = self.reward_model(obs).squeeze()
             loss = F.mse_loss(rew, rew_hat)
             # TODO: log this thing
             loss.backward()
