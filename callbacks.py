@@ -8,12 +8,19 @@ from ray.rllib.evaluation.episode import Episode
 from ray.rllib.evaluation.episode_v2 import EpisodeV2
 from ray.rllib.utils.typing import PolicyID
 from ray.rllib.policy import Policy
+from ray.rllib.policy.sample_batch import SampleBatch
 from ray.rllib.evaluation import RolloutWorker
 
 from state_generation import generate_states
 from uncertain_ppo_trainer import UncertainPPO
 from simple_grid_wrapper import SimpleGridEnvWrapper
 from datetime import datetime
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import numpy as np
+from reward_predictor import RewardPredictor
+
 
 class ActiveRLCallback(DefaultCallbacks):
     """
@@ -21,7 +28,7 @@ class ActiveRLCallback(DefaultCallbacks):
 
     :param verbose: (int) Verbosity level 0: not output 1: info 2: debug
     """
-    def __init__(self, num_descent_steps: int=10, batch_size: int=64, use_coop: bool=True, planning_model=None, config={}):
+    def __init__(self, num_descent_steps: int=10, batch_size: int=64, use_coop: bool=True, planning_model=None, config={}, use_gpu=False):
         super(ActiveRLCallback, self).__init__()
         self.num_descent_steps = num_descent_steps
         self.batch_size = batch_size
@@ -35,6 +42,14 @@ class ActiveRLCallback(DefaultCallbacks):
         self.eval_rewards = []
         now = datetime.now()
         date_time = now.strftime("%m-%d-%Y,%H-%M-%S")
+        self.use_gpu = use_gpu
+        if self.planning_model is not None:
+            device = torch.device("cuda:0") if self.use_gpu else torch.device("cpu")
+            self.reward_model = RewardPredictor(self.planning_model.obs_size, self.planning_model.hidden_size, self.planning_model.batch_norm, device=device)
+            self.reward_optim = torch.optim.Adam(self.reward_model.parameters())
+        else:
+            self.reward_model = None
+            self.reward_optim = None
         
         print("IS THIS CALLBACK EVEN INITIALIZED", date_time)
 
@@ -60,6 +75,7 @@ class ActiveRLCallback(DefaultCallbacks):
         self.is_evaluating = False
         print("EVAL REWWWWWWWAAAAAAAAARRRRRRRRRRRDDDDDDDDDDSSSSSSSS\n\n\n", self.eval_rewards)
         evaluation_metrics["per_cell_rewards"] = self.eval_rewards
+        
 
     def on_episode_start(
         self,
@@ -103,7 +119,8 @@ class ActiveRLCallback(DefaultCallbacks):
 
             else:
                 new_states, uncertainties = generate_states(policy, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
-                batch_size=self.batch_size, use_coop=self.use_coop, planning_model=self.planning_model)
+                batch_size=self.batch_size, use_coop=self.use_coop, planning_model=self.planning_model, reward_model=self.reward_model)
+                # TODO: log uncertainties
                 new_states = new_states.detach().cpu().flatten()
 
                 # print(env.observation_space)
@@ -137,26 +154,13 @@ class ActiveRLCallback(DefaultCallbacks):
         if self.is_evaluating and self.is_gridworld:
             self.eval_rewards[self.cell_index % self.num_cells] += episode.total_reward
 
-
-    def _on_step(self) -> bool:
-        """
-        This method will be called by the model after each call to `env.step()`.
-
-        For child callback (of an `EventCallback`), this will be called
-        when the event is triggered.
-
-        :return: (bool) If the callback returns False, training is aborted early.
-        """
-        return True
-
-    def _on_rollout_end(self) -> None:
-        """
-        This event is triggered before updating the policy.
-        """
-        pass
-
-    def _on_training_end(self) -> None:
-        """
-        This event is triggered before exiting the `learn()` method.
-        """
-        pass
+    def on_learn_on_batch(self, policy: Policy, train_batch: SampleBatch, result: dict, **kwargs):
+        if self.reward_model is not None:
+            obs = torch.tensor(train_batch[SampleBatch.OBS], device=self.reward_model.device)
+            rew = torch.tensor(train_batch[SampleBatch.REWARDS], device=self.reward_model.device)
+            self.reward_optim.zero_grad()
+            rew_hat = self.reward_model(obs).squeeze()
+            loss = F.mse_loss(rew, rew_hat)
+            # TODO: log this thing
+            loss.backward()
+            self.reward_optim.step()

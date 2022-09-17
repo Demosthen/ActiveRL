@@ -5,35 +5,30 @@ import torch.nn as nn
 import torch.nn.functional as F
 from gym.spaces.box import Box
 import numpy as np
+from model_utils import get_unit
+
 class LitPlanningModel(pl.LightningModule):
-    def __init__(self, obs_size: int = 1, act_size: int = 1, hidden_size: int = 1, lr: float = 0.0001, 
+    def __init__(self, obs_size: int = 1, act_size: int = 1, hidden_size: int = 1, num_layers=12, lr: float = 0.0001, 
                     X_mean: Union[float, np.ndarray] = 0, X_std: Union[float, np.ndarray] = 1, y_mean: Union[float, np.ndarray] = 0, 
                     y_std: Union[float, np.ndarray] = 1, batch_norm: bool=True) -> None:
         super().__init__()
         self.lr = lr
         if None in [obs_size, act_size, hidden_size]:
             return
-        self.X_mean = torch.tensor(X_mean, device=self.device, dtype=torch.float16)
-        self.X_std = torch.tensor(X_std, device=self.device, dtype=torch.float16)
-        self.y_mean = torch.tensor(y_mean, device=self.device, dtype=torch.float16)
-        self.y_std = torch.tensor(y_std, device=self.device, dtype=torch.float16)
+        self.obs_size = obs_size
+        self.act_size = act_size
+        self.hidden_size = hidden_size
+        self.X_mean = torch.tensor(X_mean, device=self.device, dtype=torch.float32)
+        self.X_std = torch.tensor(X_std, device=self.device, dtype=torch.float32)
+        self.y_mean = torch.tensor(y_mean, device=self.device, dtype=torch.float32)
+        self.y_std = torch.tensor(y_std, device=self.device, dtype=torch.float32)
         self.batch_norm = batch_norm
-        self.layers = nn.ModuleList([
-            self.get_unit(obs_size + act_size, hidden_size),
-            self.get_unit(hidden_size, hidden_size),
-            self.get_unit(hidden_size, hidden_size),
-            self.get_unit(hidden_size, hidden_size),
-            nn.Linear(hidden_size, obs_size)
-        ])
+        self.num_layers = num_layers
+        modules = [get_unit(obs_size + act_size, hidden_size, batch_norm)]
+        modules.extend([get_unit(hidden_size, hidden_size, batch_norm) for _ in range(num_layers)])
+        modules.append(nn.Linear(hidden_size, obs_size))
+        self.layers = nn.ModuleList(modules)
         self.save_hyperparameters()
-    
-    def get_unit(self, in_size, out_size):
-        return nn.Sequential(
-            nn.Linear(in_size, out_size), 
-            nn.ReLU(),
-            nn.BatchNorm1d(out_size) if self.batch_norm else nn.Identity(),
-            nn.Dropout(),
-            )
 
     def preprocess(self, x):
         return (x - self.X_mean.to(self.device)) / self.X_std.to(self.device)
@@ -73,9 +68,10 @@ class LitPlanningModel(pl.LightningModule):
                         sublayer.eval()
             
 
-    def configure_optimizers(self):
+    def configure_optimizers(self, monitor="val_loss"):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        return optimizer
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=1, threshold=0.001, threshold_mode="rel")
+        return {"optimizer": optimizer, "scheduler": scheduler, "monitor": "val_loss"}
 
     def shared_step(self, batch, batch_idx, return_mae=False):
         x, y = batch
