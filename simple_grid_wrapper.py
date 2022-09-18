@@ -22,6 +22,8 @@ class SimpleGridEnvWrapper(gym.core.ObservationWrapper):
         obs_space = env.observation_space
         self.obs_space_max = obs_space.n
         self.observation_space = Box(0, 1, [self.obs_space_max])
+        self.is_evaluation = config["is_evaluation"]
+        print("MUAHAHAHA, IS EVALUATION IS: ", self.is_evaluation)
 
     # Override `observation` to custom process the original observation
     # coming from the env.

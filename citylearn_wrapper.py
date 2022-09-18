@@ -25,14 +25,22 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
 
     """
     def __init__(self, config: Dict):
+        # read in planning model ckpt path and whether this env is used for evaluation or not
         planning_model_ckpt = config["planning_model_ckpt"] if "planning_model_ckpt" in config else None
-        
+        self.is_evaluation = config["is_evaluation"]
+
+        # Get config ready to pass into CityLearnEnv
         config = deepcopy(config)
         if "planning_model_ckpt" in config:
             del config["planning_model_ckpt"] # Citylearn will complain if you pass it this extra parameter
+        del config["is_evaluation"]
+
+        #Initialize CityLearnEnv
         env = CityLearnEnv(**config)
         super().__init__(env)
         self.env = env
+
+        #Implement switch between planning model and citylearn
         if planning_model_ckpt is not None:
             self.planning_model = get_planning_model(planning_model_ckpt)
             self.planning_model.eval_batchnorm()
@@ -42,20 +50,24 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
             self.planning_model = None
             self.observation_space = self.env.observation_space[0]
             self.action_space = self.env.action_space[0]
+
+        # Bookkeeping to make sure we reset after the right number of timesteps
         self.curr_obs = self.reset()
         self.time_steps = self.env.time_steps
         self.time_step = 0
 
-
     # Override `observation` to custom process the original observation
     # coming from the env.
-    # TODO
     def observation(self, observation):
         return observation[0]
 
+    # Override `reward` to custom process the original reward
+    # coming from the env.
     def reward(self, reward):
         return reward[0]
 
+    # Override `action` to custom process the original action
+    # coming from the policy.
     def action(self, action):
         return [action]
 
@@ -104,7 +116,7 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
             wrapped_obs = wrapped_obs.numpy()
         return wrapped_obs
 
-    """Hoo boy this is going to get really involved"""
+    """Pass in an initial state to reset the environment to that state. (This only works if the wrapper is in planning model mode)"""
     def reset(self, initial_state=None):
         
         self.time_step = 0

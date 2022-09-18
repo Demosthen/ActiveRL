@@ -1,3 +1,4 @@
+from copy import deepcopy
 import os
 from enum import Enum
 from pathlib import Path
@@ -98,6 +99,11 @@ def get_agent(env, env_config, args, planning_model=None):
     config["evaluation_num_workers"] = 0
     config["evaluation_duration"] = max(1, args.gw_steps_per_cell) * 64 # TODO: is there a better way of counting this?
     config["evaluation_duration_unit"] = "episodes"
+    eval_env_config = deepcopy(env_config)
+    eval_env_config["is_evaluation"] = True
+    config["evaluation_config"] = {
+        "env_config": eval_env_config
+    }
 
     
 
@@ -129,7 +135,7 @@ def add_args(parser):
         "--num_gpus",
         type=int,
         help="number of gpus to use, default = 1",
-        default="1"
+        default=1
         )
 
     # LOGGING PARAMS
@@ -216,11 +222,12 @@ if __name__=="__main__":
         env = CityLearnEnvWrapper
         env_config = {
             "schema": Path("./data/citylearn_challenge_2022_phase_1/schema.json"),
-            "planning_model_ckpt": args.planning_model_ckpt
+            "planning_model_ckpt": args.planning_model_ckpt,
+            "is_evaluation": False
         }
     else: 
         env = SimpleGridEnvWrapper
-        env_config = {}
+        env_config = {"is_evaluation": False}
         if args.gw_filename.strip().isnumeric():
             env_config["desc"] = int(args.gw_filename)
         else:
@@ -228,6 +235,7 @@ if __name__=="__main__":
             env_config["desc"] = grid_desc
             env_config["reward_map"] = rew_map
             env_config["wind_p"] = wind_p
+        
 
     # planning model is None if the ckpt file path is None
     planning_model = get_planning_model(args.planning_model_ckpt)
