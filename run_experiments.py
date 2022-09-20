@@ -250,7 +250,11 @@ if __name__=="__main__":
         rewards = result_dict["evaluation"]["per_cell_rewards"]
         print(result_dict["evaluation"]["per_cell_rewards"])
         visualization_env = env(env_config)
-        visualization_env.render(reward_dict=rewards)
+        visualization_env.reset()
+        img_arr = visualization_env.render(mode="rgb_array", reward_dict=rewards)
+
+        img = wandb.Image(img_arr, caption="Rewards from starting from each cell")
+        wandb.log({"per_cell_reward_image": img})
 
 
 

@@ -517,7 +517,7 @@ class SimpleGrid:
         agent_pos=None,
         agent_dir=None,
         highlight_mask=None,
-        rewards_dict=None,
+        reward_dict=None,
         color_func=None,
         log_scale=True
     ):
@@ -539,9 +539,9 @@ class SimpleGrid:
 
         
 
-        if rewards_dict is not None:
+        if reward_dict is not None:
             rewards = np.zeros(self.width * self.height)
-            for k, v in rewards_dict:
+            for k, v in reward_dict.items():
                 rewards[int(k)] = v
             rewards = rewards.reshape((self.width, self.height))
             val_func = lambda x, m, expo: (np.log(x) / np.log(m) if expo else x / m) if x > 1 else 0

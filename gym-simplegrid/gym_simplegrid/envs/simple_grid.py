@@ -388,17 +388,17 @@ class SimpleGridEnv(Env):
         else:
             return int(self.s), {"prob": 1}
 
-    def render(self, mode="human"):
+    def render(self, mode="human", reward_dict=None):
         if mode == "ansi":
             return self.__render_text(self.desc.tolist())
         elif mode == "human":
-            return self.__render_gui()
+            return self.__render_gui(rewards_dict=reward_dict)
         elif mode == "rgb_array":
-            return self.__render_rgb_array()
+            return self.__render_rgb_array(rewards_dict=reward_dict)
         else:
             raise ValueError(f"Unsupported rendering mode {mode}")
 
-    def __render_gui(self):
+    def __render_gui(self, rewards_dict=None):
         """
         @NOTE: Once again, if agent position is (x,y) then, to properly 
         render it, we have to pass (y,x) to the grid.render method.
@@ -406,21 +406,23 @@ class SimpleGridEnv(Env):
         img = self.grid.render(
             tile_size=32,
             agent_pos=(self.s % self.ncol, self.s // self.ncol),
-            agent_dir=0
+            agent_dir=0,
+            reward_dict=rewards_dict
         )
         if not self.window:
             self.window = Window('my_custom_env')
             self.window.show(block=False)
         self.window.show_img(img, self.fps)
 
-    def __render_rgb_array(self):
+    def __render_rgb_array(self, rewards_dict=None):
         """
         Render the environment to an rgb array.
         """
         img = self.grid.render(
             tile_size=32,
             agent_pos=(self.s % self.ncol, self.s // self.ncol),
-            agent_dir=0
+            agent_dir=0,
+            reward_dict=rewards_dict
         )
         return img
 
