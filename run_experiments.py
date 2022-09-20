@@ -246,7 +246,13 @@ if __name__=="__main__":
 
     result_dict = agent.evaluate()
 
-    print(result_dict["evaluation"]["custom_metrics"].keys())
+    if args.env == "gw":
+        rewards = result_dict["evaluation"]["per_cell_rewards"]
+        print(result_dict["evaluation"]["per_cell_rewards"])
+        visualization_env = env(env_config)
+        visualization_env.render(reward_dict=rewards)
+
+
 
     # obs = env.reset()
     # for i in range(16):

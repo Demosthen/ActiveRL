@@ -116,3 +116,13 @@ def highlight_img(img, color=(255, 255, 255), alpha=0.30):
     blend_img = img + alpha * (np.array(color, dtype=np.uint8) - img)
     blend_img = blend_img.clip(0, 255).astype(np.uint8)
     img[:, :, :] = blend_img
+
+def alt_highlight_img(img, color=(255, 255, 255), alpha=(0.30, 0.30, 0.30)):
+    """
+    Add highlighting to an image with variable alphas, and colors lighter tiles
+    """
+
+    # blend_img = img + np.array(alpha) * (np.array(color, dtype=np.uint8) - img)
+    blend_img = img - np.array(alpha) * (img - np.array(color, dtype=np.uint8))
+    blend_img = blend_img.clip(0, 255).astype(np.uint8)
+    img[:, :, :] = blend_img

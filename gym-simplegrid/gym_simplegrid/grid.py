@@ -468,26 +468,30 @@ class SimpleGrid:
         cls,
         obj,
         agent_dir=None,
-        highlight=False,
+        highlight=0,
         tile_size=TILE_PIXELS,
-        subdivs=3
+        subdivs=3,
+        hcolor=None
     ):
         """
         Render a tile and cache the result
         """
 
         # Hash map lookup key for the cache
-        key = (agent_dir, highlight, tile_size)
+        key = (agent_dir, highlight, tile_size, hcolor)
         key = obj.encode() + key if obj else key
-
         if key in cls.tile_cache:
             return cls.tile_cache[key]
 
-        img = np.zeros(shape=(tile_size * subdivs, tile_size * subdivs, 3), dtype=np.uint8) + 255
+        img = np.zeros(shape=(tile_size * subdivs, tile_size * subdivs, 3), dtype=np.uint8) + 255  # or I just recolor this if other ohjects don't matter
 
         if obj != None:
             obj.render(img)
 
+        if hcolor is not None:
+            alt_highlight_img(img, hcolor)
+            # print("c:", hcolor, "\t", agent_dir is not None)
+            
         if agent_dir is not None:
             fill_coords(img, point_in_circle(0.5, 0.5, 0.31), COLORS['yellow'])
             
@@ -512,13 +516,39 @@ class SimpleGrid:
         tile_size,
         agent_pos=None,
         agent_dir=None,
-        highlight_mask=None
+        highlight_mask=None,
+        rewards_dict=None,
+        color_func=None,
+        log_scale=True
     ):
         """
         Render this grid at a given scale
         :param r: target renderer object
         :param tile_size: tile size in pixels
         """
+
+        # arr = [[0, 10, 20, 30, 40, 50, 60, 70],
+        #        [0, 5, 10, 15, 20, 25, 30, 35],
+        #        [0, 0, 0, 0, 1, 4, 16, 64],
+        #        [70, 60, 50, 40, 30, 20, 10, 0],
+        #        [30, 30, 30, 30, 50, 50, 50, 50],
+        #        [0, 0, 0, 0, 70, 70, 70, 70],
+        #        [0, 1, 2, 4, 8, 16, 32, 64],
+        #        [70, 0, 70, 0, 70, 0, 70, 0]]
+        # rewards = np.array(arr)
+
+        
+
+        if rewards_dict is not None:
+            rewards = np.zeros(self.width * self.height)
+            for k, v in rewards_dict:
+                rewards[int(k)] = v
+            rewards = rewards.reshape((self.width, self.height))
+            val_func = lambda x, m, expo: (np.log(x) / np.log(m) if expo else x / m) if x > 1 else 0
+            if color_func == None:
+                color_func = lambda x, m, expo: (255 * min(1, 2 * (1 - val_func(x, m, expo))), 255 * min(1, 2 * val_func(x, m, expo)), 0)
+            max_val = np.amax(rewards)
+
 
         if highlight_mask is None:
             highlight_mask = np.zeros(shape=(self.width, self.height), dtype=bool)
@@ -535,12 +565,21 @@ class SimpleGrid:
                 cell = self.get(i, j)
 
                 agent_here = np.array_equal(agent_pos, (i, j))
-                tile_img = SimpleGrid.render_tile(
-                    cell,
-                    agent_dir=agent_dir if agent_here else None,
-                    highlight=highlight_mask[i, j],
-                    tile_size=tile_size
-                )
+                if rewards is not None:
+                    tile_img = SimpleGrid.render_tile(
+                        cell,
+                        agent_dir=agent_dir if agent_here else None,
+                        highlight=highlight_mask[i, j],
+                        tile_size=tile_size,
+                        hcolor=color_func(rewards[i][j], max_val, log_scale)
+                    )
+                else:
+                    tile_img = SimpleGrid.render_tile(
+                        cell,
+                        agent_dir=agent_dir if agent_here else None,
+                        highlight=highlight_mask[i, j],
+                        tile_size=tile_size,
+                    )
 
                 ymin = j * tile_size
                 ymax = (j+1) * tile_size
