@@ -81,7 +81,8 @@ class ActiveRLCallback(DefaultCallbacks):
                 return []
         rewards = np.array(algorithm.evaluation_workers.foreach_worker(access_eval_metrics))
         rewards = np.mean(rewards, axis=0)
-        evaluation_metrics["evaluation"] = {f"per_cell_rewards{cell}": rew for cell, rew in enumerate(rewards)}
+        per_cell_rewards = {f"{cell}": rew for cell, rew in enumerate(rewards)}
+        evaluation_metrics["evaluation"]["per_cell_rewards"] = per_cell_rewards
         
 
     def on_episode_start(
