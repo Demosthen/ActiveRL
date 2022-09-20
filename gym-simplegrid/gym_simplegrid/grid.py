@@ -168,7 +168,7 @@ class Goal(WorldObj):
 
 class Start(WorldObj):
     def __init__(self):
-        super().__init__('goal', 'red')
+        super().__init__('goal', 'white')
 
     def can_overlap(self):
         return True
@@ -246,8 +246,6 @@ class Wind(WorldObj):
         theta = THETAS[self.dir]
         fill_coords(img, rotate_fn(point_in_line(0.5, 0.2, 0.5, 0.8, 0.05), 0.5, 0.5, theta), COLORS["black"])
         fill_coords(img, rotate_fn(point_in_triangle([0.5, 0.9], [0.8, 0.6], [0.2, 0.6]), 0.5, 0.5, theta), COLORS["black"])
-    # def render(self, img):
-    #     fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])
 
     def encode(self):
         dir = str(self.dir)
@@ -552,8 +550,6 @@ class SimpleGrid:
         #        [0, 1, 2, 4, 8, 16, 32, 64],
         #        [70, 0, 70, 0, 70, 0, 70, 0]]
         # rewards = np.array(arr)
-
-        
 
         if reward_dict is not None:
             rewards = np.zeros(self.width * self.height)
