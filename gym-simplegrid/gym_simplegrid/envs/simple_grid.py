@@ -232,7 +232,7 @@ class SimpleGridEnv(Env):
                 elif letter == b'W':
                     grid.set(col, row, Wall(color='black'))
                 elif letter in DIRS:
-                    grid.set(col, row, Wind("grey", self.wind_p, DIRS[letter]))
+                    grid.set(col, row, Wind("white", self.wind_p, DIRS[letter]))
                 elif letter == b'B':
                     grid.set(col, row, Lava())
                 else:

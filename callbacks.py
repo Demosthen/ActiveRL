@@ -155,9 +155,8 @@ class ActiveRLCallback(DefaultCallbacks):
                 these error cases properly with their custom logics.
             kwargs : Forward compatibility placeholder.
         """
-        envs = base_env.get_sub_environments()
         if self.is_evaluating and self.is_gridworld:
-            self.eval_rewards[self.cell_index % self.num_cells] += episode.total_reward
+            self.eval_rewards[self.cell_index % self.num_cells] += episode.total_reward / (self.config["evaluation_duration"] // self.num_cells) 
 
     def on_learn_on_batch(self, policy: Policy, train_batch: SampleBatch, result: dict, **kwargs):
         if self.reward_model is not None:
