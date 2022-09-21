@@ -133,10 +133,10 @@ class ActiveRLCallback(DefaultCallbacks):
 
                 # print(env.observation_space)
                 env.reset(initial_state=new_states)
-                if ACTIVE_STATE_VISITATION_KEY not in episode.custom_metrics:
-                    episode.custom_metrics[ACTIVE_STATE_VISITATION_KEY] = []
-                print(new_states.shape)
-                episode.custom_metrics[ACTIVE_STATE_VISITATION_KEY].append(new_states.numpy().item())
+                if self.is_gridworld:
+                    if ACTIVE_STATE_VISITATION_KEY not in episode.custom_metrics:
+                        episode.custom_metrics[ACTIVE_STATE_VISITATION_KEY] = []
+                    episode.custom_metrics[ACTIVE_STATE_VISITATION_KEY].append(new_states.numpy().argmax())
                 
 
     def on_episode_end(
