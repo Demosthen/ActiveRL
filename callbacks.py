@@ -1,5 +1,6 @@
 from ast import Call
 from cProfile import run
+from tkinter import ACTIVE
 from typing import Callable, Dict, Tuple, Union
 from stable_baselines3.common.callbacks import BaseCallback
 # from state_generation import generate_states
@@ -22,6 +23,8 @@ import torch.nn.functional as F
 import numpy as np
 from reward_predictor import RewardPredictor
 
+
+ACTIVE_STATE_VISITATION_KEY = "active_state_visitation"
 
 class ActiveRLCallback(DefaultCallbacks):
     """
@@ -126,9 +129,15 @@ class ActiveRLCallback(DefaultCallbacks):
                 batch_size=self.batch_size, use_coop=self.use_coop, planning_model=self.planning_model, reward_model=self.reward_model)
                 # TODO: log uncertainties
                 new_states = new_states.detach().cpu().flatten()
+                
 
                 # print(env.observation_space)
                 env.reset(initial_state=new_states)
+                if ACTIVE_STATE_VISITATION_KEY not in episode.custom_metrics:
+                    episode.custom_metrics[ACTIVE_STATE_VISITATION_KEY] = []
+                print(new_states.shape)
+                episode.custom_metrics[ACTIVE_STATE_VISITATION_KEY].append(new_states.numpy().item())
+                
 
     def on_episode_end(
         self,
