@@ -369,16 +369,18 @@ class SimpleGridEnv(Env):
         options: Optional[dict] = None,
     ):
         super().reset(seed=seed)
-        if initial_state:
+        if initial_state is not None:
             self.s = initial_state
+            #print("EVAL RESET", self.s)
         else:
             # sample initial state from the initial state distribution
             self.s = categorical_sample(self.initial_state_distrib, self.np_random)
+            #print("NORMAL RESET", self.s)
         # set the starting red tile on the grid to render
         
-        if self.initial_state is not None:
-            self.grid.set(self.initial_state % self.ncol, self.initial_state // self.ncol, None)
-        self.grid.set(self.s % self.ncol, self.s // self.ncol, Start())
+        # if self.initial_state is not None:
+        #     self.grid.set(self.initial_state % self.ncol, self.initial_state // self.ncol, None)
+        # self.grid.set(self.s % self.ncol, self.s // self.ncol, Start())
         
         self.initial_state = self.s
         self.lastaction = None

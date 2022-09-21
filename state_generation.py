@@ -71,7 +71,6 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
             random_obs = obs_space.sample()
             obs.append(torch.tensor(random_obs, device = agent.device, dtype=torch.float32))
     obs = torch.nn.Parameter(torch.stack(obs), requires_grad=True)
-    print(obs.shape, lower_bounds.shape, upper_bounds.shape)
     if use_coop:
         cmp = BoundedUncertaintyMaximization(
                                                 torch.tensor(lower_bounds[lower_bounded_idxs], device=agent.device), 

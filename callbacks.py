@@ -122,7 +122,9 @@ class ActiveRLCallback(DefaultCallbacks):
                     self.num_cells = env.ncol * env.nrow
                     self.eval_rewards = [0 for _ in range(self.num_cells)]
                 self.cell_index += 1
-                env.reset(initial_state=self.cell_index % self.num_cells)
+                initial_state = np.zeros([self.num_cells])
+                initial_state[self.cell_index % self.num_cells] = 1
+                env.reset(initial_state=initial_state)
 
             elif self.run_active_rl:
                 new_states, uncertainties = generate_states(policy, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
@@ -130,13 +132,12 @@ class ActiveRLCallback(DefaultCallbacks):
                 # TODO: log uncertainties
                 new_states = new_states.detach().cpu().flatten()
                 
-
                 # print(env.observation_space)
                 env.reset(initial_state=new_states)
                 if self.is_gridworld:
                     if ACTIVE_STATE_VISITATION_KEY not in episode.custom_metrics:
-                        episode.custom_metrics[ACTIVE_STATE_VISITATION_KEY] = []
-                    episode.custom_metrics[ACTIVE_STATE_VISITATION_KEY].append(new_states.numpy().argmax())
+                        episode.hist_data[ACTIVE_STATE_VISITATION_KEY] = []
+                    episode.hist_data[ACTIVE_STATE_VISITATION_KEY].append(new_states.numpy().argmax())
                 
 
     def on_episode_end(
