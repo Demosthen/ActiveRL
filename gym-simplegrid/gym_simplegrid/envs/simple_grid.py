@@ -422,7 +422,8 @@ class SimpleGridEnv(Env):
             tile_size=32,
             agent_pos=(self.s % self.ncol, self.s // self.ncol),
             agent_dir=0,
-            reward_dict=rewards_dict
+            reward_dict=rewards_dict,
+            log_scale=False
         )
         return img
 

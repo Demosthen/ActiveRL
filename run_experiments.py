@@ -29,6 +29,8 @@ from citylearn_model_training.planning_model import get_planning_model
 # from stable_baselines3.common.env_checker import check_env
 # from callbacks import ActiveRLCallback
 from datetime import datetime
+import numpy as np
+import random
 
 class Environments(Enum):
     GRIDWORLD = "gw"
@@ -81,6 +83,7 @@ def initialize_citylearn_params():
 def get_agent(env, env_config, args, planning_model=None):
     dummy_env = env(env_config)
     config = DEFAULT_CONFIG.copy()
+    config["seed"] = args.seed
     config["framework"] = "torch"
     config["env"] = env
     # Disable default preprocessors, we preprocess ourselves with env wrappers
@@ -107,8 +110,7 @@ def get_agent(env, env_config, args, planning_model=None):
         "env_config": eval_env_config
     }
 
-    if args.use_activerl:
-        config["callbacks"] = lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, use_coop=args.use_coop, planning_model=planning_model, config=config)
+    config["callbacks"] = lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, use_coop=args.use_coop, planning_model=planning_model, config=config, run_active_rl=args.use_activerl)
     agent = UncertainPPO(config = config, logger_creator = utils.custom_logger_creator(args.log_path))
 
     return agent
@@ -202,11 +204,21 @@ def add_args(parser):
         help="File path to planning model checkpoint. Leave as None to not use the planning model",
         default=None
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        help="random seed to pass in to rllib workers",
+        default=12345678
+    )
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
     add_args(parser)
     args = parser.parse_args()
+
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    random.seed(args.seed)
 
     if args.wandb:
         run = wandb.init(project="active-rl", entity="social-game-rl")

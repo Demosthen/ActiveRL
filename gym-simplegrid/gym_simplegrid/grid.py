@@ -556,10 +556,12 @@ class SimpleGrid:
             for k, v in reward_dict.items():
                 rewards[int(k)] = v
             rewards = rewards.reshape((self.width, self.height))
-            val_func = lambda x, m, expo: (np.log(x) / np.log(m) if expo else x / m) if x > 1 else 0
+            val_func = lambda x, max, min: (x - min) / max
+            # val_func = lambda x, m, expo: (np.log(x) / np.log(m) if expo else x / m) if x > 1 else 0
             if color_func == None:
                 color_func = lambda x, m, expo: (255 * min(1, 2 * (1 - val_func(x, m, expo))), 255 * min(1, 2 * val_func(x, m, expo)), 0)
-            max_val = np.amax(rewards)
+            max_val = 10#np.amax(rewards)
+            min_val = 0
 
 
         if highlight_mask is None:
@@ -583,7 +585,7 @@ class SimpleGrid:
                         agent_dir=agent_dir if agent_here else None,
                         highlight=highlight_mask[i, j],
                         tile_size=tile_size,
-                        hcolor=color_func(rewards[i][j], max_val, log_scale)
+                        hcolor=color_func(rewards[i][j], max_val, min_val)
                     )
                 else:
                     tile_img = SimpleGrid.render_tile(

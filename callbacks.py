@@ -1,4 +1,5 @@
 from ast import Call
+from cProfile import run
 from typing import Callable, Dict, Tuple, Union
 from stable_baselines3.common.callbacks import BaseCallback
 # from state_generation import generate_states
@@ -28,8 +29,9 @@ class ActiveRLCallback(DefaultCallbacks):
 
     :param verbose: (int) Verbosity level 0: not output 1: info 2: debug
     """
-    def __init__(self, num_descent_steps: int=10, batch_size: int=64, use_coop: bool=True, planning_model=None, config={}, use_gpu=False):
+    def __init__(self, num_descent_steps: int=10, batch_size: int=64, use_coop: bool=True, planning_model=None, config={}, use_gpu=False, run_active_rl=False):
         super(ActiveRLCallback, self).__init__()
+        self.run_active_rl = run_active_rl
         self.num_descent_steps = num_descent_steps
         self.batch_size = batch_size
         self.use_coop = use_coop
@@ -40,8 +42,6 @@ class ActiveRLCallback(DefaultCallbacks):
         self.num_cells = -1
         self.is_gridworld = self.config["env"] == SimpleGridEnvWrapper
         self.eval_rewards = []
-        now = datetime.now()
-        date_time = now.strftime("%m-%d-%Y,%H-%M-%S")
         self.use_gpu = use_gpu
         if self.planning_model is not None:
             device = torch.device("cuda:0") if self.use_gpu else torch.device("cpu")
@@ -121,7 +121,7 @@ class ActiveRLCallback(DefaultCallbacks):
                 self.cell_index += 1
                 env.reset(initial_state=self.cell_index % self.num_cells)
 
-            else:
+            elif self.run_active_rl:
                 new_states, uncertainties = generate_states(policy, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
                 batch_size=self.batch_size, use_coop=self.use_coop, planning_model=self.planning_model, reward_model=self.reward_model)
                 # TODO: log uncertainties
