@@ -210,6 +210,12 @@ def add_args(parser):
         help="random seed to pass in to rllib workers",
         default=12345678
     )
+    parser.add_argument(
+        "--planning_uncertainty_weight",
+        type=float,
+        help="What relative weight to give to the planning uncertainty compared to agent uncertainty",
+        default=1
+    )
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()

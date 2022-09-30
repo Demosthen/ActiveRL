@@ -10,7 +10,7 @@ from uncertain_ppo_trainer import UncertainPPO
 from citylearn_model_training.planning_model import LitPlanningModel
 
 class BoundedUncertaintyMaximization(cooper.ConstrainedMinimizationProblem):
-    def __init__(self, lower_bounds, upper_bounds, lower_bounded_idxs, upper_bounded_idxs, agent: UncertainPPOTorchPolicy, planning_model: LitPlanningModel=None, reward_model: RewardPredictor = None):
+    def __init__(self, lower_bounds, upper_bounds, lower_bounded_idxs, upper_bounded_idxs, agent: UncertainPPOTorchPolicy, planning_model: LitPlanningModel=None, reward_model: RewardPredictor = None, planning_uncertainty_weight=1):
         self.lower_bounds = lower_bounds
         self.upper_bounds = upper_bounds
         self.lower_bounded_idxs = lower_bounded_idxs
@@ -18,6 +18,7 @@ class BoundedUncertaintyMaximization(cooper.ConstrainedMinimizationProblem):
         self.agent = agent
         self.planning_model = planning_model
         self.reward_model = reward_model
+        self.planning_uncertainty_weight = planning_uncertainty_weight
         super().__init__(is_constrained=True)
 
     def closure(self, obs):
@@ -29,7 +30,8 @@ class BoundedUncertaintyMaximization(cooper.ConstrainedMinimizationProblem):
             action = self.agent.get_action(obs=obs)
             planning_uncertainty, next_obs = self.planning_model.compute_reward_uncertainty(obs, action, return_avg_state=True)
             agent_uncertainty = self.reward_model.compute_uncertainty(obs)
-            loss = - agent_uncertainty + planning_uncertainty
+            denom = 1 + self.planning_uncertainty_weight
+            loss = (- agent_uncertainty + self.planning_uncertainty_weight * planning_uncertainty) / denom
             print("IS THIS LOSS? ", loss, loss.shape)
 
         # Entries of p >= 0 (equiv. -p <= 0)
@@ -45,7 +47,7 @@ def get_space_bounds(obs_space: Space):
     else:
         raise NotImplementedError
 
-def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descent_steps: int = 10, batch_size: int = 1, use_coop=True, planning_model=None, reward_model=None):
+def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descent_steps: int = 10, batch_size: int = 1, use_coop=True, planning_model=None, reward_model=None, planning_uncertainty_weight=1):
     """
         Generates states by doing gradient descent to increase an agent's uncertainty
         on states starting from random noise
@@ -60,6 +62,7 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
         :param projection_fn: a function to project a continuous, unconstrained observation vector
                                 to the actual observation space (e.g. if the observation space is actually
                                 discrete then you can round the features in the observation vector)
+        :param planning_uncertainty_weight: relative weight to give to the planning uncertainty compared to agent uncertainty
     """
 #     #TODO: make everything work with batches
     lower_bounds, upper_bounds = get_space_bounds(obs_space)
@@ -79,7 +82,8 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
                                                 torch.tensor(upper_bounded_idxs[None, :], device=agent.device), 
                                                 agent,
                                                 planning_model,
-                                                reward_model
+                                                reward_model,
+                                                planning_uncertainty_weight
                                                 )
         formulation = cooper.LagrangianFormulation(cmp)
 
