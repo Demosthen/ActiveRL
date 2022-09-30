@@ -44,6 +44,7 @@ class ActiveRLCallback(DefaultCallbacks):
         self.cell_index = -1
         self.num_cells = -1
         self.is_gridworld = self.config["env"] == SimpleGridEnvWrapper
+        self.planning_uncertainty_weight = self.config["planning_uncertainty_weight"]
         self.eval_rewards = []
         self.use_gpu = use_gpu
         if self.planning_model is not None:
@@ -128,7 +129,7 @@ class ActiveRLCallback(DefaultCallbacks):
 
             elif self.run_active_rl:
                 new_states, uncertainties = generate_states(policy, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
-                batch_size=self.batch_size, use_coop=self.use_coop, planning_model=self.planning_model, reward_model=self.reward_model)
+                batch_size=self.batch_size, use_coop=self.use_coop, planning_model=self.planning_model, reward_model=self.reward_model, planning_uncertainty_weight=self.planning_uncertainty_weight)
                 # TODO: log uncertainties
                 new_states = new_states.detach().cpu().flatten()
                 
