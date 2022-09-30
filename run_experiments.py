@@ -246,7 +246,10 @@ if __name__=="__main__":
             env_config["reward_map"] = rew_map
             env_config["wind_p"] = wind_p
         
-
+    env = env(env_config)
+    env.reset()
+    plt.imsave("im.png", env.render("rgb_array"))
+    5 / 0
     # planning model is None if the ckpt file path is None
     planning_model = get_planning_model(args.planning_model_ckpt)
 

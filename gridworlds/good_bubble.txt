@@ -3,9 +3,9 @@
         "EEEEEEEEE",
         "EEEEEEEEE",
         "EEEWWWEEE",
+        "EEWEEGWEE",
         "EEWEEEWEE",
         "EEWEEEWEE",
-        "EEWGEEWEE",
         "EEEDWWEEE",
         "SEEEEEEEE"
 ]
@@ -22,4 +22,4 @@
     b"B": -10.0
 }
 ---
-0.99999
+0.9999
