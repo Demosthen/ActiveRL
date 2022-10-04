@@ -11,7 +11,7 @@ Instructions for getting this working on savio:
 7. conda activate ActiveRL
 8. pip install git+https://github.com/cooper-org/cooper.git
 9. pip install -e gym-simplegrid/ --no-deps
-10. pip install moviepy
+10. pip install moviepy==2.1.3.dev6
 11. python ./download_model.py
 
 To run a wandb sweep:
