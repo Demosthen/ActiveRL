@@ -12,7 +12,8 @@ COLORS = {
     'purple': np.array([112, 39, 195]),
     'yellow': np.array([255, 205, 0]),
     'grey'  : np.array([100, 100, 100]),
-    'black' : np.array([0, 0, 0])
+    'black' : np.array([0, 0, 0]),
+    'white' : np.array([255, 255, 255])
 }
 
 COLOR_NAMES = sorted(list(COLORS.keys()))
@@ -25,7 +26,8 @@ COLOR_TO_IDX = {
     'purple': 3,
     'yellow': 4,
     'grey'  : 5,
-    'black' : 6
+    'black' : 6,
+    'white' : 7
 }
 
 IDX_TO_COLOR = dict(zip(COLOR_TO_IDX.values(), COLOR_TO_IDX.keys()))
@@ -54,6 +56,7 @@ STATE_TO_IDX = {
     'closed': 1,
     'locked': 2,
 }
+
 
 # Map of agent direction indices to vectors
 DIR_TO_VEC = [
@@ -165,7 +168,7 @@ class Goal(WorldObj):
 
 class Start(WorldObj):
     def __init__(self):
-        super().__init__('goal', 'red')
+        super().__init__('goal', 'white')
 
     def can_overlap(self):
         return True
@@ -231,7 +234,18 @@ class Wind(WorldObj):
         return True
 
     def render(self, img):
-        fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])
+        # Give the floor a pale color
+        color = COLORS[self.color]
+        fill_coords(img, point_in_rect(0.031, 1, 0.031, 1), color)
+        THETAS = {
+            0: np.pi/2, #Left
+            1: 0, # Down
+            2: 3 * np.pi/2, # Right
+            3: np.pi # Up
+        }
+        theta = THETAS[self.dir]
+        fill_coords(img, rotate_fn(point_in_line(0.5, 0.2, 0.5, 0.8, 0.05), 0.5, 0.5, theta), COLORS["black"])
+        fill_coords(img, rotate_fn(point_in_triangle([0.5, 0.9], [0.8, 0.6], [0.2, 0.6]), 0.5, 0.5, theta), COLORS["black"])
 
     def encode(self):
         dir = str(self.dir)
@@ -537,17 +551,17 @@ class SimpleGrid:
         #        [70, 0, 70, 0, 70, 0, 70, 0]]
         # rewards = np.array(arr)
 
-        
-
         if reward_dict is not None:
             rewards = np.zeros(self.width * self.height)
             for k, v in reward_dict.items():
                 rewards[int(k)] = v
             rewards = rewards.reshape((self.width, self.height))
-            val_func = lambda x, m, expo: (np.log(x) / np.log(m) if expo else x / m) if x > 1 else 0
+            val_func = lambda x, max, min: (x - min) / max
+            # val_func = lambda x, m, expo: (np.log(x) / np.log(m) if expo else x / m) if x > 1 else 0
             if color_func == None:
                 color_func = lambda x, m, expo: (255 * min(1, 2 * (1 - val_func(x, m, expo))), 255 * min(1, 2 * val_func(x, m, expo)), 0)
-            max_val = np.amax(rewards)
+            max_val = 10#np.amax(rewards)
+            min_val = 0
 
 
         if highlight_mask is None:
@@ -571,7 +585,7 @@ class SimpleGrid:
                         agent_dir=agent_dir if agent_here else None,
                         highlight=highlight_mask[i, j],
                         tile_size=tile_size,
-                        hcolor=color_func(rewards[i][j], max_val, log_scale)
+                        hcolor=color_func(rewards[i][j], max_val, min_val)
                     )
                 else:
                     tile_img = SimpleGrid.render_tile(

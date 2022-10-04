@@ -232,7 +232,7 @@ class SimpleGridEnv(Env):
                 elif letter == b'W':
                     grid.set(col, row, Wall(color='black'))
                 elif letter in DIRS:
-                    grid.set(col, row, Wind("grey", self.wind_p, DIRS[letter]))
+                    grid.set(col, row, Wind("white", self.wind_p, DIRS[letter]))
                 elif letter == b'B':
                     grid.set(col, row, Lava())
                 else:
@@ -422,7 +422,8 @@ class SimpleGridEnv(Env):
             tile_size=32,
             agent_pos=(self.s % self.ncol, self.s // self.ncol),
             agent_dir=0,
-            reward_dict=rewards_dict
+            reward_dict=rewards_dict,
+            log_scale=False
         )
         return img
 
