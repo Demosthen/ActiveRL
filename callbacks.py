@@ -21,7 +21,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from reward_predictor import RewardPredictor
-
+import logging
+from PIL import Image
+import wandb
+from torch.utils.tensorboard import SummaryWriter
 
 ACTIVE_STATE_VISITATION_KEY = "active_state_visitation"
 
@@ -31,7 +34,7 @@ class ActiveRLCallback(DefaultCallbacks):
 
     :param verbose: (int) Verbosity level 0: not output 1: info 2: debug
     """
-    def __init__(self, num_descent_steps: int=10, batch_size: int=64, use_coop: bool=True, planning_model=None, config={}, use_gpu=False, run_active_rl=False, planning_uncertainty_weight=1):
+    def __init__(self, num_descent_steps: int=10, batch_size: int=64, use_coop: bool=True, planning_model=None, config={}, use_gpu=False, run_active_rl=False, planning_uncertainty_weight=1, args={}):
         super(ActiveRLCallback, self).__init__()
         self.run_active_rl = run_active_rl
         self.num_descent_steps = num_descent_steps
@@ -46,6 +49,9 @@ class ActiveRLCallback(DefaultCallbacks):
         self.planning_uncertainty_weight = planning_uncertainty_weight
         self.eval_rewards = []
         self.use_gpu = use_gpu
+        self.args = args
+        self.visualization_env = self.config["env"](self.config["env_config"])
+        self.visualization_env.reset()
         if self.planning_model is not None:
             device = torch.device("cuda:0") if self.use_gpu else torch.device("cpu")
             self.reward_model = RewardPredictor(self.planning_model.obs_size, self.planning_model.hidden_size, self.planning_model.batch_norm, device=device)
@@ -86,7 +92,9 @@ class ActiveRLCallback(DefaultCallbacks):
         rewards = np.mean(rewards, axis=0)
         per_cell_rewards = {f"{cell}": rew for cell, rew in enumerate(rewards)}
         evaluation_metrics["evaluation"]["per_cell_rewards"] = per_cell_rewards
-        
+        img_arr = self.visualization_env.render(mode="rgb_array", reward_dict=per_cell_rewards)
+        img_arr = np.transpose(img_arr, [2, 0, 1])
+        evaluation_metrics["evaluation"]["per_cell_rewards_img"] = img_arr[None, None, :, :, :]
 
     def on_episode_start(
         self,
