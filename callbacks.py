@@ -31,7 +31,7 @@ class ActiveRLCallback(DefaultCallbacks):
 
     :param verbose: (int) Verbosity level 0: not output 1: info 2: debug
     """
-    def __init__(self, num_descent_steps: int=10, batch_size: int=64, use_coop: bool=True, planning_model=None, config={}, use_gpu=False, run_active_rl=False):
+    def __init__(self, num_descent_steps: int=10, batch_size: int=64, use_coop: bool=True, planning_model=None, config={}, use_gpu=False, run_active_rl=False, planning_uncertainty_weight=1):
         super(ActiveRLCallback, self).__init__()
         self.run_active_rl = run_active_rl
         self.num_descent_steps = num_descent_steps
@@ -43,7 +43,7 @@ class ActiveRLCallback(DefaultCallbacks):
         self.cell_index = -1
         self.num_cells = -1
         self.is_gridworld = self.config["env"] == SimpleGridEnvWrapper
-        self.planning_uncertainty_weight = self.config["planning_uncertainty_weight"]
+        self.planning_uncertainty_weight = planning_uncertainty_weight
         self.eval_rewards = []
         self.use_gpu = use_gpu
         if self.planning_model is not None:

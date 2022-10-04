@@ -110,7 +110,7 @@ def get_agent(env, env_config, args, planning_model=None):
         "env_config": eval_env_config
     }
 
-    config["callbacks"] = lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, use_coop=args.use_coop, planning_model=planning_model, config=config, run_active_rl=args.use_activerl)
+    config["callbacks"] = lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, use_coop=args.use_coop, planning_model=planning_model, config=config, run_active_rl=args.use_activerl, planning_uncertainty_weight=args.planning_uncertainty_weight)
     agent = UncertainPPO(config = config, logger_creator = utils.custom_logger_creator(args.log_path))
 
     return agent
