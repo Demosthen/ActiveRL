@@ -165,6 +165,13 @@ def add_args(parser):
         help="Number of timesteps to collect from environment during training",
         default=5000
     )
+    # CITYLEARN ENV PARAMS
+    parser.add_argument(
+        "--cl_filename",
+        type=str,
+        help="schema file to read citylearn specs from.",
+        default="./data/citylearn_challenge_2022_phase_1/schema.json"
+    )
 
     # GRIDWORLD ENV PARAMS
     parser.add_argument(
@@ -237,7 +244,7 @@ if __name__=="__main__":
     if args.env == "cl":
         env = CityLearnEnvWrapper
         env_config = {
-            "schema": Path("./data/citylearn_challenge_2022_phase_1/schema.json"),
+            "schema": Path(args.cl_filename),
             "planning_model_ckpt": args.planning_model_ckpt,
             "is_evaluation": False
         }
