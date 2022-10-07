@@ -82,19 +82,20 @@ class ActiveRLCallback(DefaultCallbacks):
         Runs at the end of Algorithm.evaluate().
         """
         self.is_evaluating = False
-        def access_eval_metrics(worker):
-            if hasattr(worker, "callbacks"):
-                worker.callbacks.is_evaluating = False
-                return worker.callbacks.eval_rewards
-            else:
-                return []
-        rewards = np.array(algorithm.evaluation_workers.foreach_worker(access_eval_metrics))
-        rewards = np.mean(rewards, axis=0)
-        per_cell_rewards = {f"{cell}": rew for cell, rew in enumerate(rewards)}
-        evaluation_metrics["evaluation"]["per_cell_rewards"] = per_cell_rewards
-        img_arr = self.visualization_env.render(mode="rgb_array", reward_dict=per_cell_rewards)
-        img_arr = np.transpose(img_arr, [2, 0, 1])
-        evaluation_metrics["evaluation"]["per_cell_rewards_img"] = img_arr[None, None, :, :, :]
+        if self.is_gridworld:
+            def access_eval_metrics(worker):
+                if hasattr(worker, "callbacks"):
+                    worker.callbacks.is_evaluating = False
+                    return worker.callbacks.eval_rewards
+                else:
+                    return []
+            rewards = np.array(algorithm.evaluation_workers.foreach_worker(access_eval_metrics))
+            rewards = np.mean(rewards, axis=0)
+            per_cell_rewards = {f"{cell}": rew for cell, rew in enumerate(rewards)}
+            evaluation_metrics["evaluation"]["per_cell_rewards"] = per_cell_rewards
+            img_arr = self.visualization_env.render(mode="rgb_array", reward_dict=per_cell_rewards)
+            img_arr = np.transpose(img_arr, [2, 0, 1])
+            evaluation_metrics["evaluation"]["per_cell_rewards_img"] = img_arr[None, None, :, :, :]
 
     def on_episode_start(
         self,
@@ -184,5 +185,6 @@ class ActiveRLCallback(DefaultCallbacks):
             rew_hat = self.reward_model(obs).squeeze()
             loss = F.mse_loss(rew, rew_hat)
             # TODO: log this thing
+            result["custom_metrics"]["reward_predictor_loss"] = loss
             loss.backward()
             self.reward_optim.step()

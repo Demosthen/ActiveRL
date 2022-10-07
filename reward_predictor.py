@@ -67,6 +67,6 @@ class RewardPredictor(nn.Module):
             rew = self.forward(in_tensor)
             rewards.append(rew)
         rewards = torch.stack(rewards)
-        uncertainty = torch.var(rewards)
+        uncertainty = torch.mean(torch.var(rewards, axis=0))
         self.train(orig_mode)
         return uncertainty
