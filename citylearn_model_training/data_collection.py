@@ -1,8 +1,9 @@
 #THIS FILE IS INTENDED TO BE RUN FROM THE ROOT DIRECTORY, NOT THE CITYLEARN_MODEL_TRAINING SUBDIRECTORY
 # %%
 import pandas as pd
-# For some reason we have to define this store before importing the citylearnwrapper...
-store = pd.HDFStore("citylearn_model_training/planning_model_data.h5")
+if __name__ == "__main__":
+    # For some reason we have to define this store before importing the citylearnwrapper...
+    store = pd.HDFStore("citylearn_model_training/planning_model_data.h5")
 import sys
  
 # setting path
@@ -12,7 +13,7 @@ import csv
 
 import numpy as np
 import h5py
-
+import multiprocessing as mp
 # %%
 schemas = ["data/Test_cold_Texas/schema.json", "data/Test_dry_Cali/schema.json",
             "data/Test_hot_new_york/schema.json", "data/Test_snowy_Cali_winter/schema.json"]
@@ -20,41 +21,58 @@ env_configs = [{
     "schema": schema,
     "is_evaluation": True,
 } for schema in schemas]
-num_episodes = 5
+num_episodes = 25000
 
 # %%
 envs = [CityLearnEnvWrapper(env_config) for env_config in env_configs]
 
-# %%
-def collect_dataset(envs, num_episodes, save_interval = 50):
+
+def pool_fn(env):
+    obs = env.reset()
+    done = False
     obss = []
     next_obss = []
     actions = []
     rews = []
     dones = []
-    for i in range(num_episodes):
-        print(f"Episode {i}, {len(obss)} steps collected")
-        env_choice = np.random.choice(len(envs))
-        env = envs[env_choice]
-        obs = env.reset()
-        done = False
-        while not done:
-            action = env.action_space.sample()
-            next_obs, rew, done, info = env.step(action)
-            #data.append([obs, next_obs, action.tolist(), rew, done])
-            obss.append(obs)
-            next_obss.append(next_obs)
-            actions.append(action)
-            rews.append([rew])
-            dones.append([done])
-            obs = next_obs
-        if i % save_interval == save_interval - 1:
-            store_data([obss, next_obss, actions, rews, dones])
+    while not done:
+        action = env.action_space.sample()
+        next_obs, rew, done, info = env.step(action)
+        #data.append([obs, next_obs, action.tolist(), rew, done])
+        obss.append(obs)
+        next_obss.append(next_obs)
+        actions.append(action)
+        rews.append([rew])
+        dones.append([done])
+        obs = next_obs
+    return obss, next_obss, actions, rews, dones
+# %%
+def collect_dataset(envs, num_episodes, num_processes=2):
+    obss = []
+    next_obss = []
+    actions = []
+    rews = []
+    dones = []
+    pool = mp.Pool(processes=num_processes)
+    for i in range(0, num_episodes, num_processes):
+        print(f"Episode {i}, {str(store.info())}")
+        #env_choice = np.random.choice(len(envs))
+        #env = envs[env_choice]
+        results = pool.map(pool_fn, [envs[np.random.choice(len(envs))] for _ in range(num_processes)])
+        for result in results:
+            store_data(result)
             obss = []
             next_obss = []
             actions = []
             rews = []
             dones = []
+        # if i % save_interval == save_interval - 1:
+        #     store_data([obss, next_obss, actions, rews, dones])
+        #     obss = []
+        #     next_obss = []
+        #     actions = []
+        #     rews = []
+        #     dones = []
     return obss, next_obss, actions, rews, dones
 
 def convert_to_df(data, prefix):
@@ -81,14 +99,19 @@ def store_data(data):
     #     writer.writerows(data)
 
 # %%
-data = collect_dataset(envs, num_episodes, min(num_episodes, 50))
+if __name__ == "__main__":
+    # About 75 trajectories in a gigabyte
+
+    data = collect_dataset(envs, num_episodes, 30)
+    store.close()
 #store_data(data, "planning_model_data.pkl")
 
 # %%
 
 
 # %%
-store.close()
+
+
 
 # %%
 
