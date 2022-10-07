@@ -1,11 +1,12 @@
+#THIS FILE IS INTENDED TO BE RUN FROM THE ROOT DIRECTORY, NOT THE CITYLEARN_MODEL_TRAINING SUBDIRECTORY
 # %%
 import pandas as pd
 # For some reason we have to define this store before importing the citylearnwrapper...
-store = pd.HDFStore("planning_model_data.h5")
+store = pd.HDFStore("citylearn_model_training/planning_model_data.h5")
 import sys
  
 # setting path
-sys.path.append('../')
+sys.path.append('./')
 from citylearn_wrapper import CityLearnEnvWrapper
 import csv
 
@@ -13,8 +14,8 @@ import numpy as np
 import h5py
 
 # %%
-schemas = ["../data/Test_cold_Texas/schema.json", "../data/Test_dry_Cali/schema.json",
-            "../data/Test_hot_new_york/schema.json", "../data/Test_snowy_Cali_winter/schema.json"]
+schemas = ["data/Test_cold_Texas/schema.json", "data/Test_dry_Cali/schema.json",
+            "data/Test_hot_new_york/schema.json", "data/Test_snowy_Cali_winter/schema.json"]
 env_configs = [{
     "schema": schema,
     "is_evaluation": True,

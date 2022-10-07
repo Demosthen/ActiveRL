@@ -1,14 +1,15 @@
+#THIS FILE IS INTENDED TO BE RUN FROM THE ROOT DIRECTORY, NOT THE CITYLEARN_MODEL_TRAINING SUBDIRECTORY
 # %%
 import sys
  
 # setting path
-sys.path.append('../')
+sys.path.append('./')
 import pandas as pd
 import numpy as np
 
 
 # %%
-data = pd.HDFStore("planning_model_data.h5", 'r')
+data = pd.HDFStore("citylearn_model_training/planning_model_data.h5", 'r')
 
 # %%
 import torch.nn as nn
@@ -16,27 +17,11 @@ import torch.nn.functional as F
 import torch
 from torch.utils.data import Dataset, DataLoader
 import pytorch_lightning as pl
-# from citylearn.citylearn import CityLearnEnv
-# from citylearn_wrapper import CityLearnEnvWrapper
-
-
-import csv
-from multiprocessing.spawn import prepare
-from turtle import forward
-from typing import Any
-
 from planning_model import LitPlanningModel
 
 # %%
 hidden_size = 512
 batch_norm = True
-num_episodes = 50
-
-# %%
-# env = CityLearnEnvWrapper(env_config)
-# obs_size = env.actionervation_space.shape[0]
-# act_size = env.action_space.shape[0]
-
 
 # %%
 
@@ -108,7 +93,7 @@ from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 
 wandb_logger = WandbLogger(project="active-rl-planning-model", entity="social-game-rl", log_model="all")
-wandb_logger.experiment.config["exp_name"] = "alternate_validation_set_big_model_lr_scheduler"
+wandb_logger.experiment.config["exp_name"] = "all_four_zones"
 checkpoint_callback = ModelCheckpoint(monitor="val_loss")
 lr_callback = LearningRateMonitor(logging_interval="epoch")
 trainer = pl.Trainer(gpus=1, precision=32, logger=wandb_logger, callbacks=[checkpoint_callback, lr_callback], auto_lr_find=False, max_epochs=1000)
