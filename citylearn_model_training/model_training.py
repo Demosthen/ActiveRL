@@ -6,10 +6,14 @@ import sys
 sys.path.append('./')
 import pandas as pd
 import numpy as np
+import psutil
 
-
+print("STARTING UP", psutil.Process().memory_info().rss / (1024*1024))
 # %%
-data = pd.HDFStore("citylearn_model_training/planning_model_data.h5", 'r')
+if __name__ == "__main__":
+        import wandb
+        wandb_logger = wandb.init(project="active-rl-planning-model", entity="social-game-rl")
+        data = pd.HDFStore("citylearn_model_training/planning_model_data.h5", 'r')
 
 # %%
 import torch.nn as nn
@@ -22,17 +26,20 @@ from planning_model import LitPlanningModel
 # %%
 hidden_size = 512
 batch_norm = True
-
+num_episodes=1
 # %%
 
 class PlanningDataset(Dataset):
     def __init__(self) -> None:
         super().__init__()
         #self.filename = filename
-        
+        print("READING DATA")
         self.obs_df = data.get("obs")
+        print("OBS READ", psutil.Process().memory_info().rss / (1024*1024))
         self.action_df = data.get("actions")
+        print("action READ", psutil.Process().memory_info().rss / (1024*1024))
         self.next_obs_df = data.get("next_obs")
+        print("NEXT OBS READ", psutil.Process().memory_info().rss / (1024*1024))
         data.close()
         #data = pd.read_csv(filename, delimiter="|").dropna()
         print("READ DATA ")
@@ -66,42 +73,43 @@ class PlanningDataset(Dataset):
     
 
 # %%
-dataset = PlanningDataset()
-obs_size = dataset.obs_df.shape[-1]
-act_size = dataset.action_df.shape[-1]
-train_size = int(len(dataset) * 0.8)
-val_size = len(dataset) - train_size
-
-#train_set, val_set = torch.utils.data.random_split(dataset, [train_size, val_size])
-val_base_idxs = np.array(list(range(8760 - 8760//5, 8760)))
-train_base_idxs = np.array(list(range(8760 - 8760//5, 8760)))
-val_idxs = [val_base_idxs + i * 8760 for i in range(len(dataset) // 8760)]
-train_idxs = [train_base_idxs + i * 8760 for i in range(len(dataset) // 8760)]
-val_idxs = np.concatenate(val_idxs)
-train_idxs = np.concatenate(train_idxs)
-train_set = torch.utils.data.Subset(dataset, train_idxs)
-val_set = torch.utils.data.Subset(dataset, val_idxs)
-train_loader = DataLoader(train_set, batch_size=128, shuffle=True, num_workers=3)
-val_loader = DataLoader(val_set, batch_size=128, shuffle=False, num_workers=3)
-
-# %%
-print(obs_size, act_size)
-model = LitPlanningModel(obs_size, act_size, hidden_size, num_layers=12, X_mean=dataset.X_mean, y_mean=dataset.y_mean, X_std=dataset.X_std, y_std=dataset.y_std)
-
-# %%
-from pytorch_lightning.loggers import WandbLogger
-from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
-
-wandb_logger = WandbLogger(project="active-rl-planning-model", entity="social-game-rl", log_model="all")
-wandb_logger.experiment.config["exp_name"] = "all_four_zones"
-checkpoint_callback = ModelCheckpoint(monitor="val_loss")
-lr_callback = LearningRateMonitor(logging_interval="epoch")
-trainer = pl.Trainer(gpus=1, precision=32, logger=wandb_logger, callbacks=[checkpoint_callback, lr_callback], auto_lr_find=False, max_epochs=1000)
-
-#trainer.tune(model, train_dataloaders = train_loader, val_dataloaders = val_loader)
-trainer.fit(model, train_dataloaders = train_loader, val_dataloaders = val_loader)
-
-# %%
-
-
-
+if __name__ == "__main__":
+        dataset = PlanningDataset()
+        obs_size = dataset.obs_df.shape[-1]
+        act_size = dataset.action_df.shape[-1]
+        train_size = int(len(dataset) * 0.8)
+        val_size = len(dataset) - train_size
+        
+        #train_set, val_set = torch.utils.data.random_split(dataset, [train_size, val_size])
+        val_base_idxs = np.array(list(range(8760 - 8760//5, 8760)))
+        train_base_idxs = np.array(list(range(8760 - 8760//5, 8760)))
+        val_idxs = [val_base_idxs + i * 8760 for i in range(len(dataset) // 8760)]
+        train_idxs = [train_base_idxs + i * 8760 for i in range(len(dataset) // 8760)]
+        val_idxs = np.concatenate(val_idxs)
+        train_idxs = np.concatenate(train_idxs)
+        train_set = torch.utils.data.Subset(dataset, train_idxs)
+        val_set = torch.utils.data.Subset(dataset, val_idxs)
+        train_loader = DataLoader(train_set, batch_size=128, shuffle=True, num_workers=3)
+        val_loader = DataLoader(val_set, batch_size=128, shuffle=False, num_workers=3)
+        
+        # %%
+        print(obs_size, act_size)
+        model = LitPlanningModel(obs_size, act_size, hidden_size, num_layers=12, X_mean=dataset.X_mean, y_mean=dataset.y_mean, X_std=dataset.X_std, y_std=dataset.y_std)
+        
+        # %%
+        from pytorch_lightning.loggers import WandbLogger
+        from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
+        
+        wandb_logger = WandbLogger(project="active-rl-planning-model", entity="social-game-rl", log_model="all")
+        wandb_logger.experiment.config["exp_name"] = "all_four_zones"
+        checkpoint_callback = ModelCheckpoint(monitor="val_loss")
+        lr_callback = LearningRateMonitor(logging_interval="epoch")
+        trainer = pl.Trainer(gpus=1, precision=32, logger=wandb_logger, callbacks=[checkpoint_callback, lr_callback], auto_lr_find=False, max_epochs=1000)
+        
+        #trainer.tune(model, train_dataloaders = train_loader, val_dataloaders = val_loader)
+        trainer.fit(model, train_dataloaders = train_loader, val_dataloaders = val_loader)
+        
+        # %%
+        
+        
+        
