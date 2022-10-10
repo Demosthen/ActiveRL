@@ -13,7 +13,7 @@ print("STARTING UP", psutil.Process().memory_info().rss / (1024*1024))
 if __name__ == "__main__":
         import wandb
         wandb_logger = wandb.init(project="active-rl-planning-model", entity="social-game-rl")
-        data = pd.HDFStore("citylearn_model_training/planning_model_data.h5", 'r')
+        data = pd.HDFStore("citylearn_model_training/planning_model_data6000.h5", 'r')
 
 # %%
 import torch.nn as nn
@@ -74,7 +74,6 @@ class PlanningDataset(Dataset):
 
 # %%
 if __name__ == "__main__":
-    dataset = PlanningDataset()
     obs_size = dataset.obs_df.shape[-1]
     act_size = dataset.action_df.shape[-1]
     train_size = int(len(dataset) * 0.8)
@@ -95,7 +94,7 @@ if __name__ == "__main__":
     
     # %%
     print(obs_size, act_size)
-    model = LitPlanningModel(obs_size, act_size, hidden_size, num_layers=12, X_mean=dataset.X_mean, y_mean=dataset.y_mean, X_std=dataset.X_std, y_std=dataset.y_std)
+    model = LitPlanningModel(obs_size, act_size, hidden_size, num_layers=20, X_mean=dataset.X_mean, y_mean=dataset.y_mean, X_std=dataset.X_std, y_std=dataset.y_std, lr=0.00001)
     
     # %%
     from pytorch_lightning.loggers import WandbLogger
