@@ -54,7 +54,7 @@ class ActiveRLCallback(DefaultCallbacks):
         self.visualization_env.reset()
         if self.planning_model is not None:
             device = torch.device("cuda:0") if self.use_gpu else torch.device("cpu")
-            self.reward_model = RewardPredictor(self.planning_model.obs_size, self.planning_model.hidden_size, self.planning_model.batch_norm, device=device)
+            self.reward_model = RewardPredictor(self.planning_model.obs_size, self.config["model"]["fcnet_hiddens"][0], False, device=device)
             self.reward_optim = torch.optim.Adam(self.reward_model.parameters())
         else:
             self.reward_model = None
@@ -124,7 +124,6 @@ class ActiveRLCallback(DefaultCallbacks):
         envs = base_env.get_sub_environments()
         # Get the single "default policy"
         policy = next(policies.values())
-        # print("DOES THIS RUNNNN\n\n\n\n")
         for env in envs:
             if self.is_evaluating and self.is_gridworld:
                 if self.num_cells < 0:
@@ -138,7 +137,6 @@ class ActiveRLCallback(DefaultCallbacks):
             elif self.run_active_rl:
                 new_states, uncertainties = generate_states(policy, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
                 batch_size=self.batch_size, use_coop=self.use_coop, planning_model=self.planning_model, reward_model=self.reward_model, planning_uncertainty_weight=self.planning_uncertainty_weight)
-                # TODO: log uncertainties
                 new_states = new_states.detach().cpu().flatten()
                 
                 # print(env.observation_space)
@@ -178,13 +176,24 @@ class ActiveRLCallback(DefaultCallbacks):
             self.eval_rewards[self.cell_index % self.num_cells] += episode.total_reward / (self.config["evaluation_duration"] // self.num_cells) 
 
     def on_learn_on_batch(self, policy: Policy, train_batch: SampleBatch, result: dict, **kwargs):
+        """
+        Runs each time the agent is updated on a batch of data (Note this also applies to PPO's minibatches)
+
+        Args:
+            worker: Reference to the current rollout worker.
+            policies : Mapping of policy id to policy objects. In single agent mode
+                there will only be a single “default_policy”.
+            train_batch: Batch of training data
+            result : Dictionary to add custom metrics into
+            kwargs : Forward compatibility placeholder.
+        """
         if self.reward_model is not None:
             obs = torch.tensor(train_batch[SampleBatch.OBS], device=self.reward_model.device)
             rew = torch.tensor(train_batch[SampleBatch.REWARDS], device=self.reward_model.device)
             self.reward_optim.zero_grad()
             rew_hat = self.reward_model(obs).squeeze()
             loss = F.mse_loss(rew, rew_hat)
-            # TODO: log this thing
-            result["custom_metrics"]["reward_predictor_loss"] = loss
+            print("REWARD LOSS", loss)
+            result["reward_predictor_loss"] = loss
             loss.backward()
             self.reward_optim.step()
