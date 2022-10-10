@@ -74,6 +74,7 @@ class PlanningDataset(Dataset):
 
 # %%
 if __name__ == "__main__":
+    dataset = PlanningDataset()
     obs_size = dataset.obs_df.shape[-1]
     act_size = dataset.action_df.shape[-1]
     train_size = int(len(dataset) * 0.8)
