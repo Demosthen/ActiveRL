@@ -223,6 +223,7 @@ class SimpleGridEnv(Env):
             The grid to be rendered.
         """
         nrow, ncol = desc.shape
+        # print("Rows:", nrow, "\nCols:", ncol)
         grid = SimpleGrid(width=ncol, height=nrow)
         for row in range(nrow):
             for col in range(ncol):
