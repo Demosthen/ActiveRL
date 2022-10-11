@@ -15,10 +15,10 @@
 #SBATCH --ntasks=1
 #
 # Processors per task (please always specify the total number of processors twice the number of GPUs):
-#SBATCH --cpus-per-task=2
+#SBATCH --cpus-per-task=4
 #
 #Number of GPUs, this can be in the format of "gpu:[1-4]", or "gpu:K80:[1-4] with the type included
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:GTX2080TI:2
 #
 # Wall clock limit (8hrs):
 #SBATCH --time=3:00:00
