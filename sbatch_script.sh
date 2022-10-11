@@ -31,9 +31,5 @@ export BAD_ROBOTS_PYTHON=/global/home/users/$USER/.conda/envs/ActiveRL/bin/pytho
 export WANDB_CACHE_DIR=/global/scratch/users/$USER/.cache/wandb
 # export LD_LIBRARY_PATH=/global/home/users/lucas_spangher/.conda/pkgs:$LD_LIBRARY_PATH
 module load gcc/8.3.0
-
  
 wandb agent social-game-rl/active-rl/$1 --count 1
-
-#/global/home/users/$USER/.conda/envs/ActiveRL/bin/python ./exp_scripts/run_adv_sweep.py $1 # $1 is the input name of the sweep, should be in quotes 
-

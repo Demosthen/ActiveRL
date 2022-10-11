@@ -38,5 +38,3 @@ module load gcc/8.3.0
 export PATH=$PYTHON_PATH:$PATH
 
 $PYTHON_PATH $1
-#/global/home/users/$USER/.conda/envs/ActiveRL/bin/python ./exp_scripts/run_adv_sweep.py $1 # $1 is the input name of the sweep, should be in quotes 
-

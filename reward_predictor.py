@@ -14,7 +14,7 @@ class RewardPredictor(nn.Module):
     :param device: what device to initialize this to
     :param activation: what activation function to use
     """
-    def __init__(self, in_size, hidden_size, batch_norm: bool=False, device="cpu", activation=nn.Tanh) -> None:
+    def __init__(self, in_size, hidden_size, batch_norm: bool=False, activation=nn.Tanh, device="cpu") -> None:
         super().__init__()
         self.X_mean = nn.Parameter(torch.zeros(in_size), requires_grad=False)
         self.X_std = nn.Parameter(torch.ones(in_size), requires_grad=False)
@@ -27,8 +27,8 @@ class RewardPredictor(nn.Module):
             get_unit(hidden_size, hidden_size, batch_norm, activation=activation),
             nn.Linear(hidden_size, 1)
         ])
-        self.to(device)
         self.device = device
+        self.to(device)
 
     def preprocess(self, x):
         ret = (x - self.X_mean.to(self.device)) / self.X_std.to(self.device)

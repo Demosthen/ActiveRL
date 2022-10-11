@@ -11,6 +11,7 @@ from ray.rllib.utils.typing import PolicyID
 from ray.rllib.policy import Policy
 from ray.rllib.policy.sample_batch import SampleBatch
 from ray.rllib.evaluation import RolloutWorker
+from citylearn_wrapper import CityLearnEnvWrapper
 
 from state_generation import generate_states
 from uncertain_ppo_trainer import UncertainPPO
@@ -27,6 +28,7 @@ import wandb
 from torch.utils.tensorboard import SummaryWriter
 
 ACTIVE_STATE_VISITATION_KEY = "active_state_visitation"
+CL_ENV_KEYS = ["cold_Texas", "dry_Cali", "hot_new_york", "snowy_Cali_winter"]
 
 class ActiveRLCallback(DefaultCallbacks):
     """
@@ -34,7 +36,7 @@ class ActiveRLCallback(DefaultCallbacks):
 
     :param verbose: (int) Verbosity level 0: not output 1: info 2: debug
     """
-    def __init__(self, num_descent_steps: int=10, batch_size: int=64, use_coop: bool=True, planning_model=None, config={}, use_gpu=False, run_active_rl=False, planning_uncertainty_weight=1, args={}):
+    def __init__(self, num_descent_steps: int=10, batch_size: int=64, use_coop: bool=True, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}):
         super(ActiveRLCallback, self).__init__()
         self.run_active_rl = run_active_rl
         self.num_descent_steps = num_descent_steps
@@ -46,14 +48,15 @@ class ActiveRLCallback(DefaultCallbacks):
         self.cell_index = -1
         self.num_cells = -1
         self.is_gridworld = self.config["env"] == SimpleGridEnvWrapper
+        self.is_citylearn = self.config["env"] == CityLearnEnvWrapper
         self.planning_uncertainty_weight = planning_uncertainty_weight
         self.eval_rewards = []
-        self.use_gpu = use_gpu
+        self.use_gpu = args.num_gpus > 0
         self.args = args
         self.visualization_env = self.config["env"](self.config["env_config"])
         self.visualization_env.reset()
         if self.planning_model is not None:
-            device = torch.device("cuda:0") if self.use_gpu else torch.device("cpu")
+            device = "cuda:0" if self.use_gpu else "cpu"
             self.reward_model = RewardPredictor(self.planning_model.obs_size, self.config["model"]["fcnet_hiddens"][0], False, device=device)
             self.reward_optim = torch.optim.Adam(self.reward_model.parameters())
         else:
@@ -145,7 +148,8 @@ class ActiveRLCallback(DefaultCallbacks):
                     if ACTIVE_STATE_VISITATION_KEY not in episode.custom_metrics:
                         episode.hist_data[ACTIVE_STATE_VISITATION_KEY] = []
                     episode.hist_data[ACTIVE_STATE_VISITATION_KEY].append(new_states.numpy().argmax())
-                
+            if self.is_citylearn:
+                episode.hist_data[CL_ENV_KEYS[env.curr_env_idx]] = []
 
     def on_episode_end(
         self,
@@ -174,6 +178,10 @@ class ActiveRLCallback(DefaultCallbacks):
         """
         if self.is_evaluating and self.is_gridworld:
             self.eval_rewards[self.cell_index % self.num_cells] += episode.total_reward / (self.config["evaluation_duration"] // self.num_cells) 
+        if self.is_citylearn:
+            env = base_env.get_unwrapped()[0]
+            episode.custom_metrics[CL_ENV_KEYS[env.curr_env_idx] + "_reward"] = episode.total_reward #/ self.config["evaluation_duration"]
+
 
     def on_learn_on_batch(self, policy: Policy, train_batch: SampleBatch, result: dict, **kwargs):
         """
@@ -194,6 +202,6 @@ class ActiveRLCallback(DefaultCallbacks):
             rew_hat = self.reward_model(obs).squeeze()
             loss = F.mse_loss(rew, rew_hat)
             print("REWARD LOSS", loss)
-            result["reward_predictor_loss"] = loss
+            result["reward_predictor_loss"] = loss.detach().cpu().numpy()
             loss.backward()
             self.reward_optim.step()

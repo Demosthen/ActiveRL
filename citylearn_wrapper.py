@@ -18,11 +18,10 @@ from gym.spaces.box import Box
 
 class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, gym.core.RewardWrapper):
     """
-        Wraps the SimpleGridEnv to make discrete observations one hot encoded. Also provides an inverse_observations
-        function that can transform the one hot encoded observations back to the original discrete space.
+        Wraps the CityLearnEnv, provides an interface to do state transitions from a planning model or from multiple CityLearn environments.
         If you specify a planning_model_ckpt in the config function, will output state transitions from the planning model
-        instead of the environment.
-
+        instead of the environment. Can operate as multiple different environments if a list of schema paths is provided
+        in config["schema"] instead of a single path.
     """
     def __init__(self, config: Dict):
         # read in planning model ckpt path and whether this env is used for evaluation or not
@@ -35,26 +34,35 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
             del config["planning_model_ckpt"] # Citylearn will complain if you pass it this extra parameter
         del config["is_evaluation"]
 
-        #Initialize CityLearnEnv
-        env = CityLearnEnv(**config)
-        super().__init__(env)
-        self.env = env
+        if isinstance(config["schema"], list):
+            configs = [deepcopy(config) for _ in config["schema"]]
+            for i, schema in enumerate(config["schema"]):
+                configs[i]["schema"] = schema
+            self.envs = [CityLearnEnv(**subconfig) for subconfig in configs]
+            print("EVAL ENV SCHEMA: ", [env.schema for env in self.envs])
+        else:
+            #Initialize CityLearnEnv
+            self.envs = [CityLearnEnv(**config)]
+            print("TRAIN ENV SCHEMA: ", [env.schema for env in self.envs])
+        self.env = self.envs[0]
+        # Makes sure __get_attr__ and other functions are overrided by gym Wrapper for current env
+        super().__init__(self.env)
 
         #Implement switch between planning model and citylearn
         if planning_model_ckpt is not None:
             self.planning_model = get_planning_model(planning_model_ckpt)
             self.planning_model.eval_batchnorm()
-            self.observation_space = self.env.observation_space[0]
-            self.action_space = self.env.action_space[0]
         else:
             self.planning_model = None
-            self.observation_space = self.env.observation_space[0]
-            self.action_space = self.env.action_space[0]
+        self.observation_space = self.env.observation_space[0]
+        self.action_space = self.env.action_space[0]
 
         # Bookkeeping to make sure we reset after the right number of timesteps
+        self.curr_env_idx = 0
         self.curr_obs = self.reset()
         self.time_steps = self.env.time_steps
         self.time_step = 0
+        
 
     # Override `observation` to custom process the original observation
     # coming from the env.
@@ -107,7 +115,20 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
         return self.time_step == self.time_steps - 1
 
     def next_time_step(self):
+        """Increments current timestep"""
         self.time_step += 1
+
+    def reset_time_step(self):
+        """Increments current timestep to 0"""
+        self.time_step = 0
+
+    def next_env(self):
+        """Sets current environment to next environment in self.envs list"""
+        self.curr_env_idx = (self.curr_env_idx + 1) % len(self.envs)
+        self.env = self.envs[self.curr_env_idx]
+        print("SWAPPING ENV TO ", self.env.schema)
+        # Makes sure __get_attr__ and other functions are overrided by gym Wrapper for current env
+        super().__init__(self.env)
 
     # DEPRECATED
     def inverse_observation(self, wrapped_obs):
@@ -119,8 +140,9 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
     """Pass in an initial state to reset the environment to that state. (This only works if the wrapper is in planning model mode)"""
     def reset(self, initial_state=None):
         
-        self.time_step = 0
+        self.reset_time_step()
         if self.planning_model is None:
+            self.next_env()
             return self.observation(self.env.reset())
         else:
             if initial_state is not None:
