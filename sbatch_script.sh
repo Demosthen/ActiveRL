@@ -6,7 +6,7 @@
 #SBATCH --account=fc_ntugame
 #
 # Partition:
-#SBATCH --partition=savio3_gpu
+#SBATCH --partition=savio2_1080ti
 #
 # Number of nodes:
 #SBATCH --nodes=1
@@ -29,11 +29,9 @@
 export WANDB_API_KEY=87928bf7ce62528545fe624701ab2f3aa25a7547
 export BAD_ROBOTS_PYTHON=/global/home/users/$USER/.conda/envs/ActiveRL/bin/python
 export WANDB_CACHE_DIR=/global/scratch/users/$USER/.cache/wandb
+export PYTHON_PATH=/global/home/users/$USER/.conda/envs/ActiveRL/bin/python
 # export LD_LIBRARY_PATH=/global/home/users/lucas_spangher/.conda/pkgs:$LD_LIBRARY_PATH
 module load gcc/8.3.0
-
- 
-wandb agent social-game-rl/active-rl/$1 --count 1
-
-#/global/home/users/$USER/.conda/envs/ActiveRL/bin/python ./exp_scripts/run_adv_sweep.py $1 # $1 is the input name of the sweep, should be in quotes 
-
+export PATH=$PYTHON_PATH:$PATH
+source activate ActiveRL
+$PYTHON_PATH -m wandb agent social-game-rl/active-rl/$1 --count 1
