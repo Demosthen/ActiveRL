@@ -4,7 +4,17 @@ import torch.nn.functional as F
 from model_utils import get_unit
 
 class RewardPredictor(nn.Module):
-    def __init__(self, in_size, hidden_size, batch_norm: bool=True, device="cpu") -> None:
+    """
+    Neural network to predict reward of next state given the current observation. Currently implemented as 
+    a 3 layer neural network (2 hidden layers) with customizable hidden unit size and activation.
+
+    :param in_size: size of input
+    :param hidden_size: size of hidden units
+    :param batch_norm: whether or not to use batch norm in each hidden layer
+    :param device: what device to initialize this to
+    :param activation: what activation function to use
+    """
+    def __init__(self, in_size, hidden_size, batch_norm: bool=False, activation=nn.Tanh, device="cpu") -> None:
         super().__init__()
         self.X_mean = nn.Parameter(torch.zeros(in_size), requires_grad=False)
         self.X_std = nn.Parameter(torch.ones(in_size), requires_grad=False)
@@ -13,14 +23,12 @@ class RewardPredictor(nn.Module):
         self.y_std = nn.Parameter(torch.ones([1]), requires_grad=False)
         self.momentum = 0.9
         self.layers = nn.ModuleList([
-            get_unit(in_size, hidden_size, batch_norm),
-            get_unit(hidden_size, hidden_size, batch_norm),
-            get_unit(hidden_size, hidden_size, batch_norm),
-            get_unit(hidden_size, hidden_size, batch_norm),
+            get_unit(in_size, hidden_size, batch_norm, activation=activation),
+            get_unit(hidden_size, hidden_size, batch_norm, activation=activation),
             nn.Linear(hidden_size, 1)
         ])
-        self.to(device)
         self.device = device
+        self.to(device)
 
     def preprocess(self, x):
         ret = (x - self.X_mean.to(self.device)) / self.X_std.to(self.device)
@@ -67,6 +75,6 @@ class RewardPredictor(nn.Module):
             rew = self.forward(in_tensor)
             rewards.append(rew)
         rewards = torch.stack(rewards)
-        uncertainty = torch.var(rewards)
+        uncertainty = torch.mean(torch.var(rewards, axis=0))
         self.train(orig_mode)
         return uncertainty

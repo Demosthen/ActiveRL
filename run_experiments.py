@@ -36,6 +36,7 @@ class Environments(Enum):
     GRIDWORLD = "gw"
     CITYLEARN = "cl"
 
+CL_EVAL_PATHS = ["./data/Test_cold_Texas/schema.json", "./data/Test_dry_Cali/schema.json", "./data/Test_hot_new_york/schema.json", "./data/Test_snowy_Cali_winter/schema.json"]
 
 """SimpleGrid is a super simple gridworld environment for OpenAI gym. It is easy to use and 
 customise and it is intended to offer an environment for quick testing and prototyping 
@@ -80,7 +81,7 @@ def initialize_citylearn_params():
     return params
 
 
-def get_agent(env, env_config, args, planning_model=None):
+def get_agent(env, env_config, eval_env_config, args, planning_model=None):
     dummy_env = env(env_config)
     config = DEFAULT_CONFIG.copy()
     config["seed"] = args.seed
@@ -95,17 +96,21 @@ def get_agent(env, env_config, args, planning_model=None):
     config["model"]["fcnet_activation"] = lambda: nn.Sequential(nn.Tanh(), nn.Dropout())#Custom_Activation
     config["model"]["num_dropout_evals"] = 10
     config["disable_env_checking"] = True
-    config["num_gpus"] = args.num_gpus
+    # divide by 8: 1 driver, 3 workers, 4 evaluation workers
+    config["num_gpus"] = args.num_gpus / 5
+    config["num_gpus_per_worker"] = args.num_gpus / 5
+    config["num_workers"] = 2
     if args.num_gpus == 0:
         config["num_gpus_per_worker"] = 0
     config["evaluation_interval"] = 1
-    config["evaluation_num_workers"] = 0
+    config["evaluation_num_workers"] = 2
     if env is SimpleGridEnvWrapper:
         config["evaluation_duration"] = max(1, args.gw_steps_per_cell) * dummy_env.nrow * dummy_env.ncol # TODO: is there a better way of counting this?
+    elif env is CityLearnEnvWrapper:
+        config["evaluation_duration"] = len(CL_EVAL_PATHS)
 
     config["evaluation_duration_unit"] = "episodes"
-    eval_env_config = deepcopy(env_config)
-    eval_env_config["is_evaluation"] = True
+    
     config["evaluation_config"] = {
         "env_config": eval_env_config
     }
@@ -164,6 +169,13 @@ def add_args(parser):
         type=int,
         help="Number of timesteps to collect from environment during training",
         default=5000
+    )
+    # CITYLEARN ENV PARAMS
+    parser.add_argument(
+        "--cl_filename",
+        type=str,
+        help="schema file to read citylearn specs from.",
+        default="./data/citylearn_challenge_2022_phase_1/schema.json"
     )
 
     # GRIDWORLD ENV PARAMS
@@ -237,10 +249,13 @@ if __name__=="__main__":
     if args.env == "cl":
         env = CityLearnEnvWrapper
         env_config = {
-            "schema": Path("./data/citylearn_challenge_2022_phase_1/schema.json"),
+            "schema": Path(args.cl_filename),
             "planning_model_ckpt": args.planning_model_ckpt,
             "is_evaluation": False
         }
+        eval_env_config = deepcopy(env_config)
+        eval_env_config["schema"] = [Path(filename) for filename in CL_EVAL_PATHS]
+        eval_env_config["is_evaluation"] = True
     else: 
         env = SimpleGridEnvWrapper
         env_config = {"is_evaluation": False}
@@ -251,12 +266,14 @@ if __name__=="__main__":
             env_config["desc"] = grid_desc
             env_config["reward_map"] = rew_map
             env_config["wind_p"] = wind_p
+        eval_env_config = deepcopy(env_config)
+        eval_env_config["is_evaluation"] = True
         
 
     # planning model is None if the ckpt file path is None
     planning_model = get_planning_model(args.planning_model_ckpt)
 
-    agent = get_agent(env, env_config, args, planning_model)
+    agent = get_agent(env, env_config, eval_env_config, args, planning_model)
     
     train_agent(agent, timesteps=args.num_timesteps, env=env)
 
