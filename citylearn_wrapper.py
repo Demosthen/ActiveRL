@@ -39,11 +39,11 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
             for i, schema in enumerate(config["schema"]):
                 configs[i]["schema"] = schema
             self.envs = [CityLearnEnv(**subconfig) for subconfig in configs]
-            print("EVAL ENV SCHEMA: ", [env.schema for env in self.envs])
+            print("EVAL ENV SCHEMA: ", [env.schema["root_directory"] for env in self.envs])
         else:
             #Initialize CityLearnEnv
             self.envs = [CityLearnEnv(**config)]
-            print("TRAIN ENV SCHEMA: ", [env.schema for env in self.envs])
+            print("TRAIN ENV SCHEMA: ", [env.schema["root_directory"] for env in self.envs])
         self.env = self.envs[0]
         # Makes sure __get_attr__ and other functions are overrided by gym Wrapper for current env
         super().__init__(self.env)
@@ -126,9 +126,10 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
         """Sets current environment to next environment in self.envs list"""
         self.curr_env_idx = (self.curr_env_idx + 1) % len(self.envs)
         self.env = self.envs[self.curr_env_idx]
-        print("SWAPPING ENV TO ", self.env.schema)
+        print("SWAPPING ENV TO ", self.env.schema["root_directory"])
         # Makes sure __get_attr__ and other functions are overrided by gym Wrapper for current env
-        super().__init__(self.env)
+        #super().__init__(self.env)
+
 
     # DEPRECATED
     def inverse_observation(self, wrapped_obs):
