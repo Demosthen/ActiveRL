@@ -72,7 +72,7 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
     # Override `reward` to custom process the original reward
     # coming from the env.
     def reward(self, reward):
-        return reward[0] / 1e6
+        return reward[0] / 100
 
     # Override `action` to custom process the original action
     # coming from the policy.
