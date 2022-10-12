@@ -72,7 +72,7 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
     # Override `reward` to custom process the original reward
     # coming from the env.
     def reward(self, reward):
-        return reward[0]
+        return reward[0] / 1e6
 
     # Override `action` to custom process the original action
     # coming from the policy.
@@ -101,11 +101,11 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
             obs, rew, done, info = self.env.step(self.action(action))
             return self.observation(obs), self.reward(rew), done, info
         else:
-            planning_input = np.atleast_2d(np.concatenate([self.curr_obs, action]))
+            planning_input = np.atleast_2d(np.concatenate([self.curr_obs, self.action(action)[0]]))
             self.curr_obs = self.planning_model.forward_np(planning_input).flatten()
             rew = self.compute_reward(self.curr_obs) #- self.planning_model.compute_uncertainty(planning_input)
             self.next_time_step()
-            return self.curr_obs, rew, self.done, {}
+            return self.observation([self.curr_obs]), self.reward([rew]), self.done, {}
 
     @property
     def done(self) -> bool:
