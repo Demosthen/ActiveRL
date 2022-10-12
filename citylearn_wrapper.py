@@ -97,11 +97,10 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
         return - (carbon_emission + price)
 
     def step(self, action):
-        if self.planning_model is None:
+        if self.planning_model is None or self.is_evaluation:
             obs, rew, done, info = self.env.step(self.action(action))
             return self.observation(obs), self.reward(rew), done, info
         else:
-
             planning_input = np.atleast_2d(np.concatenate([self.curr_obs, action]))
             self.curr_obs = self.planning_model.forward_np(planning_input).flatten()
             rew = self.compute_reward(self.curr_obs) #- self.planning_model.compute_uncertainty(planning_input)
@@ -142,13 +141,12 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
     def reset(self, initial_state=None):
         
         self.reset_time_step()
-        if self.planning_model is None:
+        if self.is_evaluation:
             self.next_env()
             return self.observation(self.env.reset())
+        elif initial_state is not None:
+            self.curr_obs = initial_state
         else:
-            if initial_state is not None:
-                self.curr_obs = initial_state
-            else:
-                self.curr_obs = self.observation(self.env.reset())
-            return self.curr_obs
+            self.curr_obs = self.observation(self.env.reset())
+        return self.curr_obs
         

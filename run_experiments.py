@@ -94,9 +94,11 @@ def get_agent(env, env_config, eval_env_config, args, planning_model=None):
         config["horizon"] = 8760
     config["model"] = MODEL_DEFAULTS
     config["model"]["fcnet_activation"] = lambda: nn.Sequential(nn.Tanh(), nn.Dropout())#Custom_Activation
-    config["model"]["num_dropout_evals"] = 10
+    config["model"]["num_dropout_evals"] = 5
+    config["train_batch_size"] = 256
+    #config["num_sgd_iter"] = 
     config["disable_env_checking"] = True
-    # divide by 8: 1 driver, 3 workers, 4 evaluation workers
+    # divide by 5: 1 driver, 2 workers, 2 evaluation workers
     config["num_gpus"] = args.num_gpus / 5
     config["num_gpus_per_worker"] = args.num_gpus / 5
     config["num_workers"] = 2

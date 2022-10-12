@@ -201,7 +201,6 @@ class ActiveRLCallback(DefaultCallbacks):
             self.reward_optim.zero_grad()
             rew_hat = self.reward_model(obs).squeeze()
             loss = F.mse_loss(rew, rew_hat)
-            print("REWARD LOSS", loss)
             result["reward_predictor_loss"] = loss.detach().cpu().numpy()
             loss.backward()
             self.reward_optim.step()
