@@ -149,6 +149,10 @@ class ActiveRLCallback(DefaultCallbacks):
                     if ACTIVE_STATE_VISITATION_KEY not in episode.custom_metrics:
                         episode.hist_data[ACTIVE_STATE_VISITATION_KEY] = []
                     episode.hist_data[ACTIVE_STATE_VISITATION_KEY].append(new_states.numpy().argmax())
+            elif self.is_evaluating and self.is_citylearn:
+                #Rotate in the next climate zone
+                env.next_env()
+                
             if self.is_citylearn:
                 episode.hist_data[CL_ENV_KEYS[env.curr_env_idx]] = []
 

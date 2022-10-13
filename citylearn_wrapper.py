@@ -142,7 +142,6 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
         
         self.reset_time_step()
         if self.is_evaluation:
-            self.next_env()
             return self.observation(self.env.reset())
         elif initial_state is not None:
             self.curr_obs = initial_state
