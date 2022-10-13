@@ -138,7 +138,7 @@ class ActiveRLCallback(DefaultCallbacks):
                 initial_state[self.cell_index % self.num_cells] = 1
                 env.reset(initial_state=initial_state)
 
-            elif self.run_active_rl:
+            elif not self.is_evaluating and self.run_active_rl:
                 new_states, uncertainties = generate_states(policy, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
                             batch_size=self.batch_size, use_coop=self.use_coop, planning_model=self.planning_model, reward_model=self.reward_model, planning_uncertainty_weight=self.planning_uncertainty_weight)
                 new_states = new_states.detach().cpu().flatten()
