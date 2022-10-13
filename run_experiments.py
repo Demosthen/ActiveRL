@@ -98,14 +98,14 @@ def get_agent(env, env_config, eval_env_config, args, planning_model=None):
     config["train_batch_size"] = 256
     #config["num_sgd_iter"] = 
     config["disable_env_checking"] = True
-    # divide by 5: 1 driver, 2 workers, 2 evaluation workers
-    config["num_gpus"] = args.num_gpus / 5
-    config["num_gpus_per_worker"] = args.num_gpus / 5
+    # divide by 5: 1 driver, 2 workers, 1 evaluation workers
+    config["num_gpus"] = args.num_gpus / 4
+    config["num_gpus_per_worker"] = args.num_gpus / 4
     config["num_workers"] = 2
     if args.num_gpus == 0:
         config["num_gpus_per_worker"] = 0
     config["evaluation_interval"] = 1
-    config["evaluation_num_workers"] = 2
+    config["evaluation_num_workers"] = 1
     if env is SimpleGridEnvWrapper:
         config["evaluation_duration"] = max(1, args.gw_steps_per_cell) * dummy_env.nrow * dummy_env.ncol # TODO: is there a better way of counting this?
     elif env is CityLearnEnvWrapper:
