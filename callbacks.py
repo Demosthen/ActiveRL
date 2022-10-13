@@ -28,6 +28,7 @@ import wandb
 from torch.utils.tensorboard import SummaryWriter
 
 ACTIVE_STATE_VISITATION_KEY = "active_state_visitation"
+UNCERTAINTY_LOSS_KEY = "uncertainty_loss"
 CL_ENV_KEYS = ["cold_Texas", "dry_Cali", "hot_new_york", "snowy_Cali_winter"]
 
 class ActiveRLCallback(DefaultCallbacks):
@@ -139,9 +140,9 @@ class ActiveRLCallback(DefaultCallbacks):
 
             elif self.run_active_rl:
                 new_states, uncertainties = generate_states(policy, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
-                batch_size=self.batch_size, use_coop=self.use_coop, planning_model=self.planning_model, reward_model=self.reward_model, planning_uncertainty_weight=self.planning_uncertainty_weight)
+                            batch_size=self.batch_size, use_coop=self.use_coop, planning_model=self.planning_model, reward_model=self.reward_model, planning_uncertainty_weight=self.planning_uncertainty_weight)
                 new_states = new_states.detach().cpu().flatten()
-                
+                episode.custom_metrics[UNCERTAINTY_LOSS_KEY] = uncertainties[-1].loss.detach().cpu().numpy()
                 # print(env.observation_space)
                 env.reset(initial_state=new_states)
                 if self.is_gridworld:
