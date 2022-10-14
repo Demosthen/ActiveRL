@@ -68,10 +68,10 @@ class ActiveRLCallback(DefaultCallbacks):
         """
         This method gets called at the beginning of Algorithm.evaluate().
         """
-        self.is_evaluating = True
+        #self.is_evaluating = True
         
-        if self.num_cells > 0:
-            self.eval_rewards = [0 for _ in range(self.num_cells)]
+        # if self.num_cells > 0:
+        #     self.eval_rewards = [0 for _ in range(self.num_cells)]
 
         def activate_eval_metrics(worker):
             if hasattr(worker, "callbacks"):
@@ -85,7 +85,7 @@ class ActiveRLCallback(DefaultCallbacks):
         """
         Runs at the end of Algorithm.evaluate().
         """
-        self.is_evaluating = False
+        #self.is_evaluating = False
         if self.is_gridworld:
             def access_eval_metrics(worker):
                 if hasattr(worker, "callbacks"):
@@ -153,8 +153,9 @@ class ActiveRLCallback(DefaultCallbacks):
                 #Rotate in the next climate zone
                 env.next_env()
                 
-            if self.is_citylearn:
-                episode.hist_data[CL_ENV_KEYS[env.curr_env_idx]] = []
+            # if self.is_citylearn:
+            #     prefix = "eval_" if self.is_evaluating else "train_"
+            #     episode.hist_data[prefix + CL_ENV_KEYS[env.curr_env_idx]] = []
 
     def on_episode_end(
         self,
@@ -185,7 +186,8 @@ class ActiveRLCallback(DefaultCallbacks):
             self.eval_rewards[self.cell_index % self.num_cells] += episode.total_reward / (self.config["evaluation_duration"] // self.num_cells) 
         if self.is_citylearn:
             env = base_env.get_unwrapped()[0]
-            episode.custom_metrics[CL_ENV_KEYS[env.curr_env_idx] + "_reward"] = episode.total_reward #/ self.config["evaluation_duration"]
+            prefix = "eval_" if self.is_evaluating else "train_"
+            episode.custom_metrics[prefix + CL_ENV_KEYS[env.curr_env_idx] + "_reward"] = episode.total_reward #/ self.config["evaluation_duration"]
 
 
     def on_learn_on_batch(self, policy: Policy, train_batch: SampleBatch, result: dict, **kwargs):
