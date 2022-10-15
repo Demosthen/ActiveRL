@@ -585,7 +585,7 @@ class SimpleGrid:
                         agent_dir=agent_dir if agent_here else None,
                         highlight=highlight_mask[i, j],
                         tile_size=tile_size,
-                        hcolor=color_func(rewards[i][j], max_val, min_val)
+                        hcolor=color_func(rewards[j][i], max_val, min_val)
                     )
                 else:
                     tile_img = SimpleGrid.render_tile(
