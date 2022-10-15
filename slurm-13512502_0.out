@@ -1,0 +1,84 @@
+/global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/torch/utils/tensorboard/__init__.py:4: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+  if not hasattr(tensorboard, "__version__") or LooseVersion(
+wandb: Currently logged in as: doseok (social-game-rl). Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.13.4 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.2
+wandb: Run data is saved locally in /global/home/users/yanlarry/ActiveRL/wandb/run-20221015_140245-3rtu5kja
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run pretty-armadillo-136
+wandb: ⭐️ View project at https://wandb.ai/social-game-rl/active-rl
+wandb: 🚀 View run at https://wandb.ai/social-game-rl/active-rl/runs/3rtu5kja
+/global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/wandb/sdk/lib/import_hooks.py:246: DeprecationWarning: Deprecated since Python 3.4 and slated for removal in Python 3.12; use importlib.util.find_spec() instead
+  loader = importlib.find_loader(fullname, path)
+2022-10-15 14:02:57,487	INFO worker.py:1518 -- Started a local Ray instance.
+2022-10-15 14:03:01,629	WARNING unified.py:54 -- Could not instantiate JsonLogger: keys must be str, int, float, bool or None, not bytes.
+2022-10-15 14:03:01,645	INFO ppo.py:378 -- In multi-agent mode, policies will be optimized sequentially by the multi-GPU optimizer. Consider setting simple_optimizer=True if this doesn't work for you.
+2022-10-15 14:03:01,738	INFO algorithm.py:351 -- Current log_level is WARN. For more information, set 'log_level': 'INFO' / 'DEBUG' or use the -v and -vv flags.
+/global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/ray/_private/ray_option_utils.py:266: DeprecationWarning: Setting 'object_store_memory' for actors is deprecated since it doesn't actually reserve the required object store memory. Use object spilling that's enabled by default (https://docs.ray.io/en/releases-2.0.0/ray-core/objects/object-spilling.html) instead to bypass the object store memory size limitation.
+  warnings.warn(
+[2m[36m(RolloutWorker pid=224559)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/torch/utils/tensorboard/__init__.py:4: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+[2m[36m(RolloutWorker pid=224559)[0m   if not hasattr(tensorboard, "__version__") or LooseVersion(
+[2m[36m(RolloutWorker pid=224560)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/torch/utils/tensorboard/__init__.py:4: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+[2m[36m(RolloutWorker pid=224560)[0m   if not hasattr(tensorboard, "__version__") or LooseVersion(
+[2m[36m(RolloutWorker pid=224559)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/gym/core.py:200: DeprecationWarning: [33mWARN: Function `env.seed(seed)` is marked as deprecated and will be removed in the future. Please use `env.reset(seed=seed)` instead.[0m
+[2m[36m(RolloutWorker pid=224559)[0m   deprecation(
+[2m[36m(RolloutWorker pid=224560)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/gym/core.py:200: DeprecationWarning: [33mWARN: Function `env.seed(seed)` is marked as deprecated and will be removed in the future. Please use `env.reset(seed=seed)` instead.[0m
+[2m[36m(RolloutWorker pid=224560)[0m   deprecation(
+2022-10-15 14:03:28,688	WARNING deprecation.py:47 -- DeprecationWarning: `simple_optimizer` has been deprecated. This will raise an error in the future!
+[2m[36m(RolloutWorker pid=224670)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/torch/utils/tensorboard/__init__.py:4: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+[2m[36m(RolloutWorker pid=224670)[0m   if not hasattr(tensorboard, "__version__") or LooseVersion(
+[2m[36m(RolloutWorker pid=224671)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/torch/utils/tensorboard/__init__.py:4: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+[2m[36m(RolloutWorker pid=224671)[0m   if not hasattr(tensorboard, "__version__") or LooseVersion(
+[2m[36m(RolloutWorker pid=224670)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/gym/core.py:200: DeprecationWarning: [33mWARN: Function `env.seed(seed)` is marked as deprecated and will be removed in the future. Please use `env.reset(seed=seed)` instead.[0m
+[2m[36m(RolloutWorker pid=224670)[0m   deprecation(
+[2m[36m(RolloutWorker pid=224671)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/gym/core.py:200: DeprecationWarning: [33mWARN: Function `env.seed(seed)` is marked as deprecated and will be removed in the future. Please use `env.reset(seed=seed)` instead.[0m
+[2m[36m(RolloutWorker pid=224671)[0m   deprecation(
+2022-10-15 14:03:39,725	INFO trainable.py:160 -- Trainable.setup took 38.088 seconds. If your trainable is slow to initialize, consider setting reuse_actors=True to reduce actor creation overheads.
+2022-10-15 14:03:39,725	WARNING util.py:65 -- Install gputil for GPU system monitoring.
+[2m[36m(RolloutWorker pid=224559)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/ray/rllib/evaluation/episode.py:91: DeprecationWarning: non-integer arguments to randrange() have been deprecated since Python 3.10 and will be removed in a subsequent version
+[2m[36m(RolloutWorker pid=224559)[0m   self.episode_id: int = random.randrange(2e9)
+[2m[36m(RolloutWorker pid=224560)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/ray/rllib/evaluation/episode.py:91: DeprecationWarning: non-integer arguments to randrange() have been deprecated since Python 3.10 and will be removed in a subsequent version
+[2m[36m(RolloutWorker pid=224560)[0m   self.episode_id: int = random.randrange(2e9)
+[2m[36m(RolloutWorker pid=224670)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/ray/rllib/evaluation/episode.py:91: DeprecationWarning: non-integer arguments to randrange() have been deprecated since Python 3.10 and will be removed in a subsequent version
+[2m[36m(RolloutWorker pid=224670)[0m   self.episode_id: int = random.randrange(2e9)
+[2m[36m(RolloutWorker pid=224671)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/ray/rllib/evaluation/episode.py:91: DeprecationWarning: non-integer arguments to randrange() have been deprecated since Python 3.10 and will be removed in a subsequent version
+[2m[36m(RolloutWorker pid=224671)[0m   self.episode_id: int = random.randrange(2e9)
+*** SIGSEGV received at time=1665867944 on cpu 5 ***
+PC: @     0x2b13d1ecdd00  (unknown)  __pthread_mutex_lock
+    @     0x2b13d2116400       3504  (unknown)
+    @ ... and at least 1 more frames
+[2022-10-15 14:05:44,115 E 224132 224132] logging.cc:361: *** SIGSEGV received at time=1665867944 on cpu 5 ***
+[2022-10-15 14:05:44,115 E 224132 224132] logging.cc:361: PC: @     0x2b13d1ecdd00  (unknown)  __pthread_mutex_lock
+[2022-10-15 14:05:44,116 E 224132 224132] logging.cc:361:     @     0x2b13d2116400       3504  (unknown)
+[2022-10-15 14:05:44,116 E 224132 224132] logging.cc:361:     @ ... and at least 1 more frames
+Fatal Python error: Segmentation fault
+
+Stack (most recent call first):
+  File "/global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/moviepy/video/io/preview.py", line 10 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 883 in exec_module
+  File "<frozen importlib._bootstrap>", line 688 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1006 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1027 in _find_and_load
+  File "/global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/moviepy/editor.py", line 107 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 883 in exec_module
+  File "<frozen importlib._bootstrap>", line 688 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1006 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1027 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1078 in _handle_fromlist
+  File "/global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/tensorboardX/summary.py", line 362 in make_video
+  File "/global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/tensorboardX/summary.py", line 351 in video
+  File "/global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/tensorboardX/writer.py", line 847 in add_video
+  File "/global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/ray/tune/logger/tensorboardx.py", line 71 in on_result
+  File "/global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/ray/tune/logger/unified.py", line 60 in on_result
+  File "/global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/ray/tune/trainable/trainable.py", line 1098 in log_result
+  File "/global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/ray/rllib/algorithms/algorithm.py", line 1563 in log_result
+  File "/global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/ray/tune/trainable/trainable.py", line 397 in train
+  File "/global/home/users/yanlarry/ActiveRL/run_experiments.py", line 126 in train_agent
+  File "/global/home/users/yanlarry/ActiveRL/run_experiments.py", line 278 in <module>
+
+Extension modules: numpy.core._multiarray_umath, numpy.core._multiarray_tests, numpy.linalg.lapack_lite, numpy.linalg._umath_linalg, numpy.fft._pocketfft_internal, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._mt19937, numpy.random.mtrand, numpy.random._philox, numpy.random._pcg64, numpy.random._sfc64, numpy.random._generator, _cffi_backend, simplejson._speedups, torch._C, torch._C._fft, torch._C._linalg, torch._C._nn, torch._C._sparse, torch._C._special, matplotlib._c_internal_utils, PIL._imaging, matplotlib._path, kiwisolver._cext, matplotlib._image, msgpack._cmsgpack, setproctitle, google.protobuf.pyext._message, psutil._psutil_linux, psutil._psutil_posix, grpc._cython.cygrpc, yaml._yaml, ray._raylet, pvectorc, pandas._libs.tslibs.dtypes, pandas._libs.tslibs.base, pandas._libs.tslibs.np_datetime, pandas._libs.tslibs.nattype, pandas._libs.tslibs.timezones, pandas._libs.tslibs.ccalendar, pandas._libs.tslibs.tzconversion, pandas._libs.tslibs.strptime, pandas._libs.tslibs.fields, pandas._libs.tslibs.timedeltas, pandas._libs.tslibs.timestamps, pandas._libs.properties, pandas._libs.tslibs.offsets, pandas._libs.tslibs.parsing, pandas._libs.tslibs.conversion, pandas._libs.tslibs.period, pandas._libs.tslibs.vectorized, pandas._libs.ops_dispatch, pandas._libs.missing, pandas._libs.hashtable, pandas._libs.algos, pandas._libs.interval, pandas._libs.tslib, pandas._libs.lib, pandas._libs.hashing, pandas._libs.ops, numexpr.interpreter, pandas._libs.arrays, pandas._libs.index, pandas._libs.join, pandas._libs.sparse, pandas._libs.reduction, pandas._libs.indexing, pandas._libs.internals, pandas._libs.writers, pandas._libs.window.aggregations, pandas._libs.window.indexers, pandas._libs.reshape, pandas._libs.groupby, pandas._libs.parsers, pandas._libs.json, pandas._libs.testing, lz4._version, lz4.frame._frame, scipy._lib._ccallback_c, scipy.signal._sigtools, scipy.linalg._fblas, scipy.linalg._flapack, scipy.linalg._cythonized_array_utils, scipy.linalg._flinalg, scipy.linalg._solve_toeplitz, scipy.linalg._matfuncs_sqrtm_triu, scipy.linalg.cython_lapack, scipy.linalg.cython_blas, scipy.linalg._matfuncs_expm, scipy.linalg._decomp_update, scipy.sparse._sparsetools, scipy.sparse._csparsetools, scipy.sparse.linalg._isolve._iterative, scipy.sparse.linalg._dsolve._superlu, scipy.sparse.linalg._eigen.arpack._arpack, scipy.sparse.csgraph._tools, scipy.sparse.csgraph._shortest_path, scipy.sparse.csgraph._traversal, scipy.sparse.csgraph._min_spanning_tree, scipy.sparse.csgraph._flow, scipy.sparse.csgraph._matching, scipy.sparse.csgraph._reordering, scipy.special._ufuncs_cxx, scipy.special._ufuncs, scipy.special._specfun, scipy.special._comb, scipy.special._ellip_harm_2, scipy._lib._uarray._uarray, scipy.signal._max_len_seq_inner, scipy.signal._upfirdn_apply, scipy.signal._spline, scipy.optimize._minpack2, scipy.optimize._group_columns, scipy._lib.messagestream, scipy.optimize._trlib._trlib, scipy.optimize._lbfgsb, _moduleTNC, scipy.optimize._moduleTNC, scipy.optimize._cobyla, scipy.optimize._slsqp, scipy.optimize._minpack, scipy.optimize._lsq.givens_elimination, scipy.optimize._zeros, scipy.optimize.__nnls, scipy.optimize._highs.cython.src._highs_wrapper, scipy.optimize._highs._highs_wrapper, scipy.optimize._highs.cython.src._highs_constants, scipy.optimize._highs._highs_constants, scipy.linalg._interpolative, scipy.optimize._bglu_dense, scipy.optimize._lsap, scipy.spatial._ckdtree, scipy.spatial._qhull, scipy.spatial._voronoi, scipy.spatial._distance_wrap, scipy.spatial._hausdorff, scipy.spatial.transform._rotation, scipy.optimize._direct, scipy.integrate._odepack, scipy.integrate._quadpack, scipy.integrate._vode, scipy.integrate._dop, scipy.integrate._lsoda, scipy.interpolate._fitpack, scipy.interpolate.dfitpack, scipy.interpolate._bspl, scipy.interpolate._ppoly, scipy.interpolate.interpnd, scipy.interpolate._rbfinterp_pythran, scipy.signal._sosfilt, scipy.ndimage._nd_image, _ni_label, scipy.ndimage._ni_label, scipy.signal._spectral, scipy.special.cython_special, scipy.stats._stats, beta_ufunc, scipy.stats._boost.beta_ufunc, binom_ufunc, scipy.stats._boost.binom_ufunc, nbinom_ufunc, scipy.stats._boost.nbinom_ufunc, hypergeom_ufunc, scipy.stats._boost.hypergeom_ufunc, ncf_ufunc, scipy.stats._boost.ncf_ufunc, scipy.stats._biasedurn, scipy.stats._levy_stable.levyst, scipy.stats._hypotests_pythran, scipy.stats._statlib, scipy.stats._mvn, scipy.stats._sobol, scipy.stats._qmc_cy, scipy.stats._unuran.unuran_wrapper, scipy.signal._peak_finding_utils, PIL._imagingft, h5py._errors, h5py.defs, h5py._objects, h5py.h5, h5py.h5r, h5py.utils, h5py.h5s, h5py.h5ac, h5py.h5p, h5py.h5t, h5py._conv, h5py.h5z, h5py._proxy, h5py.h5a, h5py.h5d, h5py.h5ds, h5py.h5g, h5py.h5i, h5py.h5f, h5py.h5fd, h5py.h5pl, h5py.h5o, h5py.h5l, h5py._selector, skimage._shared.geometry, pygame.base, pygame.constants, pygame.rect, pygame.rwobject, pygame.surflock, pygame.color, pygame.bufferproxy, pygame.math, pygame.surface, pygame.display, pygame.draw, pygame.event, pygame.imageext, pygame.image, pygame.joystick, pygame.key, pygame.mouse, pygame.time, pygame.mask, pygame.pixelcopy, pygame.transform, pygame.font, pygame.mixer_music, pygame.mixer, pygame.scrap (total: 228)
+/var/spool/slurmd/job13512502/slurm_script: line 40: 224132 Segmentation fault      $PYTHON_PATH $1

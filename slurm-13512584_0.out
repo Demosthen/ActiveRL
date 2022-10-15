@@ -1,0 +1,567 @@
+/global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/torch/utils/tensorboard/__init__.py:4: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+  if not hasattr(tensorboard, "__version__") or LooseVersion(
+wandb: Currently logged in as: doseok (social-game-rl). Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.13.4 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.2
+wandb: Run data is saved locally in /global/home/users/yanlarry/ActiveRL/wandb/run-20221015_141724-2k0u34g3
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run pious-sea-137
+wandb: ⭐️ View project at https://wandb.ai/social-game-rl/active-rl
+wandb: 🚀 View run at https://wandb.ai/social-game-rl/active-rl/runs/2k0u34g3
+/global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/wandb/sdk/lib/import_hooks.py:246: DeprecationWarning: Deprecated since Python 3.4 and slated for removal in Python 3.12; use importlib.util.find_spec() instead
+  loader = importlib.find_loader(fullname, path)
+2022-10-15 14:17:34,686	INFO worker.py:1518 -- Started a local Ray instance.
+2022-10-15 14:17:38,671	WARNING unified.py:54 -- Could not instantiate JsonLogger: keys must be str, int, float, bool or None, not bytes.
+2022-10-15 14:17:38,684	INFO ppo.py:378 -- In multi-agent mode, policies will be optimized sequentially by the multi-GPU optimizer. Consider setting simple_optimizer=True if this doesn't work for you.
+2022-10-15 14:17:38,688	INFO algorithm.py:351 -- Current log_level is WARN. For more information, set 'log_level': 'INFO' / 'DEBUG' or use the -v and -vv flags.
+/global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/ray/_private/ray_option_utils.py:266: DeprecationWarning: Setting 'object_store_memory' for actors is deprecated since it doesn't actually reserve the required object store memory. Use object spilling that's enabled by default (https://docs.ray.io/en/releases-2.0.0/ray-core/objects/object-spilling.html) instead to bypass the object store memory size limitation.
+  warnings.warn(
+[2m[36m(RolloutWorker pid=225416)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/torch/utils/tensorboard/__init__.py:4: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+[2m[36m(RolloutWorker pid=225416)[0m   if not hasattr(tensorboard, "__version__") or LooseVersion(
+[2m[36m(RolloutWorker pid=225417)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/torch/utils/tensorboard/__init__.py:4: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+[2m[36m(RolloutWorker pid=225417)[0m   if not hasattr(tensorboard, "__version__") or LooseVersion(
+[2m[36m(RolloutWorker pid=225416)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/gym/core.py:200: DeprecationWarning: [33mWARN: Function `env.seed(seed)` is marked as deprecated and will be removed in the future. Please use `env.reset(seed=seed)` instead.[0m
+[2m[36m(RolloutWorker pid=225416)[0m   deprecation(
+[2m[36m(RolloutWorker pid=225417)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/gym/core.py:200: DeprecationWarning: [33mWARN: Function `env.seed(seed)` is marked as deprecated and will be removed in the future. Please use `env.reset(seed=seed)` instead.[0m
+[2m[36m(RolloutWorker pid=225417)[0m   deprecation(
+2022-10-15 14:17:52,962	WARNING deprecation.py:47 -- DeprecationWarning: `simple_optimizer` has been deprecated. This will raise an error in the future!
+[2m[36m(RolloutWorker pid=225496)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/torch/utils/tensorboard/__init__.py:4: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+[2m[36m(RolloutWorker pid=225496)[0m   if not hasattr(tensorboard, "__version__") or LooseVersion(
+[2m[36m(RolloutWorker pid=225495)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/torch/utils/tensorboard/__init__.py:4: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+[2m[36m(RolloutWorker pid=225495)[0m   if not hasattr(tensorboard, "__version__") or LooseVersion(
+[2m[36m(RolloutWorker pid=225496)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/gym/core.py:200: DeprecationWarning: [33mWARN: Function `env.seed(seed)` is marked as deprecated and will be removed in the future. Please use `env.reset(seed=seed)` instead.[0m
+[2m[36m(RolloutWorker pid=225496)[0m   deprecation(
+[2m[36m(RolloutWorker pid=225495)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/gym/core.py:200: DeprecationWarning: [33mWARN: Function `env.seed(seed)` is marked as deprecated and will be removed in the future. Please use `env.reset(seed=seed)` instead.[0m
+[2m[36m(RolloutWorker pid=225495)[0m   deprecation(
+2022-10-15 14:18:04,134	INFO trainable.py:160 -- Trainable.setup took 25.456 seconds. If your trainable is slow to initialize, consider setting reuse_actors=True to reduce actor creation overheads.
+2022-10-15 14:18:04,135	WARNING util.py:65 -- Install gputil for GPU system monitoring.
+[2m[36m(RolloutWorker pid=225416)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/ray/rllib/evaluation/episode.py:91: DeprecationWarning: non-integer arguments to randrange() have been deprecated since Python 3.10 and will be removed in a subsequent version
+[2m[36m(RolloutWorker pid=225416)[0m   self.episode_id: int = random.randrange(2e9)
+[2m[36m(RolloutWorker pid=225417)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/ray/rllib/evaluation/episode.py:91: DeprecationWarning: non-integer arguments to randrange() have been deprecated since Python 3.10 and will be removed in a subsequent version
+[2m[36m(RolloutWorker pid=225417)[0m   self.episode_id: int = random.randrange(2e9)
+[2m[36m(RolloutWorker pid=225496)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/ray/rllib/evaluation/episode.py:91: DeprecationWarning: non-integer arguments to randrange() have been deprecated since Python 3.10 and will be removed in a subsequent version
+[2m[36m(RolloutWorker pid=225496)[0m   self.episode_id: int = random.randrange(2e9)
+[2m[36m(RolloutWorker pid=225495)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/ray/rllib/evaluation/episode.py:91: DeprecationWarning: non-integer arguments to randrange() have been deprecated since Python 3.10 and will be removed in a subsequent version
+[2m[36m(RolloutWorker pid=225495)[0m   self.episode_id: int = random.randrange(2e9)
+[2m[36m(RolloutWorker pid=225496)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/ray/rllib/evaluation/episode.py:91: DeprecationWarning: non-integer arguments to randrange() have been deprecated since Python 3.10 and will be removed in a subsequent version
+[2m[36m(RolloutWorker pid=225496)[0m   self.episode_id: int = random.randrange(2e9)
+[2m[36m(RolloutWorker pid=225495)[0m /global/home/users/yanlarry/.conda/envs/ActiveRL/lib/python3.10/site-packages/ray/rllib/evaluation/episode.py:91: DeprecationWarning: non-integer arguments to randrange() have been deprecated since Python 3.10 and will be removed in a subsequent version
+[2m[36m(RolloutWorker pid=225495)[0m   self.episode_id: int = random.randrange(2e9)
+wandb: WARNING Not logging key "ray/tune/hist_stats/episode_reward". Histograms must have fewer than 512 bins
+wandb: WARNING Not logging key "ray/tune/evaluation/hist_stats/episode_reward". Histograms must have fewer than 512 bins
+wandb: WARNING Not logging key "ray/tune/sampler_results/hist_stats/episode_reward". Histograms must have fewer than 512 bins
+['WWWWWWWWW', 'WWWWWWWWW', 'EEEEEEEEE', 'EEEEEEEEE', 'SEEGEEEEE', 'EEEEEEEEE', 'EEEEEEEEE', 'WWWWWWWWW', 'WWWWWWWWW']
+['WWWWWWWWW', 'WWWWWWWWW', 'EEEEEEEEE', 'EEEEEEEEE', 'SEEGEEEEE', 'EEEEEEEEE', 'EEEEEEEEE', 'WWWWWWWWW', 'WWWWWWWWW']
+[2m[36m(RolloutWorker pid=225416)[0m ['WWWWWWWWW', 'WWWWWWWWW', 'EEEEEEEEE', 'EEEEEEEEE', 'SEEGEEEEE', 'EEEEEEEEE', 'EEEEEEEEE', 'WWWWWWWWW', 'WWWWWWWWW']
+[2m[36m(RolloutWorker pid=225417)[0m ['WWWWWWWWW', 'WWWWWWWWW', 'EEEEEEEEE', 'EEEEEEEEE', 'SEEGEEEEE', 'EEEEEEEEE', 'EEEEEEEEE', 'WWWWWWWWW', 'WWWWWWWWW']
+[2m[36m(RolloutWorker pid=225417)[0m ['WWWWWWWWW', 'WWWWWWWWW', 'EEEEEEEEE', 'EEEEEEEEE', 'SEEGEEEEE', 'EEEEEEEEE', 'EEEEEEEEE', 'WWWWWWWWW', 'WWWWWWWWW']
+[2m[36m(RolloutWorker pid=225416)[0m ['WWWWWWWWW', 'WWWWWWWWW', 'EEEEEEEEE', 'EEEEEEEEE', 'SEEGEEEEE', 'EEEEEEEEE', 'EEEEEEEEE', 'WWWWWWWWW', 'WWWWWWWWW']
+[2m[36m(RolloutWorker pid=225416)[0m ['WWWWWWWWW', 'WWWWWWWWW', 'EEEEEEEEE', 'EEEEEEEEE', 'SEEGEEEEE', 'EEEEEEEEE', 'EEEEEEEEE', 'WWWWWWWWW', 'WWWWWWWWW']
+[2m[36m(RolloutWorker pid=225417)[0m ['WWWWWWWWW', 'WWWWWWWWW', 'EEEEEEEEE', 'EEEEEEEEE', 'SEEGEEEEE', 'EEEEEEEEE', 'EEEEEEEEE', 'WWWWWWWWW', 'WWWWWWWWW']
+[2m[36m(RolloutWorker pid=225416)[0m FullyConnectedNetwork(
+[2m[36m(RolloutWorker pid=225416)[0m   (_logits): SlimFC(
+[2m[36m(RolloutWorker pid=225416)[0m     (_model): Sequential(
+[2m[36m(RolloutWorker pid=225416)[0m       (0): Linear(in_features=256, out_features=4, bias=True)
+[2m[36m(RolloutWorker pid=225416)[0m     )
+[2m[36m(RolloutWorker pid=225416)[0m   )
+[2m[36m(RolloutWorker pid=225416)[0m   (_hidden_layers): Sequential(
+[2m[36m(RolloutWorker pid=225416)[0m     (0): SlimFC(
+[2m[36m(RolloutWorker pid=225416)[0m       (_model): Sequential(
+[2m[36m(RolloutWorker pid=225416)[0m         (0): Linear(in_features=81, out_features=256, bias=True)
+[2m[36m(RolloutWorker pid=225416)[0m         (1): Sequential(
+[2m[36m(RolloutWorker pid=225416)[0m           (0): Tanh()
+[2m[36m(RolloutWorker pid=225416)[0m           (1): Dropout(p=0.5, inplace=False)
+[2m[36m(RolloutWorker pid=225416)[0m         )
+[2m[36m(RolloutWorker pid=225416)[0m       )
+[2m[36m(RolloutWorker pid=225416)[0m     )
+[2m[36m(RolloutWorker pid=225416)[0m     (1): SlimFC(
+[2m[36m(RolloutWorker pid=225416)[0m       (_model): Sequential(
+[2m[36m(RolloutWorker pid=225416)[0m         (0): Linear(in_features=256, out_features=256, bias=True)
+[2m[36m(RolloutWorker pid=225416)[0m         (1): Sequential(
+[2m[36m(RolloutWorker pid=225416)[0m           (0): Tanh()
+[2m[36m(RolloutWorker pid=225416)[0m           (1): Dropout(p=0.5, inplace=False)
+[2m[36m(RolloutWorker pid=225416)[0m         )
+[2m[36m(RolloutWorker pid=225416)[0m       )
+[2m[36m(RolloutWorker pid=225416)[0m     )
+[2m[36m(RolloutWorker pid=225416)[0m   )
+[2m[36m(RolloutWorker pid=225416)[0m   (_value_branch): SlimFC(
+[2m[36m(RolloutWorker pid=225416)[0m     (_model): Sequential(
+[2m[36m(RolloutWorker pid=225416)[0m       (0): Linear(in_features=256, out_features=1, bias=True)
+[2m[36m(RolloutWorker pid=225416)[0m     )
+[2m[36m(RolloutWorker pid=225416)[0m   )
+[2m[36m(RolloutWorker pid=225416)[0m )
+['WWWWWWWWW', 'WWWWWWWWW', 'EEEEEEEEE', 'EEEEEEEEE', 'SEEGEEEEE', 'EEEEEEEEE', 'EEEEEEEEE', 'WWWWWWWWW', 'WWWWWWWWW']
+['WWWWWWWWW', 'WWWWWWWWW', 'EEEEEEEEE', 'EEEEEEEEE', 'SEEGEEEEE', 'EEEEEEEEE', 'EEEEEEEEE', 'WWWWWWWWW', 'WWWWWWWWW']
+[2m[36m(RolloutWorker pid=225417)[0m FullyConnectedNetwork(
+[2m[36m(RolloutWorker pid=225417)[0m   (_logits): SlimFC(
+[2m[36m(RolloutWorker pid=225417)[0m     (_model): Sequential(
+[2m[36m(RolloutWorker pid=225417)[0m       (0): Linear(in_features=256, out_features=4, bias=True)
+[2m[36m(RolloutWorker pid=225417)[0m     )
+[2m[36m(RolloutWorker pid=225417)[0m   )
+[2m[36m(RolloutWorker pid=225417)[0m   (_hidden_layers): Sequential(
+[2m[36m(RolloutWorker pid=225417)[0m     (0): SlimFC(
+[2m[36m(RolloutWorker pid=225417)[0m       (_model): Sequential(
+[2m[36m(RolloutWorker pid=225417)[0m         (0): Linear(in_features=81, out_features=256, bias=True)
+[2m[36m(RolloutWorker pid=225417)[0m         (1): Sequential(
+[2m[36m(RolloutWorker pid=225417)[0m           (0): Tanh()
+[2m[36m(RolloutWorker pid=225417)[0m           (1): Dropout(p=0.5, inplace=False)
+[2m[36m(RolloutWorker pid=225417)[0m         )
+[2m[36m(RolloutWorker pid=225417)[0m       )
+[2m[36m(RolloutWorker pid=225417)[0m     )
+[2m[36m(RolloutWorker pid=225417)[0m     (1): SlimFC(
+[2m[36m(RolloutWorker pid=225417)[0m       (_model): Sequential(
+[2m[36m(RolloutWorker pid=225417)[0m         (0): Linear(in_features=256, out_features=256, bias=True)
+[2m[36m(RolloutWorker pid=225417)[0m         (1): Sequential(
+[2m[36m(RolloutWorker pid=225417)[0m           (0): Tanh()
+[2m[36m(RolloutWorker pid=225417)[0m           (1): Dropout(p=0.5, inplace=False)
+[2m[36m(RolloutWorker pid=225417)[0m         )
+[2m[36m(RolloutWorker pid=225417)[0m       )
+[2m[36m(RolloutWorker pid=225417)[0m     )
+[2m[36m(RolloutWorker pid=225417)[0m   )
+[2m[36m(RolloutWorker pid=225417)[0m   (_value_branch): SlimFC(
+[2m[36m(RolloutWorker pid=225417)[0m     (_model): Sequential(
+[2m[36m(RolloutWorker pid=225417)[0m       (0): Linear(in_features=256, out_features=1, bias=True)
+[2m[36m(RolloutWorker pid=225417)[0m     )
+[2m[36m(RolloutWorker pid=225417)[0m   )
+[2m[36m(RolloutWorker pid=225417)[0m )
+FullyConnectedNetwork(
+  (_logits): SlimFC(
+    (_model): Sequential(
+      (0): Linear(in_features=256, out_features=4, bias=True)
+    )
+  )
+  (_hidden_layers): Sequential(
+    (0): SlimFC(
+      (_model): Sequential(
+        (0): Linear(in_features=81, out_features=256, bias=True)
+        (1): Sequential(
+          (0): Tanh()
+          (1): Dropout(p=0.5, inplace=False)
+        )
+      )
+    )
+    (1): SlimFC(
+      (_model): Sequential(
+        (0): Linear(in_features=256, out_features=256, bias=True)
+        (1): Sequential(
+          (0): Tanh()
+          (1): Dropout(p=0.5, inplace=False)
+        )
+      )
+    )
+  )
+  (_value_branch): SlimFC(
+    (_model): Sequential(
+      (0): Linear(in_features=256, out_features=1, bias=True)
+    )
+  )
+)
+[2m[36m(RolloutWorker pid=225496)[0m ['WWWWWWWWW', 'WWWWWWWWW', 'EEEEEEEEE', 'EEEEEEEEE', 'SEEGEEEEE', 'EEEEEEEEE', 'EEEEEEEEE', 'WWWWWWWWW', 'WWWWWWWWW']
+[2m[36m(RolloutWorker pid=225496)[0m ['WWWWWWWWW', 'WWWWWWWWW', 'EEEEEEEEE', 'EEEEEEEEE', 'SEEGEEEEE', 'EEEEEEEEE', 'EEEEEEEEE', 'WWWWWWWWW', 'WWWWWWWWW']
+[2m[36m(RolloutWorker pid=225496)[0m ['WWWWWWWWW', 'WWWWWWWWW', 'EEEEEEEEE', 'EEEEEEEEE', 'SEEGEEEEE', 'EEEEEEEEE', 'EEEEEEEEE', 'WWWWWWWWW', 'WWWWWWWWW']
+[2m[36m(RolloutWorker pid=225495)[0m ['WWWWWWWWW', 'WWWWWWWWW', 'EEEEEEEEE', 'EEEEEEEEE', 'SEEGEEEEE', 'EEEEEEEEE', 'EEEEEEEEE', 'WWWWWWWWW', 'WWWWWWWWW']
+[2m[36m(RolloutWorker pid=225495)[0m ['WWWWWWWWW', 'WWWWWWWWW', 'EEEEEEEEE', 'EEEEEEEEE', 'SEEGEEEEE', 'EEEEEEEEE', 'EEEEEEEEE', 'WWWWWWWWW', 'WWWWWWWWW']
+[2m[36m(RolloutWorker pid=225495)[0m ['WWWWWWWWW', 'WWWWWWWWW', 'EEEEEEEEE', 'EEEEEEEEE', 'SEEGEEEEE', 'EEEEEEEEE', 'EEEEEEEEE', 'WWWWWWWWW', 'WWWWWWWWW']
+[2m[36m(RolloutWorker pid=225496)[0m FullyConnectedNetwork(
+[2m[36m(RolloutWorker pid=225496)[0m   (_logits): SlimFC(
+[2m[36m(RolloutWorker pid=225496)[0m     (_model): Sequential(
+[2m[36m(RolloutWorker pid=225496)[0m       (0): Linear(in_features=256, out_features=4, bias=True)
+[2m[36m(RolloutWorker pid=225496)[0m     )
+[2m[36m(RolloutWorker pid=225496)[0m   )
+[2m[36m(RolloutWorker pid=225496)[0m   (_hidden_layers): Sequential(
+[2m[36m(RolloutWorker pid=225496)[0m     (0): SlimFC(
+[2m[36m(RolloutWorker pid=225496)[0m       (_model): Sequential(
+[2m[36m(RolloutWorker pid=225496)[0m         (0): Linear(in_features=81, out_features=256, bias=True)
+[2m[36m(RolloutWorker pid=225496)[0m         (1): Sequential(
+[2m[36m(RolloutWorker pid=225496)[0m           (0): Tanh()
+[2m[36m(RolloutWorker pid=225496)[0m           (1): Dropout(p=0.5, inplace=False)
+[2m[36m(RolloutWorker pid=225496)[0m         )
+[2m[36m(RolloutWorker pid=225496)[0m       )
+[2m[36m(RolloutWorker pid=225496)[0m     )
+[2m[36m(RolloutWorker pid=225496)[0m     (1): SlimFC(
+[2m[36m(RolloutWorker pid=225496)[0m       (_model): Sequential(
+[2m[36m(RolloutWorker pid=225496)[0m         (0): Linear(in_features=256, out_features=256, bias=True)
+[2m[36m(RolloutWorker pid=225496)[0m         (1): Sequential(
+[2m[36m(RolloutWorker pid=225496)[0m           (0): Tanh()
+[2m[36m(RolloutWorker pid=225496)[0m           (1): Dropout(p=0.5, inplace=False)
+[2m[36m(RolloutWorker pid=225496)[0m         )
+[2m[36m(RolloutWorker pid=225496)[0m       )
+[2m[36m(RolloutWorker pid=225496)[0m     )
+[2m[36m(RolloutWorker pid=225496)[0m   )
+[2m[36m(RolloutWorker pid=225496)[0m   (_value_branch): SlimFC(
+[2m[36m(RolloutWorker pid=225496)[0m     (_model): Sequential(
+[2m[36m(RolloutWorker pid=225496)[0m       (0): Linear(in_features=256, out_features=1, bias=True)
+[2m[36m(RolloutWorker pid=225496)[0m     )
+[2m[36m(RolloutWorker pid=225496)[0m   )
+[2m[36m(RolloutWorker pid=225496)[0m )
+[2m[36m(RolloutWorker pid=225495)[0m FullyConnectedNetwork(
+[2m[36m(RolloutWorker pid=225495)[0m   (_logits): SlimFC(
+[2m[36m(RolloutWorker pid=225495)[0m     (_model): Sequential(
+[2m[36m(RolloutWorker pid=225495)[0m       (0): Linear(in_features=256, out_features=4, bias=True)
+[2m[36m(RolloutWorker pid=225495)[0m     )
+[2m[36m(RolloutWorker pid=225495)[0m   )
+[2m[36m(RolloutWorker pid=225495)[0m   (_hidden_layers): Sequential(
+[2m[36m(RolloutWorker pid=225495)[0m     (0): SlimFC(
+[2m[36m(RolloutWorker pid=225495)[0m       (_model): Sequential(
+[2m[36m(RolloutWorker pid=225495)[0m         (0): Linear(in_features=81, out_features=256, bias=True)
+[2m[36m(RolloutWorker pid=225495)[0m         (1): Sequential(
+[2m[36m(RolloutWorker pid=225495)[0m           (0): Tanh()
+[2m[36m(RolloutWorker pid=225495)[0m           (1): Dropout(p=0.5, inplace=False)
+[2m[36m(RolloutWorker pid=225495)[0m         )
+[2m[36m(RolloutWorker pid=225495)[0m       )
+[2m[36m(RolloutWorker pid=225495)[0m     )
+[2m[36m(RolloutWorker pid=225495)[0m     (1): SlimFC(
+[2m[36m(RolloutWorker pid=225495)[0m       (_model): Sequential(
+[2m[36m(RolloutWorker pid=225495)[0m         (0): Linear(in_features=256, out_features=256, bias=True)
+[2m[36m(RolloutWorker pid=225495)[0m         (1): Sequential(
+[2m[36m(RolloutWorker pid=225495)[0m           (0): Tanh()
+[2m[36m(RolloutWorker pid=225495)[0m           (1): Dropout(p=0.5, inplace=False)
+[2m[36m(RolloutWorker pid=225495)[0m         )
+[2m[36m(RolloutWorker pid=225495)[0m       )
+[2m[36m(RolloutWorker pid=225495)[0m     )
+[2m[36m(RolloutWorker pid=225495)[0m   )
+[2m[36m(RolloutWorker pid=225495)[0m   (_value_branch): SlimFC(
+[2m[36m(RolloutWorker pid=225495)[0m     (_model): Sequential(
+[2m[36m(RolloutWorker pid=225495)[0m       (0): Linear(in_features=256, out_features=1, bias=True)
+[2m[36m(RolloutWorker pid=225495)[0m     )
+[2m[36m(RolloutWorker pid=225495)[0m   )
+[2m[36m(RolloutWorker pid=225495)[0m )
+{'0': 0.0, '1': 0.0, '2': 0.0, '3': 0.0, '4': 0.0, '5': 0.0, '6': 0.0, '7': 0.0, '8': 0.0, '9': 0.0, '10': 0.0, '11': 0.0, '12': 0.0, '13': 0.0, '14': 0.0, '15': 0.0, '16': 0.0, '17': 0.0, '18': 71.82, '19': 21.86, '20': 72.84, '21': 47.36, '22': 47.36, '23': 22.1, '24': 97.19, '25': 22.199999999999996, '26': 47.19, '27': 46.980000000000004, '28': 21.37, '29': 172.62, '30': 199.03, '31': 47.32, '32': 47.17999999999999, '33': 21.259999999999998, '34': -3.5100000000000002, '35': 21.169999999999998, '36': 147.41, '37': 198.55, '38': 123.16, '39': 0.0, '40': 122.94, '41': 71.73, '42': 46.58, '43': 46.08, '44': 21.86, '45': 122.22, '46': 148.34000000000003, '47': 148.31, '48': 198.99, '49': 97.32000000000001, '50': 71.69, '51': 46.72, '52': 71.19, '53': 21.789999999999996, '54': 47.39, '55': 97.7, '56': 47.529999999999994, '57': 123.01, '58': 97.52000000000001, '59': 22.27, '60': 47.010000000000005, '61': 20.709999999999997, '62': 46.84, '63': 0.0, '64': 0.0, '65': 0.0, '66': 0.0, '67': 0.0, '68': 0.0, '69': 0.0, '70': 0.0, '71': 0.0, '72': 0.0, '73': 0.0, '74': 0.0, '75': 0.0, '76': 0.0, '77': 0.0, '78': 0.0, '79': 0.0, '80': 0.0}
+['WWWWWWWWW', 'WWWWWWWWW', 'EEEEEEEEE', 'EEEEEEEEE', 'SEEGEEEEE', 'EEEEEEEEE', 'EEEEEEEEE', 'WWWWWWWWW', 'WWWWWWWWW']
+wandb: Waiting for W&B process to finish... (success).
+wandb: - 0.064 MB of 0.065 MB uploaded (0.000 MB deduped)wandb: \ 0.065 MB of 0.065 MB uploaded (0.000 MB deduped)wandb: | 0.072 MB of 0.072 MB uploaded (0.000 MB deduped)wandb: / 0.009 MB of 0.132 MB uploaded (0.000 MB deduped)wandb: - 0.009 MB of 0.132 MB uploaded (0.000 MB deduped)wandb: \ 0.009 MB of 0.132 MB uploaded (0.000 MB deduped)wandb: | 0.132 MB of 0.132 MB uploaded (0.000 MB deduped)wandb: / 0.132 MB of 0.132 MB uploaded (0.000 MB deduped)wandb: - 0.132 MB of 0.132 MB uploaded (0.000 MB deduped)wandb: \ 0.132 MB of 0.132 MB uploaded (0.000 MB deduped)wandb: | 0.132 MB of 0.132 MB uploaded (0.000 MB deduped)wandb: / 0.132 MB of 0.132 MB uploaded (0.000 MB deduped)wandb: - 0.132 MB of 0.132 MB uploaded (0.000 MB deduped)wandb:                                                                                
+wandb: 
+wandb: Run history:
+wandb:                                                         global_step ▁
+wandb:                                      ray/tune/agent_timesteps_total ▁
+wandb:                           ray/tune/counters/num_agent_steps_sampled ▁
+wandb:                           ray/tune/counters/num_agent_steps_trained ▁
+wandb:                             ray/tune/counters/num_env_steps_sampled ▁
+wandb:                             ray/tune/counters/num_env_steps_trained ▁
+wandb:                                                       ray/tune/done ▁
+wandb:                                           ray/tune/episode_len_mean ▁
+wandb:                                         ray/tune/episode_reward_max ▁
+wandb:                                        ray/tune/episode_reward_mean ▁
+wandb:                                         ray/tune/episode_reward_min ▁
+wandb:                                         ray/tune/episodes_this_iter ▁
+wandb:                                             ray/tune/episodes_total ▁
+wandb:                                ray/tune/evaluation/episode_len_mean ▁
+wandb:                              ray/tune/evaluation/episode_reward_max ▁
+wandb:                             ray/tune/evaluation/episode_reward_mean ▁
+wandb:                              ray/tune/evaluation/episode_reward_min ▁
+wandb:                              ray/tune/evaluation/episodes_this_iter ▁
+wandb:               ray/tune/evaluation/num_agent_steps_sampled_this_iter ▁
+wandb:                 ray/tune/evaluation/num_env_steps_sampled_this_iter ▁
+wandb:                             ray/tune/evaluation/num_faulty_episodes ▁
+wandb:                             ray/tune/evaluation/num_healthy_workers ▁
+wandb:                           ray/tune/evaluation/num_recreated_workers ▁
+wandb:                              ray/tune/evaluation/per_cell_rewards/0 ▁
+wandb:                              ray/tune/evaluation/per_cell_rewards/1 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/10 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/11 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/12 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/13 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/14 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/15 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/16 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/17 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/18 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/19 ▁
+wandb:                              ray/tune/evaluation/per_cell_rewards/2 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/20 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/21 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/22 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/23 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/24 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/25 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/26 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/27 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/28 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/29 ▁
+wandb:                              ray/tune/evaluation/per_cell_rewards/3 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/30 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/31 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/32 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/33 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/34 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/35 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/36 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/37 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/38 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/39 ▁
+wandb:                              ray/tune/evaluation/per_cell_rewards/4 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/40 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/41 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/42 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/43 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/44 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/45 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/46 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/47 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/48 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/49 ▁
+wandb:                              ray/tune/evaluation/per_cell_rewards/5 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/50 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/51 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/52 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/53 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/54 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/55 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/56 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/57 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/58 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/59 ▁
+wandb:                              ray/tune/evaluation/per_cell_rewards/6 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/60 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/61 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/62 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/63 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/64 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/65 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/66 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/67 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/68 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/69 ▁
+wandb:                              ray/tune/evaluation/per_cell_rewards/7 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/70 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/71 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/72 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/73 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/74 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/75 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/76 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/77 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/78 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/79 ▁
+wandb:                              ray/tune/evaluation/per_cell_rewards/8 ▁
+wandb:                             ray/tune/evaluation/per_cell_rewards/80 ▁
+wandb:                              ray/tune/evaluation/per_cell_rewards/9 ▁
+wandb:          ray/tune/evaluation/sampler_perf/mean_action_processing_ms ▁
+wandb:                 ray/tune/evaluation/sampler_perf/mean_env_render_ms ▁
+wandb:                   ray/tune/evaluation/sampler_perf/mean_env_wait_ms ▁
+wandb:                  ray/tune/evaluation/sampler_perf/mean_inference_ms ▁
+wandb:         ray/tune/evaluation/sampler_perf/mean_raw_obs_processing_ms ▁
+wandb:                             ray/tune/evaluation/timesteps_this_iter ▁
+wandb:     ray/tune/info/learner/default_policy/learner_stats/cur_kl_coeff ▁
+wandb:           ray/tune/info/learner/default_policy/learner_stats/cur_lr ▁
+wandb:          ray/tune/info/learner/default_policy/learner_stats/entropy ▁
+wandb:    ray/tune/info/learner/default_policy/learner_stats/entropy_coeff ▁
+wandb:               ray/tune/info/learner/default_policy/learner_stats/kl ▁
+wandb:      ray/tune/info/learner/default_policy/learner_stats/policy_loss ▁
+wandb:       ray/tune/info/learner/default_policy/learner_stats/total_loss ▁
+wandb: ray/tune/info/learner/default_policy/learner_stats/vf_explained_var ▁
+wandb:          ray/tune/info/learner/default_policy/learner_stats/vf_loss ▁
+wandb:                               ray/tune/info/num_agent_steps_sampled ▁
+wandb:                               ray/tune/info/num_agent_steps_trained ▁
+wandb:                                 ray/tune/info/num_env_steps_sampled ▁
+wandb:                                 ray/tune/info/num_env_steps_trained ▁
+wandb:                                   ray/tune/iterations_since_restore ▁
+wandb:                                    ray/tune/num_agent_steps_sampled ▁
+wandb:                                    ray/tune/num_agent_steps_trained ▁
+wandb:                                      ray/tune/num_env_steps_sampled ▁
+wandb:                            ray/tune/num_env_steps_sampled_this_iter ▁
+wandb:                                      ray/tune/num_env_steps_trained ▁
+wandb:                            ray/tune/num_env_steps_trained_this_iter ▁
+wandb:                                        ray/tune/num_faulty_episodes ▁
+wandb:                                        ray/tune/num_healthy_workers ▁
+wandb:                                      ray/tune/num_recreated_workers ▁
+wandb:                                ray/tune/num_steps_trained_this_iter ▁
+wandb:                                      ray/tune/perf/cpu_util_percent ▁
+wandb:                                      ray/tune/perf/ram_util_percent ▁
+wandb:                     ray/tune/sampler_perf/mean_action_processing_ms ▁
+wandb:                            ray/tune/sampler_perf/mean_env_render_ms ▁
+wandb:                              ray/tune/sampler_perf/mean_env_wait_ms ▁
+wandb:                             ray/tune/sampler_perf/mean_inference_ms ▁
+wandb:                    ray/tune/sampler_perf/mean_raw_obs_processing_ms ▁
+wandb:                           ray/tune/sampler_results/episode_len_mean ▁
+wandb:                         ray/tune/sampler_results/episode_reward_max ▁
+wandb:                        ray/tune/sampler_results/episode_reward_mean ▁
+wandb:                         ray/tune/sampler_results/episode_reward_min ▁
+wandb:                         ray/tune/sampler_results/episodes_this_iter ▁
+wandb:                        ray/tune/sampler_results/num_faulty_episodes ▁
+wandb:     ray/tune/sampler_results/sampler_perf/mean_action_processing_ms ▁
+wandb:            ray/tune/sampler_results/sampler_perf/mean_env_render_ms ▁
+wandb:              ray/tune/sampler_results/sampler_perf/mean_env_wait_ms ▁
+wandb:             ray/tune/sampler_results/sampler_perf/mean_inference_ms ▁
+wandb:    ray/tune/sampler_results/sampler_perf/mean_raw_obs_processing_ms ▁
+wandb:                                         ray/tune/time_since_restore ▁
+wandb:                                           ray/tune/time_this_iter_s ▁
+wandb:                                    ray/tune/timers/learn_throughput ▁
+wandb:                                       ray/tune/timers/learn_time_ms ▁
+wandb:                                     ray/tune/timers/load_throughput ▁
+wandb:                                        ray/tune/timers/load_time_ms ▁
+wandb:                               ray/tune/timers/synch_weights_time_ms ▁
+wandb:                          ray/tune/timers/training_iteration_time_ms ▁
+wandb:                                    ray/tune/timesteps_since_restore ▁
+wandb:                                            ray/tune/timesteps_total ▁
+wandb:                                                ray/tune/warmup_time ▁
+wandb: 
+wandb: Run summary:
+wandb:                                                         global_step 4000
+wandb:                                      ray/tune/agent_timesteps_total 4000.0
+wandb:                           ray/tune/counters/num_agent_steps_sampled 4000.0
+wandb:                           ray/tune/counters/num_agent_steps_trained 4000.0
+wandb:                             ray/tune/counters/num_env_steps_sampled 4000.0
+wandb:                             ray/tune/counters/num_env_steps_trained 4000.0
+wandb:                                                       ray/tune/done 0.0
+wandb:                                           ray/tune/episode_len_mean 5.65909
+wandb:                                         ray/tune/episode_reward_max 500.0
+wandb:                                        ray/tune/episode_reward_mean 44.38068
+wandb:                                         ray/tune/episode_reward_min -19.6
+wandb:                                         ray/tune/episodes_this_iter 704.0
+wandb:                                             ray/tune/episodes_total 704.0
+wandb:                                ray/tune/evaluation/episode_len_mean 6.80247
+wandb:                              ray/tune/evaluation/episode_reward_max 500.0
+wandb:                             ray/tune/evaluation/episode_reward_mean 82.78395
+wandb:                              ray/tune/evaluation/episode_reward_min -19.0
+wandb:                              ray/tune/evaluation/episodes_this_iter 810.0
+wandb:               ray/tune/evaluation/num_agent_steps_sampled_this_iter 5510.0
+wandb:                 ray/tune/evaluation/num_env_steps_sampled_this_iter 5510.0
+wandb:                             ray/tune/evaluation/num_faulty_episodes 0.0
+wandb:                             ray/tune/evaluation/num_healthy_workers 2.0
+wandb:                           ray/tune/evaluation/num_recreated_workers 0.0
+wandb:                              ray/tune/evaluation/per_cell_rewards/0 0.0
+wandb:                              ray/tune/evaluation/per_cell_rewards/1 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/10 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/11 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/12 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/13 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/14 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/15 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/16 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/17 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/18 46.98
+wandb:                             ray/tune/evaluation/per_cell_rewards/19 46.99
+wandb:                              ray/tune/evaluation/per_cell_rewards/2 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/20 72.08
+wandb:                             ray/tune/evaluation/per_cell_rewards/21 98.16
+wandb:                             ray/tune/evaluation/per_cell_rewards/22 97.64
+wandb:                             ray/tune/evaluation/per_cell_rewards/23 46.75
+wandb:                             ray/tune/evaluation/per_cell_rewards/24 72.36
+wandb:                             ray/tune/evaluation/per_cell_rewards/25 -3.01
+wandb:                             ray/tune/evaluation/per_cell_rewards/26 -3.15
+wandb:                             ray/tune/evaluation/per_cell_rewards/27 173.00999
+wandb:                             ray/tune/evaluation/per_cell_rewards/28 97.03
+wandb:                             ray/tune/evaluation/per_cell_rewards/29 72.21
+wandb:                              ray/tune/evaluation/per_cell_rewards/3 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/30 72.7
+wandb:                             ray/tune/evaluation/per_cell_rewards/31 148.41
+wandb:                             ray/tune/evaluation/per_cell_rewards/32 72.48
+wandb:                             ray/tune/evaluation/per_cell_rewards/33 96.66
+wandb:                             ray/tune/evaluation/per_cell_rewards/34 21.12
+wandb:                             ray/tune/evaluation/per_cell_rewards/35 21.33
+wandb:                             ray/tune/evaluation/per_cell_rewards/36 71.31
+wandb:                             ray/tune/evaluation/per_cell_rewards/37 147.64999
+wandb:                             ray/tune/evaluation/per_cell_rewards/38 148.19
+wandb:                             ray/tune/evaluation/per_cell_rewards/39 0.0
+wandb:                              ray/tune/evaluation/per_cell_rewards/4 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/40 198.61
+wandb:                             ray/tune/evaluation/per_cell_rewards/41 46.87
+wandb:                             ray/tune/evaluation/per_cell_rewards/42 72.01
+wandb:                             ray/tune/evaluation/per_cell_rewards/43 46.07
+wandb:                             ray/tune/evaluation/per_cell_rewards/44 -4.11
+wandb:                             ray/tune/evaluation/per_cell_rewards/45 71.34
+wandb:                             ray/tune/evaluation/per_cell_rewards/46 97.83
+wandb:                             ray/tune/evaluation/per_cell_rewards/47 97.51
+wandb:                             ray/tune/evaluation/per_cell_rewards/48 199.09
+wandb:                             ray/tune/evaluation/per_cell_rewards/49 173.61
+wandb:                              ray/tune/evaluation/per_cell_rewards/5 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/50 122.44
+wandb:                             ray/tune/evaluation/per_cell_rewards/51 97.33
+wandb:                             ray/tune/evaluation/per_cell_rewards/52 -3.61
+wandb:                             ray/tune/evaluation/per_cell_rewards/53 46.42
+wandb:                             ray/tune/evaluation/per_cell_rewards/54 72.62
+wandb:                             ray/tune/evaluation/per_cell_rewards/55 21.89
+wandb:                             ray/tune/evaluation/per_cell_rewards/56 122.95
+wandb:                             ray/tune/evaluation/per_cell_rewards/57 47.16
+wandb:                             ray/tune/evaluation/per_cell_rewards/58 47.58
+wandb:                             ray/tune/evaluation/per_cell_rewards/59 21.11
+wandb:                              ray/tune/evaluation/per_cell_rewards/6 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/60 46.53
+wandb:                             ray/tune/evaluation/per_cell_rewards/61 22.22
+wandb:                             ray/tune/evaluation/per_cell_rewards/62 72.38
+wandb:                             ray/tune/evaluation/per_cell_rewards/63 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/64 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/65 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/66 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/67 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/68 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/69 0.0
+wandb:                              ray/tune/evaluation/per_cell_rewards/7 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/70 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/71 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/72 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/73 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/74 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/75 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/76 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/77 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/78 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/79 0.0
+wandb:                              ray/tune/evaluation/per_cell_rewards/8 0.0
+wandb:                             ray/tune/evaluation/per_cell_rewards/80 0.0
+wandb:                              ray/tune/evaluation/per_cell_rewards/9 0.0
+wandb:          ray/tune/evaluation/sampler_perf/mean_action_processing_ms 0.06436
+wandb:                 ray/tune/evaluation/sampler_perf/mean_env_render_ms 0.0
+wandb:                   ray/tune/evaluation/sampler_perf/mean_env_wait_ms 0.11691
+wandb:                  ray/tune/evaluation/sampler_perf/mean_inference_ms 1.84938
+wandb:         ray/tune/evaluation/sampler_perf/mean_raw_obs_processing_ms 0.39469
+wandb:                             ray/tune/evaluation/timesteps_this_iter 5510.0
+wandb:     ray/tune/info/learner/default_policy/learner_stats/cur_kl_coeff 0.2
+wandb:           ray/tune/info/learner/default_policy/learner_stats/cur_lr 5e-05
+wandb:          ray/tune/info/learner/default_policy/learner_stats/entropy 1.38303
+wandb:    ray/tune/info/learner/default_policy/learner_stats/entropy_coeff 0.0
+wandb:               ray/tune/info/learner/default_policy/learner_stats/kl 0.00326
+wandb:      ray/tune/info/learner/default_policy/learner_stats/policy_loss -0.0191
+wandb:       ray/tune/info/learner/default_policy/learner_stats/total_loss 8.96769
+wandb: ray/tune/info/learner/default_policy/learner_stats/vf_explained_var 0.00035
+wandb:          ray/tune/info/learner/default_policy/learner_stats/vf_loss 8.98613
+wandb:                               ray/tune/info/num_agent_steps_sampled 4000.0
+wandb:                               ray/tune/info/num_agent_steps_trained 4000.0
+wandb:                                 ray/tune/info/num_env_steps_sampled 4000.0
+wandb:                                 ray/tune/info/num_env_steps_trained 4000.0
+wandb:                                   ray/tune/iterations_since_restore 1.0
+wandb:                                    ray/tune/num_agent_steps_sampled 4000.0
+wandb:                                    ray/tune/num_agent_steps_trained 4000.0
+wandb:                                      ray/tune/num_env_steps_sampled 4000.0
+wandb:                            ray/tune/num_env_steps_sampled_this_iter 4000.0
+wandb:                                      ray/tune/num_env_steps_trained 4000.0
+wandb:                            ray/tune/num_env_steps_trained_this_iter 4000.0
+wandb:                                        ray/tune/num_faulty_episodes 0.0
+wandb:                                        ray/tune/num_healthy_workers 2.0
+wandb:                                      ray/tune/num_recreated_workers 0.0
+wandb:                                ray/tune/num_steps_trained_this_iter 4000.0
+wandb:                                      ray/tune/perf/cpu_util_percent 62.70635
+wandb:                                      ray/tune/perf/ram_util_percent 23.88624
+wandb:                     ray/tune/sampler_perf/mean_action_processing_ms 0.06926
+wandb:                            ray/tune/sampler_perf/mean_env_render_ms 0.0
+wandb:                              ray/tune/sampler_perf/mean_env_wait_ms 0.12759
+wandb:                             ray/tune/sampler_perf/mean_inference_ms 1.95585
+wandb:                    ray/tune/sampler_perf/mean_raw_obs_processing_ms 50.15234
+wandb:                           ray/tune/sampler_results/episode_len_mean 5.65909
+wandb:                         ray/tune/sampler_results/episode_reward_max 500.0
+wandb:                        ray/tune/sampler_results/episode_reward_mean 44.38068
+wandb:                         ray/tune/sampler_results/episode_reward_min -19.6
+wandb:                         ray/tune/sampler_results/episodes_this_iter 704.0
+wandb:                        ray/tune/sampler_results/num_faulty_episodes 0.0
+wandb:     ray/tune/sampler_results/sampler_perf/mean_action_processing_ms 0.06926
+wandb:            ray/tune/sampler_results/sampler_perf/mean_env_render_ms 0.0
+wandb:              ray/tune/sampler_results/sampler_perf/mean_env_wait_ms 0.12759
+wandb:             ray/tune/sampler_results/sampler_perf/mean_inference_ms 1.95585
+wandb:    ray/tune/sampler_results/sampler_perf/mean_raw_obs_processing_ms 50.15234
+wandb:                                         ray/tune/time_since_restore 132.2123
+wandb:                                           ray/tune/time_this_iter_s 132.2123
+wandb:                                    ray/tune/timers/learn_throughput 572.53198
+wandb:                                       ray/tune/timers/learn_time_ms 6986.50977
+wandb:                                     ray/tune/timers/load_throughput 448492.71875
+wandb:                                        ray/tune/timers/load_time_ms 8.919
+wandb:                               ray/tune/timers/synch_weights_time_ms 2.588
+wandb:                          ray/tune/timers/training_iteration_time_ms 121609.75781
+wandb:                                    ray/tune/timesteps_since_restore 0.0
+wandb:                                            ray/tune/timesteps_total 4000.0
+wandb:                                                ray/tune/warmup_time 25.45805
+wandb: 
+wandb: Synced pious-sea-137: https://wandb.ai/social-game-rl/active-rl/runs/2k0u34g3
+wandb: Synced 6 W&B file(s), 2 media file(s), 0 artifact file(s) and 1 other file(s)
+wandb: Find logs at: ./wandb/run-20221015_141724-2k0u34g3/logs

@@ -7,7 +7,7 @@
 #
 # Partition:
 #SBATCH --partition=savio3_gpu
-#
+#case 
 # Number of nodes:
 #SBATCH --nodes=1
 #
@@ -15,16 +15,16 @@
 #SBATCH --ntasks=1
 #
 # Processors per task (please always specify the total number of processors twice the number of GPUs):
-#SBATCH --cpus-per-task=24
+#SBATCH --cpus-per-task=2
 #
-#SBATCH --qos=savio_lowprio
+##SBATCH --qos=savio_lowprio
 ##SBATCH --qos=v100_gpu3_normal
 #Number of GPUs, this can be in the format of "gpu:[1-4]", or "gpu:K80:[1-4] with the type included
-#SBATCH --gres=gpu:A40:2
+#SBATCH --gres=gpu:GTX2080TI:1
 ##SBATCH --gpus-per-task=1
 #
 # Wall clock limit (8hrs):
-#SBATCH --time=15:59:59
+#SBATCH --time=2:59:59
 #
 # Run 48 examples concurrently
 #SBATCH --array=0
