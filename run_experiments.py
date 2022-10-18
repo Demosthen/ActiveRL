@@ -191,18 +191,18 @@ def add_args(parser):
     parser.add_argument(
         "--soft_horizon",
         type=int,
-        help="Horizon to compute reward over",
+        help="Horizon of timesteps to compute reward over",
         default=48
     )
     parser.add_argument(
         "--clip_param",
-        type=int,
-        help="Horizon to compute reward over",
+        type=float,
+        help="PPO clipping parameter",
         default=0.3
     )
     parser.add_argument(
         "--lr",
-        type=int,
+        type=float,
         help="Learning rate for PPO",
         default=5e-5
     )
