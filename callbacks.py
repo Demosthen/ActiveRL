@@ -26,10 +26,7 @@ import logging
 from PIL import Image
 import wandb
 from torch.utils.tensorboard import SummaryWriter
-
-ACTIVE_STATE_VISITATION_KEY = "active_state_visitation"
-UNCERTAINTY_LOSS_KEY = "uncertainty_loss"
-CL_ENV_KEYS = ["cold_Texas", "dry_Cali", "hot_new_york", "snowy_Cali_winter"]
+from constants import *
 
 class ActiveRLCallback(DefaultCallbacks):
     """
@@ -188,7 +185,6 @@ class ActiveRLCallback(DefaultCallbacks):
             env = base_env.get_unwrapped()[0]
             prefix = "eval_" if self.is_evaluating else "train_"
             episode.custom_metrics[prefix + CL_ENV_KEYS[env.curr_env_idx] + "_reward"] = episode.total_reward #/ self.config["evaluation_duration"]
-
 
     def on_learn_on_batch(self, policy: Policy, train_batch: SampleBatch, result: dict, **kwargs):
         """

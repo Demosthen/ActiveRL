@@ -94,17 +94,20 @@ def get_agent(env, env_config, eval_env_config, args, planning_model=None):
         config["horizon"] = 8760
     config["model"] = MODEL_DEFAULTS
     config["model"]["fcnet_activation"] = lambda: nn.Sequential(nn.Tanh(), nn.Dropout())#Custom_Activation
-    config["model"]["num_dropout_evals"] = 5
-    config["train_batch_size"] = 256
+    config["model"]["num_dropout_evals"] = args.num_dropout_evals
+    config["train_batch_size"] = args.train_batch_size
     #config["num_sgd_iter"] = 
     config["disable_env_checking"] = True
     # divide by 5: 1 driver, 2 workers, 1 evaluation workers
     config["num_gpus"] = args.num_gpus / 4
     config["num_gpus_per_worker"] = args.num_gpus / 4
     config["num_workers"] = 2
+    config["soft_horizon"] = args.soft_horizon
+    config["clip_param"] = args.clip_param
+    config["lr"] = args.lr
     if args.num_gpus == 0:
         config["num_gpus_per_worker"] = 0
-    config["evaluation_interval"] = 1
+    config["evaluation_interval"] = args.eval_interval
     config["evaluation_num_workers"] = 1
     if env is SimpleGridEnvWrapper:
         config["evaluation_duration"] = max(1, args.gw_steps_per_cell) * dummy_env.nrow * dummy_env.ncol # TODO: is there a better way of counting this?
@@ -172,6 +175,43 @@ def add_args(parser):
         help="Number of timesteps to collect from environment during training",
         default=5000
     )
+
+    # ALGORITHM PARAMS
+    parser.add_argument(
+        "--rbc",
+        action="store_true",
+        help="Uses a rule based controller instead of training an RL controller",
+    )
+    parser.add_argument(
+        "--train_batch_size",
+        type=int,
+        help="Size of training batch",
+        default=256
+    )
+    parser.add_argument(
+        "--soft_horizon",
+        type=int,
+        help="Horizon to compute reward over",
+        default=48
+    )
+    parser.add_argument(
+        "--clip_param",
+        type=int,
+        help="Horizon to compute reward over",
+        default=0.3
+    )
+    parser.add_argument(
+        "--lr",
+        type=int,
+        help="Learning rate for PPO",
+        default=5e-5
+    )
+    parser.add_argument(
+        "--eval_interval",
+        type=int,
+        help="Number of training steps between evaluation runs",
+        default=1
+    )
     # CITYLEARN ENV PARAMS
     parser.add_argument(
         "--cl_filename",
@@ -229,6 +269,12 @@ def add_args(parser):
         type=float,
         help="What relative weight to give to the planning uncertainty compared to agent uncertainty",
         default=1
+    )
+    parser.add_argument(
+        "--num_dropout_evals",
+        type=int,
+        help="Number of dropout evaluations to run to estimate uncertainty",
+        default=5
     )
 
 if __name__=="__main__":
@@ -290,8 +336,6 @@ if __name__=="__main__":
         if args.wandb:
             img = wandb.Image(img_arr, caption="Rewards from starting from each cell")
             wandb.log({"per_cell_reward_image": img})
-
-
 
     # obs = env.reset()
     # for i in range(16):
