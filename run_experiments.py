@@ -35,8 +35,7 @@ import random
 class Environments(Enum):
     GRIDWORLD = "gw"
     CITYLEARN = "cl"
-CL_FOLDER = "./data/single_building"
-CL_EVAL_PATHS = [os.path.join(CL_FOLDER, "Test_cold_Texas/schema.json"), os.path.join(CL_FOLDER, "Test_dry_Cali/schema.json"), os.path.join(CL_FOLDER, "Test_hot_new_york/schema.json"), os.path.join(CL_FOLDER, "Test_snowy_Cali_winter/schema.json")]
+
 
 
 """SimpleGrid is a super simple gridworld environment for OpenAI gym. It is easy to use and 
@@ -140,6 +139,11 @@ def get_log_path(log_dir):
     os.makedirs(path, exist_ok=True)
     return path
 
+def define_constants(args):
+    global CL_FOLDER, CL_EVAL_PATHS
+    CL_FOLDER = "./data/single_building" if args.single_building_eval else "./data/all_buildings"
+    CL_EVAL_PATHS = [os.path.join(CL_FOLDER, "Test_cold_Texas/schema.json"), os.path.join(CL_FOLDER, "Test_dry_Cali/schema.json"), os.path.join(CL_FOLDER, "Test_hot_new_york/schema.json"), os.path.join(CL_FOLDER, "Test_snowy_Cali_winter/schema.json")]
+
 def add_args(parser):
     # GENERAL PARAMS
     parser.add_argument(
@@ -179,11 +183,6 @@ def add_args(parser):
 
     # ALGORITHM PARAMS
     parser.add_argument(
-        "--rbc",
-        action="store_true",
-        help="Uses a rule based controller instead of training an RL controller",
-    )
-    parser.add_argument(
         "--train_batch_size",
         type=int,
         help="Size of training batch",
@@ -219,6 +218,11 @@ def add_args(parser):
         type=str,
         help="schema file to read citylearn specs from.",
         default="./data/citylearn_challenge_2022_phase_1/schema.json"
+    )
+    parser.add_argument(
+        "--single_building_eval",
+        action="store_true",
+        help="Whether or not to use the single building files to evaluate",
     )
 
     # GRIDWORLD ENV PARAMS
@@ -282,6 +286,7 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser()
     add_args(parser)
     args = parser.parse_args()
+    define_constants(args)
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
