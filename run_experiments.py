@@ -35,8 +35,9 @@ import random
 class Environments(Enum):
     GRIDWORLD = "gw"
     CITYLEARN = "cl"
+CL_FOLDER = "./data/single_building"
+CL_EVAL_PATHS = [os.path.join(CL_FOLDER, "Test_cold_Texas/schema.json"), os.path.join(CL_FOLDER, "Test_dry_Cali/schema.json"), os.path.join(CL_FOLDER, "Test_hot_new_york/schema.json"), os.path.join(CL_FOLDER, "Test_snowy_Cali_winter/schema.json")]
 
-CL_EVAL_PATHS = ["./data/Test_cold_Texas/schema.json", "./data/Test_dry_Cali/schema.json", "./data/Test_hot_new_york/schema.json", "./data/Test_snowy_Cali_winter/schema.json"]
 
 """SimpleGrid is a super simple gridworld environment for OpenAI gym. It is easy to use and 
 customise and it is intended to offer an environment for quick testing and prototyping 
