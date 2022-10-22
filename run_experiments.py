@@ -125,7 +125,7 @@ def get_log_path(log_dir):
 
 def define_constants(args):
     global CL_FOLDER, CL_EVAL_PATHS
-    CL_FOLDER = "./data/single_building" if args.single_building_eval else "./data/all_buildings"
+    CL_FOLDER = args.cl_eval_folder#"./data/single_building" if args.single_building_eval else "./data/all_buildings"
     CL_EVAL_PATHS = [os.path.join(CL_FOLDER, "Test_cold_Texas/schema.json"), os.path.join(CL_FOLDER, "Test_dry_Cali/schema.json"), os.path.join(CL_FOLDER, "Test_hot_new_york/schema.json"), os.path.join(CL_FOLDER, "Test_snowy_Cali_winter/schema.json")]
 
 def add_args(parser):
