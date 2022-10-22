@@ -37,22 +37,6 @@ class Environments(Enum):
     CITYLEARN = "cl"
 
 
-
-"""SimpleGrid is a super simple gridworld environment for OpenAI gym. It is easy to use and 
-customise and it is intended to offer an environment for quick testing and prototyping 
-different RL algorithms.
-
-It is also efficient, lightweight and has few dependencies (gym, numpy, matplotlib).
-
-SimpleGrid involves navigating a grid from Start(S) (red tile) to Goal(G) (green tile) 
-without colliding with any Wall(W) (black tiles) by walking over the Empty(E) (white tiles) 
-cells. The yellow circle denotes the agent's current position.
-
-Optionally, it is possible to introduce a noise in the environment that makes the agent move 
-in a random direction that can be different than the desired one.
-"""
-
-
 def read_gridworld(filename):
     with open(filename, 'r') as f:
         grid_str = f.read()
@@ -220,9 +204,10 @@ def add_args(parser):
         default="./data/citylearn_challenge_2022_phase_1/schema.json"
     )
     parser.add_argument(
-        "--single_building_eval",
-        action="store_true",
-        help="Whether or not to use the single building files to evaluate",
+        "--cl_eval_folder",
+        type=str,
+        default="./data/two_buildings",
+        help="Which folder\'s building files to evaluate with",
     )
 
     # GRIDWORLD ENV PARAMS
