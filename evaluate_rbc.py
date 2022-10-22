@@ -8,7 +8,7 @@ from rbc_agent import RBCAgent
 from constants import *
 
 # %%
-paths = [f"data/single_building/Test_{env_name}" for env_name in CL_ENV_KEYS]
+paths = [f"data/two_buildings/Test_{env_name}" for env_name in CL_ENV_KEYS]
 schemas = [os.path.join(cl_path, "schema.json") for cl_path in paths]
 env_configs = [{
     "schema": schema,
