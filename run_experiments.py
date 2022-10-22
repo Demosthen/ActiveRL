@@ -206,7 +206,7 @@ def add_args(parser):
     parser.add_argument(
         "--cl_eval_folder",
         type=str,
-        default="./data/two_buildings",
+        default="./data/all_buildings",
         help="Which folder\'s building files to evaluate with",
     )
 
