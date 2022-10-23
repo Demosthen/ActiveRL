@@ -5,6 +5,7 @@ import numpy as np
 import torch as th
 from ray.rllib.policy.sample_batch import SampleBatch
 from ray.rllib.algorithms.ppo import PPOTorchPolicy
+from rbc_agent import RBCAgent
 
 class UncertainPPOTorchPolicy(PPOTorchPolicy):
     """PyTorch policy class used with PPO."""
@@ -18,6 +19,12 @@ class UncertainPPOTorchPolicy(PPOTorchPolicy):
         )
         print(self.model)
         self.num_dropout_evals = config["model"]["num_dropout_evals"]
+        self.use_rbc_residual = config["cl_use_rbc_residual"]
+        if self.use_rbc_residual:
+            #Shrink initial weights to make sure initial actions are close to just passing rbc controller
+            with th.no_grad():
+                self._logits._model[0].weight /= 1000
+                self._logits._model[0].bias /= 1000
     
     def get_value(self, **input_dict):
         input_dict = SampleBatch(input_dict)

@@ -209,6 +209,12 @@ def add_args(parser):
         default="./data/all_buildings",
         help="Which folder\'s building files to evaluate with",
     )
+    parser.add_argument(
+        "--cl_use_rbc_residual",
+        type=int,
+        default=0,
+        help="Whether or not to train actions as residuals on the rbc"
+    )
 
     # GRIDWORLD ENV PARAMS
     parser.add_argument(
