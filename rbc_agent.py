@@ -23,5 +23,5 @@ class RBCAgent:
         elif (1 <= hour <= 8) or (22 <= hour <= 24):
             # Early nightime: store DHW and/or cooling energy
             action = 0.091
-        action = np.repeat(np.array(action), repeats=9)
+        action = np.repeat(np.array(action), repeats=self.action_space.shape[-1])
         return action

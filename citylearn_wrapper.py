@@ -25,11 +25,8 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
         in config["schema"] instead of a single path.
     """
     def __init__(self, config: Dict):
-        # read in planning model ckpt path and whether this env is used for evaluation or not
-        planning_model_ckpt = config["planning_model_ckpt"] if "planning_model_ckpt" in config else None
-        self.is_evaluation = config["is_evaluation"]
-        self.use_rbc_residual = config["cl_use_rbc_residual"]
-
+        
+        
         config = self.process_config(config)
 
         self.initialize_subenvs(config)
@@ -37,7 +34,7 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
         # Makes sure __get_attr__ and other functions are overrided by gym Wrapper for current env
         super().__init__(self.env)
 
-        self.initialize_planning_model(planning_model_ckpt)
+        self.initialize_planning_model(self.planning_model_ckpt)
         
         self.observation_space = self.env.observation_space[0]
         self.action_space = self.env.action_space[0]
@@ -51,11 +48,22 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
         self.time_step = 0
 
     def process_config(self, config):
-        # Get config ready to pass into CityLearnEnv
+        
+        # Read extra config arguments
+        # read in planning model ckpt path and whether this env is used for evaluation or not
+        self.planning_model_ckpt = config["planning_model_ckpt"] if "planning_model_ckpt" in config else None
+        self.is_evaluation = config["is_evaluation"]
+        self.use_rbc_residual = config["use_rbc_residual"]
+        self.action_multiplier = config["action_multiplier"]
+
+        # Get config ready to pass into CityLearnEnv# Get config ready to pass into CityLearnEnv
         config = deepcopy(config)
         if "planning_model_ckpt" in config:
             del config["planning_model_ckpt"] # Citylearn will complain if you pass it this extra parameter
         del config["is_evaluation"]
+        del config["use_rbc_residual"]
+        del config["action_multiplier"]
+        
         return config
 
     def initialize_subenvs(self, config):
@@ -95,9 +103,12 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
     # Override `action` to custom process the original action
     # coming from the policy.
     def action(self, observation, action):
+        #eval_str = "EVALUATION" if self.is_evaluation else "TRAINING"
+        #print(f"{eval_str} ACTION STATS: {action.min()}, {action.max()} RBC: {self.use_rbc_residual}")
         if self.use_rbc_residual:
             rbc_action = self.rbc.compute_action(observation)
-            action += rbc_action
+            #action = rbc_action
+            action = self.action_multiplier * action + rbc_action
         return [action]
 
     def compute_reward(self, obs: Union[np.ndarray, torch.Tensor]):

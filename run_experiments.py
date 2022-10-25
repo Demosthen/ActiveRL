@@ -77,8 +77,9 @@ def get_agent(env, env_config, eval_env_config, args, planning_model=None):
     if args.env == "cl":
         config["horizon"] = 8760
     config["model"] = MODEL_DEFAULTS
-    config["model"]["fcnet_activation"] = lambda: nn.Sequential(nn.Tanh(), nn.Dropout())#Custom_Activation
+    config["model"]["fcnet_activation"] = lambda: nn.Sequential(nn.Tanh(), nn.Dropout(p=args.dropout))#Custom_Activation
     config["model"]["num_dropout_evals"] = args.num_dropout_evals
+    config["model"]["shrink_init"] = args.cl_use_rbc_residual
     config["train_batch_size"] = args.train_batch_size
     #config["num_sgd_iter"] = 
     config["disable_env_checking"] = True
@@ -215,6 +216,12 @@ def add_args(parser):
         default=0,
         help="Whether or not to train actions as residuals on the rbc"
     )
+    parser.add_argument(
+        "--cl_action_multiplier",
+        type=float,
+        default=1,
+        help="A scalar to scale the agent's outputs by"
+    )
 
     # GRIDWORLD ENV PARAMS
     parser.add_argument(
@@ -272,6 +279,12 @@ def add_args(parser):
         help="Number of dropout evaluations to run to estimate uncertainty",
         default=5
     )
+    parser.add_argument(
+        "--dropout",
+        type=float,
+        help="Dropout parameter",
+        default = 0.5
+    )
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
@@ -296,7 +309,9 @@ if __name__=="__main__":
         env_config = {
             "schema": Path(args.cl_filename),
             "planning_model_ckpt": args.planning_model_ckpt,
-            "is_evaluation": False
+            "is_evaluation": False,
+            "use_rbc_residual": args.cl_use_rbc_residual,
+            "action_multiplier": args.cl_action_multiplier
         }
         eval_env_config = deepcopy(env_config)
         eval_env_config["schema"] = [Path(filename) for filename in CL_EVAL_PATHS]
