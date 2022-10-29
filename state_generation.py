@@ -32,7 +32,7 @@ class BoundedUncertaintyMaximization(cooper.ConstrainedMinimizationProblem):
             agent_uncertainty = self.reward_model.compute_uncertainty(obs)
             denom = 1 + self.planning_uncertainty_weight
             loss = (- agent_uncertainty + self.planning_uncertainty_weight * planning_uncertainty) / denom
-            print("IS THIS LOSS? ", loss, loss.shape)
+            #print("IS THIS LOSS? ", loss, loss.shape)
 
         # Entries of p >= 0 (equiv. -p <= 0)
         ineq_defect = torch.cat([obs[self.lower_bounded_idxs] - self.lower_bounds, self.upper_bounds - obs[self.upper_bounded_idxs]])
@@ -102,14 +102,15 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
     for _ in range(num_descent_steps):
         optimizer.zero_grad()
         agent.model.zero_grad()
-        uncertainty = agent.compute_value_uncertainty(obs)
         if use_coop:
             lagrangian = formulation.composite_objective(cmp.closure, obs)
             formulation.custom_backward(lagrangian)
             optimizer.step(cmp.closure, obs)
+            uncertainties.append(cmp.state)
         else:
+            uncertainty = agent.compute_value_uncertainty(obs)
             loss = - uncertainty.sum()
             loss.backward()
             optimizer.step()
-        uncertainties.append(uncertainty)
+            uncertainties.append(uncertainty)
     return obs, uncertainties

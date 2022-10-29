@@ -95,8 +95,8 @@ if __name__ == "__main__":
     
     # %%
     print(obs_size, act_size)
-    model = LitPlanningModel(obs_size, act_size, hidden_size, num_layers=20, X_mean=dataset.X_mean, y_mean=dataset.y_mean, X_std=dataset.X_std, y_std=dataset.y_std, lr=0.00001)
-    
+    #model = LitPlanningModel(obs_size, act_size, hidden_size, num_layers=20, X_mean=dataset.X_mean, y_mean=dataset.y_mean, X_std=dataset.X_std, y_std=dataset.y_std, lr=0.00001)
+    model = LitPlanningModel.load_from_checkpoint("models/model.ckpt")
     # %%
     from pytorch_lightning.loggers import WandbLogger
     from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor

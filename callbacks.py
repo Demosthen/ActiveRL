@@ -26,9 +26,7 @@ import logging
 from PIL import Image
 import wandb
 from torch.utils.tensorboard import SummaryWriter
-
-ACTIVE_STATE_VISITATION_KEY = "active_state_visitation"
-CL_ENV_KEYS = ["cold_Texas", "dry_Cali", "hot_new_york", "snowy_Cali_winter"]
+from constants import *
 
 class ActiveRLCallback(DefaultCallbacks):
     """
@@ -67,10 +65,10 @@ class ActiveRLCallback(DefaultCallbacks):
         """
         This method gets called at the beginning of Algorithm.evaluate().
         """
-        self.is_evaluating = True
+        #self.is_evaluating = True
         
-        if self.num_cells > 0:
-            self.eval_rewards = [0 for _ in range(self.num_cells)]
+        # if self.num_cells > 0:
+        #     self.eval_rewards = [0 for _ in range(self.num_cells)]
 
         def activate_eval_metrics(worker):
             if hasattr(worker, "callbacks"):
@@ -84,7 +82,7 @@ class ActiveRLCallback(DefaultCallbacks):
         """
         Runs at the end of Algorithm.evaluate().
         """
-        self.is_evaluating = False
+        #self.is_evaluating = False
         if self.is_gridworld:
             def access_eval_metrics(worker):
                 if hasattr(worker, "callbacks"):
@@ -137,19 +135,24 @@ class ActiveRLCallback(DefaultCallbacks):
                 initial_state[self.cell_index % self.num_cells] = 1
                 env.reset(initial_state=initial_state)
 
-            elif self.run_active_rl:
+            elif not self.is_evaluating and self.run_active_rl:
                 new_states, uncertainties = generate_states(policy, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
-                batch_size=self.batch_size, use_coop=self.use_coop, planning_model=self.planning_model, reward_model=self.reward_model, planning_uncertainty_weight=self.planning_uncertainty_weight)
+                            batch_size=self.batch_size, use_coop=self.use_coop, planning_model=self.planning_model, reward_model=self.reward_model, planning_uncertainty_weight=self.planning_uncertainty_weight)
                 new_states = new_states.detach().cpu().flatten()
-                
+                episode.custom_metrics[UNCERTAINTY_LOSS_KEY] = uncertainties[-1].loss.detach().cpu().numpy()
                 # print(env.observation_space)
                 env.reset(initial_state=new_states)
                 if self.is_gridworld:
                     if ACTIVE_STATE_VISITATION_KEY not in episode.custom_metrics:
                         episode.hist_data[ACTIVE_STATE_VISITATION_KEY] = []
                     episode.hist_data[ACTIVE_STATE_VISITATION_KEY].append(new_states.numpy().argmax())
-            if self.is_citylearn:
-                episode.hist_data[CL_ENV_KEYS[env.curr_env_idx]] = []
+            elif self.is_evaluating and self.is_citylearn:
+                #Rotate in the next climate zone
+                env.next_env()
+                
+            # if self.is_citylearn:
+            #     prefix = "eval_" if self.is_evaluating else "train_"
+            #     episode.hist_data[prefix + CL_ENV_KEYS[env.curr_env_idx]] = []
 
     def on_episode_end(
         self,
@@ -180,8 +183,8 @@ class ActiveRLCallback(DefaultCallbacks):
             self.eval_rewards[self.cell_index % self.num_cells] += episode.total_reward / (self.config["evaluation_duration"] // self.num_cells) 
         if self.is_citylearn:
             env = base_env.get_unwrapped()[0]
-            episode.custom_metrics[CL_ENV_KEYS[env.curr_env_idx] + "_reward"] = episode.total_reward #/ self.config["evaluation_duration"]
-
+            prefix = "eval_" if self.is_evaluating else "train_"
+            episode.custom_metrics[prefix + CL_ENV_KEYS[env.curr_env_idx] + "_reward"] = episode.total_reward #/ self.config["evaluation_duration"]
 
     def on_learn_on_batch(self, policy: Policy, train_batch: SampleBatch, result: dict, **kwargs):
         """
@@ -201,7 +204,6 @@ class ActiveRLCallback(DefaultCallbacks):
             self.reward_optim.zero_grad()
             rew_hat = self.reward_model(obs).squeeze()
             loss = F.mse_loss(rew, rew_hat)
-            print("REWARD LOSS", loss)
             result["reward_predictor_loss"] = loss.detach().cpu().numpy()
             loss.backward()
             self.reward_optim.step()

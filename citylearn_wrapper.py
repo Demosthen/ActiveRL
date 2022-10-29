@@ -15,6 +15,7 @@ from citylearn.energy_model import Battery, ElectricHeater, HeatPump, PV, Storag
 from gym.envs.toy_text.utils import categorical_sample
 from citylearn_model_training.planning_model import get_planning_model
 from gym.spaces.box import Box
+from rbc_agent import RBCAgent
 
 class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, gym.core.RewardWrapper):
     """
@@ -24,16 +25,48 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
         in config["schema"] instead of a single path.
     """
     def __init__(self, config: Dict):
-        # read in planning model ckpt path and whether this env is used for evaluation or not
-        planning_model_ckpt = config["planning_model_ckpt"] if "planning_model_ckpt" in config else None
-        self.is_evaluation = config["is_evaluation"]
+        
+        
+        config = self.process_config(config)
 
-        # Get config ready to pass into CityLearnEnv
+        self.initialize_subenvs(config)
+        
+        # Makes sure __get_attr__ and other functions are overrided by gym Wrapper for current env
+        super().__init__(self.env)
+
+        self.initialize_planning_model(self.planning_model_ckpt)
+        
+        self.observation_space = self.env.observation_space[0]
+        self.action_space = self.env.action_space[0]
+
+        self.initialize_rbc(self.action_space)
+
+        # Bookkeeping to make sure we reset after the right number of timesteps
+        self.curr_env_idx = 0
+        self.curr_obs = self.reset()
+        self.time_steps = self.env.time_steps
+        self.time_step = 0
+
+    def process_config(self, config):
+        
+        # Read extra config arguments
+        # read in planning model ckpt path and whether this env is used for evaluation or not
+        self.planning_model_ckpt = config["planning_model_ckpt"] if "planning_model_ckpt" in config else None
+        self.is_evaluation = config["is_evaluation"]
+        self.use_rbc_residual = config["use_rbc_residual"]
+        self.action_multiplier = config["action_multiplier"]
+
+        # Get config ready to pass into CityLearnEnv# Get config ready to pass into CityLearnEnv
         config = deepcopy(config)
         if "planning_model_ckpt" in config:
             del config["planning_model_ckpt"] # Citylearn will complain if you pass it this extra parameter
         del config["is_evaluation"]
+        del config["use_rbc_residual"]
+        del config["action_multiplier"]
+        
+        return config
 
+    def initialize_subenvs(self, config):
         if isinstance(config["schema"], list):
             configs = [deepcopy(config) for _ in config["schema"]]
             for i, schema in enumerate(config["schema"]):
@@ -45,24 +78,17 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
             self.envs = [CityLearnEnv(**config)]
             print("TRAIN ENV SCHEMA: ", [env.schema["root_directory"] for env in self.envs])
         self.env = self.envs[0]
-        # Makes sure __get_attr__ and other functions are overrided by gym Wrapper for current env
-        super().__init__(self.env)
+        
+    def initialize_rbc(self, action_space):
+        self.rbc = RBCAgent(action_space)
 
+    def initialize_planning_model(self, planning_model_ckpt):
         #Implement switch between planning model and citylearn
         if planning_model_ckpt is not None:
             self.planning_model = get_planning_model(planning_model_ckpt)
             self.planning_model.eval_batchnorm()
         else:
             self.planning_model = None
-        self.observation_space = self.env.observation_space[0]
-        self.action_space = self.env.action_space[0]
-
-        # Bookkeeping to make sure we reset after the right number of timesteps
-        self.curr_env_idx = 0
-        self.curr_obs = self.reset()
-        self.time_steps = self.env.time_steps
-        self.time_step = 0
-        
 
     # Override `observation` to custom process the original observation
     # coming from the env.
@@ -72,11 +98,17 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
     # Override `reward` to custom process the original reward
     # coming from the env.
     def reward(self, reward):
-        return reward[0]
+        return reward[0] / 100
 
     # Override `action` to custom process the original action
     # coming from the policy.
-    def action(self, action):
+    def action(self, observation, action):
+        #eval_str = "EVALUATION" if self.is_evaluation else "TRAINING"
+        #print(f"{eval_str} ACTION STATS: {action.min()}, {action.max()} RBC: {self.use_rbc_residual}")
+        if self.use_rbc_residual:
+            rbc_action = self.rbc.compute_action(observation)
+            #action = rbc_action
+            action = self.action_multiplier * action + rbc_action
         return [action]
 
     def compute_reward(self, obs: Union[np.ndarray, torch.Tensor]):
@@ -97,16 +129,15 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
         return - (carbon_emission + price)
 
     def step(self, action):
-        if self.planning_model is None:
-            obs, rew, done, info = self.env.step(self.action(action))
+        if self.planning_model is None or self.is_evaluation:
+            obs, rew, done, info = self.env.step(self.action(self.curr_obs, action))
             return self.observation(obs), self.reward(rew), done, info
         else:
-
-            planning_input = np.atleast_2d(np.concatenate([self.curr_obs, action]))
+            planning_input = np.atleast_2d(np.concatenate([self.curr_obs, self.action(action)[0]]))
             self.curr_obs = self.planning_model.forward_np(planning_input).flatten()
             rew = self.compute_reward(self.curr_obs) #- self.planning_model.compute_uncertainty(planning_input)
             self.next_time_step()
-            return self.curr_obs, rew, self.done, {}
+            return self.observation([self.curr_obs]), self.reward([rew]), self.done, {}
 
     @property
     def done(self) -> bool:
@@ -142,13 +173,11 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
     def reset(self, initial_state=None):
         
         self.reset_time_step()
-        if self.planning_model is None:
-            self.next_env()
+        if self.is_evaluation:
             return self.observation(self.env.reset())
+        elif initial_state is not None:
+            self.curr_obs = initial_state
         else:
-            if initial_state is not None:
-                self.curr_obs = initial_state
-            else:
-                self.curr_obs = self.observation(self.env.reset())
-            return self.curr_obs
+            self.curr_obs = self.observation(self.env.reset())
+        return self.curr_obs
         

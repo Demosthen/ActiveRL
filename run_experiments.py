@@ -36,22 +36,6 @@ class Environments(Enum):
     GRIDWORLD = "gw"
     CITYLEARN = "cl"
 
-CL_EVAL_PATHS = ["./data/Test_cold_Texas/schema.json", "./data/Test_dry_Cali/schema.json", "./data/Test_hot_new_york/schema.json", "./data/Test_snowy_Cali_winter/schema.json"]
-
-"""SimpleGrid is a super simple gridworld environment for OpenAI gym. It is easy to use and 
-customise and it is intended to offer an environment for quick testing and prototyping 
-different RL algorithms.
-
-It is also efficient, lightweight and has few dependencies (gym, numpy, matplotlib).
-
-SimpleGrid involves navigating a grid from Start(S) (red tile) to Goal(G) (green tile) 
-without colliding with any Wall(W) (black tiles) by walking over the Empty(E) (white tiles) 
-cells. The yellow circle denotes the agent's current position.
-
-Optionally, it is possible to introduce a noise in the environment that makes the agent move 
-in a random direction that can be different than the desired one.
-"""
-
 
 def read_gridworld(filename):
     with open(filename, 'r') as f:
@@ -93,17 +77,23 @@ def get_agent(env, env_config, eval_env_config, args, planning_model=None):
     if args.env == "cl":
         config["horizon"] = 8760
     config["model"] = MODEL_DEFAULTS
-    config["model"]["fcnet_activation"] = lambda: nn.Sequential(nn.Tanh(), nn.Dropout())#Custom_Activation
-    config["model"]["num_dropout_evals"] = 10
+    config["model"]["fcnet_activation"] = lambda: nn.Sequential(nn.Tanh(), nn.Dropout(p=args.dropout))#Custom_Activation
+    config["model"]["num_dropout_evals"] = args.num_dropout_evals
+    config["model"]["shrink_init"] = args.cl_use_rbc_residual
+    config["train_batch_size"] = args.train_batch_size
+    #config["num_sgd_iter"] = 
     config["disable_env_checking"] = True
-    # divide by 8: 1 driver, 3 workers, 4 evaluation workers
-    config["num_gpus"] = args.num_gpus / 5
-    config["num_gpus_per_worker"] = args.num_gpus / 5
+    # divide by 5: 1 driver, 2 workers, 1 evaluation workers
+    config["num_gpus"] = args.num_gpus / 4
+    config["num_gpus_per_worker"] = args.num_gpus / 4
     config["num_workers"] = 2
+    config["soft_horizon"] = args.soft_horizon
+    config["clip_param"] = args.clip_param
+    config["lr"] = args.lr
     if args.num_gpus == 0:
         config["num_gpus_per_worker"] = 0
-    config["evaluation_interval"] = 1
-    config["evaluation_num_workers"] = 2
+    config["evaluation_interval"] = args.eval_interval
+    config["evaluation_num_workers"] = 1
     if env is SimpleGridEnvWrapper:
         config["evaluation_duration"] = max(1, args.gw_steps_per_cell) * dummy_env.nrow * dummy_env.ncol # TODO: is there a better way of counting this?
     elif env is CityLearnEnvWrapper:
@@ -133,6 +123,11 @@ def get_log_path(log_dir):
     path = os.path.join(".", log_dir, date_time)
     os.makedirs(path, exist_ok=True)
     return path
+
+def define_constants(args):
+    global CL_FOLDER, CL_EVAL_PATHS
+    CL_FOLDER = args.cl_eval_folder#"./data/single_building" if args.single_building_eval else "./data/all_buildings"
+    CL_EVAL_PATHS = [os.path.join(CL_FOLDER, "Test_cold_Texas/schema.json"), os.path.join(CL_FOLDER, "Test_dry_Cali/schema.json"), os.path.join(CL_FOLDER, "Test_hot_new_york/schema.json"), os.path.join(CL_FOLDER, "Test_snowy_Cali_winter/schema.json")]
 
 def add_args(parser):
     # GENERAL PARAMS
@@ -170,12 +165,62 @@ def add_args(parser):
         help="Number of timesteps to collect from environment during training",
         default=5000
     )
+
+    # ALGORITHM PARAMS
+    parser.add_argument(
+        "--train_batch_size",
+        type=int,
+        help="Size of training batch",
+        default=256
+    )
+    parser.add_argument(
+        "--soft_horizon",
+        type=int,
+        help="Horizon of timesteps to compute reward over",
+        default=48
+    )
+    parser.add_argument(
+        "--clip_param",
+        type=float,
+        help="PPO clipping parameter",
+        default=0.3
+    )
+    parser.add_argument(
+        "--lr",
+        type=float,
+        help="Learning rate for PPO",
+        default=5e-5
+    )
+    parser.add_argument(
+        "--eval_interval",
+        type=int,
+        help="Number of training steps between evaluation runs",
+        default=1
+    )
     # CITYLEARN ENV PARAMS
     parser.add_argument(
         "--cl_filename",
         type=str,
         help="schema file to read citylearn specs from.",
         default="./data/citylearn_challenge_2022_phase_1/schema.json"
+    )
+    parser.add_argument(
+        "--cl_eval_folder",
+        type=str,
+        default="./data/all_buildings",
+        help="Which folder\'s building files to evaluate with",
+    )
+    parser.add_argument(
+        "--cl_use_rbc_residual",
+        type=int,
+        default=0,
+        help="Whether or not to train actions as residuals on the rbc"
+    )
+    parser.add_argument(
+        "--cl_action_multiplier",
+        type=float,
+        default=1,
+        help="A scalar to scale the agent's outputs by"
     )
 
     # GRIDWORLD ENV PARAMS
@@ -228,11 +273,24 @@ def add_args(parser):
         help="What relative weight to give to the planning uncertainty compared to agent uncertainty",
         default=1
     )
+    parser.add_argument(
+        "--num_dropout_evals",
+        type=int,
+        help="Number of dropout evaluations to run to estimate uncertainty",
+        default=5
+    )
+    parser.add_argument(
+        "--dropout",
+        type=float,
+        help="Dropout parameter",
+        default = 0.5
+    )
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
     add_args(parser)
     args = parser.parse_args()
+    define_constants(args)
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
@@ -251,7 +309,9 @@ if __name__=="__main__":
         env_config = {
             "schema": Path(args.cl_filename),
             "planning_model_ckpt": args.planning_model_ckpt,
-            "is_evaluation": False
+            "is_evaluation": False,
+            "use_rbc_residual": args.cl_use_rbc_residual,
+            "action_multiplier": args.cl_action_multiplier
         }
         eval_env_config = deepcopy(env_config)
         eval_env_config["schema"] = [Path(filename) for filename in CL_EVAL_PATHS]
@@ -288,8 +348,6 @@ if __name__=="__main__":
         if args.wandb:
             img = wandb.Image(img_arr, caption="Rewards from starting from each cell")
             wandb.log({"per_cell_reward_image": img})
-
-
 
     # obs = env.reset()
     # for i in range(16):
