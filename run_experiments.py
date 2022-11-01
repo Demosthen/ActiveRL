@@ -1,3 +1,8 @@
+import ctypes
+import ctypes.util
+# This line makes sure the dm_maze uses EGL to render, which supports headless setups like savio
+ctypes.CDLL(ctypes.util.find_library('GL'), ctypes.RTLD_GLOBAL)
+
 from copy import deepcopy
 import os
 from enum import Enum
@@ -14,6 +19,8 @@ import ray
 from citylearn.citylearn import CityLearnEnv
 from callbacks import ActiveRLCallback
 from citylearn_wrapper import CityLearnEnvWrapper
+from dm_maze.dm_maze import DM_Maze_Arena, DM_Maze_Env, DM_Maze_Task
+from dm_maze.dm_wrapper import DMEnvWrapper
 from uncertain_ppo import UncertainPPOTorchPolicy
 from uncertain_ppo_trainer import UncertainPPO
 from ray.air.callbacks.wandb import WandbLoggerCallback
@@ -31,10 +38,13 @@ from citylearn_model_training.planning_model import get_planning_model
 from datetime import datetime
 import numpy as np
 import random
+import labmaze
+from dm_control.locomotion.walkers import ant
 
 class Environments(Enum):
     GRIDWORLD = "gw"
     CITYLEARN = "cl"
+    DM_MAZE = "dm"
 
 
 def read_gridworld(filename):
@@ -155,7 +165,7 @@ def add_args(parser):
     parser.add_argument(
         "--env",
         type=str,
-        help="Which environment: CityLearn, GridWorld, or... future env?",
+        help="Which environment: CityLearn, GridWorld, Deepmind Maze or... future env?",
         default=Environments.GRIDWORLD.value,
         choices=[env.value for env in Environments]
     )
@@ -316,7 +326,7 @@ if __name__=="__main__":
         eval_env_config = deepcopy(env_config)
         eval_env_config["schema"] = [Path(filename) for filename in CL_EVAL_PATHS]
         eval_env_config["is_evaluation"] = True
-    else: 
+    elif args.env == "gw": 
         env = SimpleGridEnvWrapper
         env_config = {"is_evaluation": False}
         if args.gw_filename.strip().isnumeric():
@@ -328,7 +338,22 @@ if __name__=="__main__":
             env_config["wind_p"] = wind_p
         eval_env_config = deepcopy(env_config)
         eval_env_config["is_evaluation"] = True
-        
+    elif args.env == "dm":
+        env = DMEnvWrapper
+        walker = ant.Ant()
+        maze_str = "**********\n*.....G..*\n*....P...*\n**********\n"
+        arena = DM_Maze_Arena(maze=labmaze.FixedMazeWithRandomGoals(maze_str))
+        print(arena._spawn_positions)
+        task = DM_Maze_Task(walker, None, arena, 1, enable_global_task_observables=True)
+        env_config = {
+            "dm_env": DM_Maze_Env,
+            "task": task,
+            "random_state": np.random.RandomState(42),
+            "strip_singleton_obs_buffer_dim": True,
+            "time_limit": 10
+            }
+    else:
+        raise NotImplementedError
 
     # planning model is None if the ckpt file path is None
     planning_model = get_planning_model(args.planning_model_ckpt)
