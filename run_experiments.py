@@ -3,7 +3,7 @@ import ctypes.util
 # This line makes sure the dm_maze uses EGL to render, which supports headless setups like savio
 ctypes.CDLL(ctypes.util.find_library('GL'), ctypes.RTLD_GLOBAL)
 
-from copy import deepcopy
+from copy import copy, deepcopy
 import os
 from enum import Enum
 from pathlib import Path
@@ -352,6 +352,8 @@ if __name__=="__main__":
             "strip_singleton_obs_buffer_dim": True,
             "time_limit": 10
             }
+        #We do not deepcopy here because Mujoco complains 'Cannot copy from elements with attachments'
+        eval_env_config = env_config
     else:
         raise NotImplementedError
 
