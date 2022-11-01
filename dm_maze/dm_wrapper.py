@@ -1,9 +1,10 @@
 from copy import copy
+import imp
 from typing import Any
 from gym import spaces
 
 from dm_control import suite
-from dm_env import specs
+from dm_env import specs, TimeStep
 from dm2gym.envs.dm_suite_env import DMSuiteEnv
 import numpy as np
 
@@ -48,6 +49,10 @@ class DMEnvWrapper(DMSuiteEnv):
         self.observation_space = convert_dm_control_to_gym_space(self.env.observation_spec())
         self.action_space = convert_dm_control_to_gym_space(self.env.action_spec())
         self.viewer = None
+
+    def reset(self, initial_state=None):
+        timestep = self.env.reset(initial_state)
+        return timestep.observation
 
     def __getattr__(self, __name: str) -> Any:
         return getattr(self.env, __name)
