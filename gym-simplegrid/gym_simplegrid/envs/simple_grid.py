@@ -5,6 +5,7 @@ from io import StringIO
 from typing import Optional
 
 import numpy as np
+from PIL import Image
 
 from gym_simplegrid.grid import Lava, SimpleGrid, Wall, Goal, Start, Wind
 from gym_simplegrid.window import Window
@@ -428,6 +429,16 @@ class SimpleGridEnv(Env):
             reward_dict=rewards_dict,
             log_scale=False
         )
+        x, y, c = img.shape
+        for i in range(x):
+            for j in range(y):
+                for k in range(c):
+                    if img[i,j,k] < 0 or img[i,j,k] > 255:
+                        img[i,j,k] = 128
+        try:
+            Image.fromarray(np.uint8(img)).convert('RGB')
+        except:
+            img = np.zeros(img)
         return img
 
     def __render_text(self, desc):

@@ -541,16 +541,6 @@ class SimpleGrid:
         :param tile_size: tile size in pixels
         """
 
-        # arr = [[0, 10, 20, 30, 40, 50, 60, 70],
-        #        [0, 5, 10, 15, 20, 25, 30, 35],
-        #        [0, 0, 0, 0, 1, 4, 16, 64],
-        #        [70, 60, 50, 40, 30, 20, 10, 0],
-        #        [30, 30, 30, 30, 50, 50, 50, 50],
-        #        [0, 0, 0, 0, 70, 70, 70, 70],
-        #        [0, 1, 2, 4, 8, 16, 32, 64],
-        #        [70, 0, 70, 0, 70, 0, 70, 0]]
-        # rewards = np.array(arr)
-
         if reward_dict is not None:
             rewards = np.zeros(self.width * self.height)
             for k, v in reward_dict.items():
