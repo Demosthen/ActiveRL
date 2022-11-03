@@ -59,6 +59,7 @@ class DM_Maze_Wrapper(DMSuiteEnv):
         self.action_space = convert_dm_control_to_gym_space(
             self.env.action_spec())
         self.viewer = None
+        self._max_episode_steps = 10000
 
     def initialize_env(self, config):
         walker = ant.Ant()
