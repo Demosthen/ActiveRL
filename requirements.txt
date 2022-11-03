@@ -29,8 +29,9 @@ debugpy @ file:///home/builder/ci_310/debugpy_1640789504635/work
 decorator @ file:///opt/conda/conda-bld/decorator_1643638310831/work
 defusedxml @ file:///tmp/build/80754af9/defusedxml_1615228127516/work
 distlib==0.3.6
-dm-tree==0.1.7
+dm2gym==0.2.0
 dm-control==1.0.8
+dm-tree==0.1.7
 docker-pycreds==0.4.0
 entrypoints @ file:///tmp/build/80754af9/entrypoints_1649908313000/work
 executing @ file:///opt/conda/conda-bld/executing_1646925071911/work
