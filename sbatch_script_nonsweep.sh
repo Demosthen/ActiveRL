@@ -24,7 +24,7 @@
 ##SBATCH --gpus-per-task=1
 #
 # Wall clock limit (8hrs):
-#SBATCH --time=2:59:59
+#SBATCH --time=15:59:59
 #
 # Run 48 examples concurrently
 #SBATCH --array=0
