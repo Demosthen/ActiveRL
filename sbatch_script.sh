@@ -33,5 +33,6 @@ export PYTHON_PATH=/global/home/users/$USER/.conda/envs/ActiveRL/bin/python
 # export LD_LIBRARY_PATH=/global/home/users/lucas_spangher/.conda/pkgs:$LD_LIBRARY_PATH
 module load gcc/8.3.0
 export PATH=$PYTHON_PATH:$PATH
+export MUJOCO_GL=egl
 source activate ActiveRL
 $PYTHON_PATH -m wandb agent social-game-rl/active-rl/$1 --count 1
