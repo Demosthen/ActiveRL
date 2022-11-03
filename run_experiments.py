@@ -334,7 +334,7 @@ if __name__=="__main__":
 
         rllib_config["horizon"] = args.horizon
         rllib_config["evaluation_duration"] = len(CL_EVAL_PATHS)
-        rllib_config["soft_horizon"] = True
+        rllib_config["soft_horizon"] = False
 
     elif args.env == "gw": 
         

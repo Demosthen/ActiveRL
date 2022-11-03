@@ -103,11 +103,8 @@ class ActiveRLCallback(DefaultCallbacks):
             img_arr = self.visualization_env.render(mode="rgb_array", reward_dict=per_cell_rewards)
             img_arr = np.transpose(img_arr, [2, 0, 1])
             evaluation_metrics["evaluation"]["per_cell_rewards_img"] = img_arr[None, None, :, :, :]
-        # a = evaluation_metrics["evaluation"]["episode_media"]["img"][0]
-        print(evaluation_metrics["evaluation"]["episode_media"]["img"][0].shape)
         evaluation_metrics["evaluation"]["single_img"] = evaluation_metrics["evaluation"]["episode_media"]["img"][0]
-        # print(evaluation_metrics.keys(), evaluation_metrics["evaluation"].keys(), evaluation_metrics["evaluation"]["custom_metrics"].keys())
-        # 1 / 0
+
     def on_episode_start(
         self,
         *,
