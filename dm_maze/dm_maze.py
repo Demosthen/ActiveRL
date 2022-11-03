@@ -118,7 +118,8 @@ class DM_Maze_Task(RepeatSingleGoalMazeAugmentedWithTargets):
             self._subtargets.append(subtarget)
             self._maze_arena.attach(subtarget)
         self._subtarget_rewarded = None
-
+        self._walker._observables.sensors_force.enabled = False
+        self._walker._observables.sensors_torque.enabled = False
         # Change DeepMind's weird string array of maze layout to a 3D array where the last dimension is one hot vectors
         if enable_global_task_observables:
             if use_map_layout:

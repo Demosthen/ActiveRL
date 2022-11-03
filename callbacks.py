@@ -1,5 +1,6 @@
 from ast import Call
 from cProfile import run
+from copy import deepcopy
 from tkinter import ACTIVE
 from typing import Callable, Dict, Tuple, Union
 # from state_generation import generate_states
@@ -27,6 +28,7 @@ from PIL import Image
 import wandb
 from torch.utils.tensorboard import SummaryWriter
 from constants import *
+from dm_maze.dm_wrapper import DM_Maze_Obs_Wrapper
 
 class ActiveRLCallback(DefaultCallbacks):
     """
@@ -47,6 +49,7 @@ class ActiveRLCallback(DefaultCallbacks):
         self.num_cells = -1
         self.is_gridworld = self.config["env"] == SimpleGridEnvWrapper
         self.is_citylearn = self.config["env"] == CityLearnEnvWrapper
+        self.is_dm_maze = self.config["env"] == DM_Maze_Obs_Wrapper
         self.planning_uncertainty_weight = planning_uncertainty_weight
         self.eval_rewards = []
         self.use_gpu = args.num_gpus > 0
@@ -60,6 +63,8 @@ class ActiveRLCallback(DefaultCallbacks):
         else:
             self.reward_model = None
             self.reward_optim = None
+
+        
 
     def on_evaluate_start(self, *, algorithm: UncertainPPO, **kwargs)-> None:
         """
@@ -83,21 +88,26 @@ class ActiveRLCallback(DefaultCallbacks):
         Runs at the end of Algorithm.evaluate().
         """
         #self.is_evaluating = False
+        def access_eval_metrics(worker):
+            if hasattr(worker, "callbacks"):
+                worker.callbacks.is_evaluating = False
+                return worker.callbacks.eval_rewards
+            else:
+                return []
+        rewards = np.array(algorithm.evaluation_workers.foreach_worker(access_eval_metrics))
         if self.is_gridworld:
-            def access_eval_metrics(worker):
-                if hasattr(worker, "callbacks"):
-                    worker.callbacks.is_evaluating = False
-                    return worker.callbacks.eval_rewards
-                else:
-                    return []
-            rewards = np.array(algorithm.evaluation_workers.foreach_worker(access_eval_metrics))
+            
             rewards = np.mean(rewards, axis=0)
             per_cell_rewards = {f"{cell}": rew for cell, rew in enumerate(rewards)}
             evaluation_metrics["evaluation"]["per_cell_rewards"] = per_cell_rewards
             img_arr = self.visualization_env.render(mode="rgb_array", reward_dict=per_cell_rewards)
             img_arr = np.transpose(img_arr, [2, 0, 1])
             evaluation_metrics["evaluation"]["per_cell_rewards_img"] = img_arr[None, None, :, :, :]
-
+        # a = evaluation_metrics["evaluation"]["episode_media"]["img"][0]
+        print(evaluation_metrics["evaluation"]["episode_media"]["img"][0].shape)
+        evaluation_metrics["evaluation"]["single_img"] = evaluation_metrics["evaluation"]["episode_media"]["img"][0]
+        # print(evaluation_metrics.keys(), evaluation_metrics["evaluation"].keys(), evaluation_metrics["evaluation"]["custom_metrics"].keys())
+        # 1 / 0
     def on_episode_start(
         self,
         *,
@@ -150,6 +160,7 @@ class ActiveRLCallback(DefaultCallbacks):
                 #Rotate in the next climate zone
                 env.next_env()
                 
+            
             # if self.is_citylearn:
             #     prefix = "eval_" if self.is_evaluating else "train_"
             #     episode.hist_data[prefix + CL_ENV_KEYS[env.curr_env_idx]] = []
@@ -185,6 +196,11 @@ class ActiveRLCallback(DefaultCallbacks):
             env = base_env.get_unwrapped()[0]
             prefix = "eval_" if self.is_evaluating else "train_"
             episode.custom_metrics[prefix + CL_ENV_KEYS[env.curr_env_idx] + "_reward"] = episode.total_reward #/ self.config["evaluation_duration"]
+        if self.is_evaluating and self.is_dm_maze:
+            pix = base_env.get_unwrapped()[0].render()
+            pix = np.transpose(pix, [2, 0, 1])
+            episode.media["img"] = pix[None, None, :, :, :]
+
 
     def on_learn_on_batch(self, policy: Policy, train_batch: SampleBatch, result: dict, **kwargs):
         """

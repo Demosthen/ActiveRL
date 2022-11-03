@@ -20,7 +20,7 @@ from citylearn.citylearn import CityLearnEnv
 from callbacks import ActiveRLCallback
 from citylearn_wrapper import CityLearnEnvWrapper
 from dm_maze.dm_maze import DM_Maze_Arena, DM_Maze_Env, DM_Maze_Task
-from dm_maze.dm_wrapper import DMEnvWrapper
+from dm_maze.dm_wrapper import DM_Maze_Wrapper, DM_Maze_Obs_Wrapper
 from uncertain_ppo import UncertainPPOTorchPolicy
 from uncertain_ppo_trainer import UncertainPPO
 from ray.air.callbacks.wandb import WandbLoggerCallback
@@ -40,6 +40,7 @@ import numpy as np
 import random
 import labmaze
 from dm_control.locomotion.walkers import ant
+from dm_maze.model import ComplexInputNetwork
 
 class Environments(Enum):
     GRIDWORLD = "gw"
@@ -75,8 +76,8 @@ def initialize_citylearn_params():
     return params
 
 
-def get_agent(env, env_config, eval_env_config, args, planning_model=None):
-    dummy_env = env(env_config)
+def get_agent(env, rllib_config, env_config, eval_env_config, model_config, args, planning_model=None):
+    
     config = DEFAULT_CONFIG.copy()
     config["seed"] = args.seed
     config["framework"] = "torch"
@@ -84,12 +85,15 @@ def get_agent(env, env_config, eval_env_config, args, planning_model=None):
     # Disable default preprocessors, we preprocess ourselves with env wrappers
     config["_disable_preprocessor_api"] = True
     config["env_config"] = env_config
-    if args.env == "cl":
-        config["horizon"] = 8760
+    
+
     config["model"] = MODEL_DEFAULTS
+    # Update model config with environment specific config params
+    config["model"].update(model_config)
+    # Update model config with Active RL related config params
     config["model"]["fcnet_activation"] = lambda: nn.Sequential(nn.Tanh(), nn.Dropout(p=args.dropout))#Custom_Activation
     config["model"]["num_dropout_evals"] = args.num_dropout_evals
-    config["model"]["shrink_init"] = args.cl_use_rbc_residual
+
     config["train_batch_size"] = args.train_batch_size
     #config["num_sgd_iter"] = 
     config["disable_env_checking"] = True
@@ -97,25 +101,23 @@ def get_agent(env, env_config, eval_env_config, args, planning_model=None):
     config["num_gpus"] = args.num_gpus / 4
     config["num_gpus_per_worker"] = args.num_gpus / 4
     config["num_workers"] = 2
-    config["soft_horizon"] = args.soft_horizon
+    
     config["clip_param"] = args.clip_param
     config["lr"] = args.lr
     if args.num_gpus == 0:
         config["num_gpus_per_worker"] = 0
     config["evaluation_interval"] = args.eval_interval
     config["evaluation_num_workers"] = 1
-    if env is SimpleGridEnvWrapper:
-        config["evaluation_duration"] = max(1, args.gw_steps_per_cell) * dummy_env.nrow * dummy_env.ncol # TODO: is there a better way of counting this?
-    elif env is CityLearnEnvWrapper:
-        config["evaluation_duration"] = len(CL_EVAL_PATHS)
-
+    
     config["evaluation_duration_unit"] = "episodes"
     
     config["evaluation_config"] = {
         "env_config": eval_env_config
     }
 
+    
     config["callbacks"] = lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, use_coop=args.use_coop, planning_model=planning_model, config=config, run_active_rl=args.use_activerl, planning_uncertainty_weight=args.planning_uncertainty_weight, args=args)
+    config.update(rllib_config)
     agent = UncertainPPO(config = config, logger_creator = utils.custom_logger_creator(args.log_path))
 
     return agent
@@ -184,7 +186,7 @@ def add_args(parser):
         default=256
     )
     parser.add_argument(
-        "--soft_horizon",
+        "--horizon", "--soft_horizon",
         type=int,
         help="Horizon of timesteps to compute reward over",
         default=48
@@ -314,6 +316,9 @@ if __name__=="__main__":
         
     ray.init()
 
+    model_config = {}
+    rllib_config = {}
+
     if args.env == "cl":
         env = CityLearnEnvWrapper
         env_config = {
@@ -323,10 +328,17 @@ if __name__=="__main__":
             "use_rbc_residual": args.cl_use_rbc_residual,
             "action_multiplier": args.cl_action_multiplier
         }
+
         eval_env_config = deepcopy(env_config)
         eval_env_config["schema"] = [Path(filename) for filename in CL_EVAL_PATHS]
         eval_env_config["is_evaluation"] = True
+
+        rllib_config["horizon"] = args.horizon
+        rllib_config["evaluation_duration"] = len(CL_EVAL_PATHS)
+        rllib_config["soft_horizon"] = True
+
     elif args.env == "gw": 
+        
         env = SimpleGridEnvWrapper
         env_config = {"is_evaluation": False}
         if args.gw_filename.strip().isnumeric():
@@ -336,31 +348,47 @@ if __name__=="__main__":
             env_config["desc"] = grid_desc
             env_config["reward_map"] = rew_map
             env_config["wind_p"] = wind_p
+        
         eval_env_config = deepcopy(env_config)
         eval_env_config["is_evaluation"] = True
+
+        dummy_env = env(env_config)
+        rllib_config["evaluation_duration"] = max(1, args.gw_steps_per_cell) * dummy_env.nrow * dummy_env.ncol # TODO: is there a better way of counting this?
+
+        # model_config["shrink_init"] = args.cl_use_rbc_residual # NOTE: This does not actually do anything anymore
     elif args.env == "dm":
-        env = DMEnvWrapper
-        walker = ant.Ant()
-        maze_str = "**********\n*.....G..*\n*....P...*\n**********\n"
-        arena = DM_Maze_Arena(maze=labmaze.FixedMazeWithRandomGoals(maze_str))
-        print(arena._spawn_positions)
-        task = DM_Maze_Task(walker, None, arena, 1, enable_global_task_observables=True)
+        maze_str = "**********\n*........*\n*.....G..*\n*....P...*\n*........*\n**********\n"
+        env = DM_Maze_Obs_Wrapper
         env_config = {
-            "dm_env": DM_Maze_Env,
-            "task": task,
+            "maze_str": maze_str,
             "random_state": np.random.RandomState(42),
             "strip_singleton_obs_buffer_dim": True,
             "time_limit": 10
             }
-        #We do not deepcopy here because Mujoco complains 'Cannot copy from elements with attachments'
-        eval_env_config = env_config
+
+        eval_env_config = deepcopy(env_config)
+
+        model_config["dim"] = 64
+        model_config["conv_filters"] = [
+            [16, [8, 8], 4],
+            [32, [3, 3], 2],
+            [256, [8, 8], 1],
+        ]
+        model_config["post_fcnet_hiddens"] = [256]
+        model_config["custom_model"] = ComplexInputNetwork
+
+        rllib_config["evaluation_duration"] = 1
+        rllib_config["horizon"] = args.horizon
+        rllib_config["keep_per_episode_custom_metrics"] = False
+
+        # rllib_config["record_env"] = True
     else:
         raise NotImplementedError
 
     # planning model is None if the ckpt file path is None
     planning_model = get_planning_model(args.planning_model_ckpt)
 
-    agent = get_agent(env, env_config, eval_env_config, args, planning_model)
+    agent = get_agent(env, rllib_config, env_config, eval_env_config, model_config, args, planning_model)
     
     train_agent(agent, timesteps=args.num_timesteps, env=env)
 

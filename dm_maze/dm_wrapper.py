@@ -1,12 +1,19 @@
-from copy import copy
+from collections import OrderedDict
+from copy import copy, deepcopy
 import imp
 from typing import Any
-from gym import spaces
+from gym import Env, spaces
 
 from dm_control import suite
 from dm_env import specs, TimeStep
 from dm2gym.envs.dm_suite_env import DMSuiteEnv
+import gym
 import numpy as np
+
+import labmaze
+from dm_maze.dm_maze import DM_Maze_Env, DM_Maze_Task, DM_Maze_Arena
+from dm_control.locomotion.walkers import ant
+import PIL
 
 def convert_dm_control_to_gym_space(dm_control_space):
     r"""Convert dm_control space to gym space. """
@@ -20,16 +27,16 @@ def convert_dm_control_to_gym_space(dm_control_space):
         else:
             dm_max = dm_control_space.maximum
         space = spaces.Box(low=dm_min,
-                           high=dm_max, 
+                           high=dm_max,
                            dtype=dm_control_space.dtype,
                            shape=dm_control_space.shape)
         assert space.shape == dm_control_space.shape
         return space
 
     elif isinstance(dm_control_space, specs.Array) and not isinstance(dm_control_space, specs.BoundedArray):
-        space = spaces.Box(low=-float('inf'), 
-                           high=float('inf'), 
-                           shape=dm_control_space.shape, 
+        space = spaces.Box(low=-float('inf'),
+                           high=float('inf'),
+                           shape=dm_control_space.shape,
                            dtype=dm_control_space.dtype)
         return space
     elif isinstance(dm_control_space, dict):
@@ -37,22 +44,93 @@ def convert_dm_control_to_gym_space(dm_control_space):
                              for key, value in dm_control_space.items()})
         return space
 
-class DMEnvWrapper(DMSuiteEnv):
+
+class DM_Maze_Wrapper(DMSuiteEnv):
     def __init__(self, config):
-        config = copy(config)
-        dm_env = config["dm_env"]
-        del config["dm_env"]
-        self.env = dm_env(**config)
+        config = self.process_config(config)
+
+        self.initialize_env(config)
+
         self.metadata = {'render.modes': ['human', 'rgb_array'],
                          'video.frames_per_second': round(1.0/self.env.control_timestep())}
 
-        self.observation_space = convert_dm_control_to_gym_space(self.env.observation_spec())
-        self.action_space = convert_dm_control_to_gym_space(self.env.action_spec())
+        self.observation_space = convert_dm_control_to_gym_space(
+            self.env.observation_spec())
+        self.action_space = convert_dm_control_to_gym_space(
+            self.env.action_spec())
         self.viewer = None
+
+    def initialize_env(self, config):
+        walker = ant.Ant()
+        arena = DM_Maze_Arena(
+            maze=labmaze.FixedMazeWithRandomGoals(self.maze_str))
+        task = DM_Maze_Task(walker, None, arena, 1,
+                            enable_global_task_observables=True)
+        self.env = DM_Maze_Env(task=task, **config)
+
+    def process_config(self, config):
+        config = deepcopy(config)
+
+        # Read extra config arguments
+        # read in planning model ckpt path and whether this env is used for evaluation or not
+        self.maze_str = config["maze_str"]
+
+        del config["maze_str"]
+
+        return config
 
     def reset(self, initial_state=None):
         timestep = self.env.reset(initial_state)
         return timestep.observation
 
+    def render(self, mode=None):
+        print("HI, I AM RENDERING CORRECTLY")
+        pixels = []
+        for camera_id in range(3):
+            pixels.append(self.physics.render(camera_id=camera_id, width=240))
+        return np.hstack(pixels)
+
     def __getattr__(self, __name: str) -> Any:
         return getattr(self.env, __name)
+
+    def seed(self, seed):
+        return self.env.random_state.seed(seed)
+
+class DM_Maze_Obs_Wrapper(gym.ObservationWrapper):
+    def __init__(self, config: dict):
+        env: Env = DM_Maze_Wrapper(config)
+        super().__init__(env)
+        obs_space = self.env.observation_space
+        flat_mapping = OrderedDict({})
+        low = []
+        high = []
+        curr_idx = 0
+        total_space = {}
+        for key, space in obs_space.items():
+            space: spaces.Box = space
+            if len(space.shape) < 3:
+                space_len = int(np.prod(space.shape))
+                flat_mapping[key] = (curr_idx, curr_idx + space_len)
+                low.append(space.low.reshape([space_len]))
+                high.append(space.high.reshape([space_len]))
+                curr_idx += space_len
+            else:
+                total_space[key] = space
+
+        low = np.concatenate(low)
+        high = np.concatenate(high)
+        self.flat_mapping = flat_mapping
+        total_space["flat"] = spaces.Box(low, high, shape=(curr_idx,))
+        self.observation_space = spaces.Dict(total_space)
+
+    def observation(self, observation):
+        output = OrderedDict({})
+        flat = np.zeros(self.observation_space["flat"].shape)
+        for key, value in observation.items():
+            if len(value.shape) < 3:
+                start, end = self.flat_mapping[key]
+                flat[start:end] = value.flatten()
+            else:
+                output[key] = value
+        output["flat"] = flat
+        return output
