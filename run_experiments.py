@@ -1,8 +1,9 @@
 import ctypes
 import ctypes.util
+import glfw
+glfw.init()
 # This line makes sure the dm_maze uses EGL to render, which supports headless setups like savio
 ctypes.CDLL(ctypes.util.find_library('GL'), ctypes.RTLD_GLOBAL)
-
 from copy import copy, deepcopy
 import os
 from enum import Enum
