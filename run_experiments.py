@@ -362,7 +362,7 @@ if __name__=="__main__":
             "maze_str": maze_str,
             "random_state": np.random.RandomState(42),
             "strip_singleton_obs_buffer_dim": True,
-            "time_limit": 10
+            "time_limit": 100
             }
 
         eval_env_config = deepcopy(env_config)

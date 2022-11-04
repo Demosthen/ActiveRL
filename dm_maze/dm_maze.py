@@ -204,6 +204,8 @@ class DM_Maze_Env(Environment):
     def step(self, action):
         timestep = super().step(action)
         if timestep.last():
+            print(self._task.should_terminate_episode(self._physics))
+            print(self._physics.time(), self._time_limit)
             print("DONE DETECTED!!!!!!!", self.cntr)
             self.cntr = 0
         self.cntr += 1
