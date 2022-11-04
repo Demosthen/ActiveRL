@@ -379,7 +379,7 @@ if __name__=="__main__":
         rllib_config["evaluation_duration"] = 1
         rllib_config["horizon"] = args.horizon
         rllib_config["keep_per_episode_custom_metrics"] = False
-
+        rllib_config["batch_mode"] = "complete_episodes"
         # rllib_config["record_env"] = True
     else:
         raise NotImplementedError
