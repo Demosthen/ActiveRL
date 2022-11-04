@@ -89,7 +89,8 @@ class DM_Maze_Task(RepeatSingleGoalMazeAugmentedWithTargets):
                 physics_timestep=DEFAULT_PHYSICS_TIMESTEP,
                 control_timestep=DEFAULT_CONTROL_TIMESTEP,
                 enable_global_task_observables=False,
-                use_map_layout=False):
+                use_map_layout=False,
+                distance_reward_scale=0):
         super(RepeatSingleGoalMazeAugmentedWithTargets, self).__init__(
             walker=walker,
             target=main_target,
@@ -104,6 +105,9 @@ class DM_Maze_Task(RepeatSingleGoalMazeAugmentedWithTargets):
             physics_timestep=physics_timestep,
             control_timestep=control_timestep,
             enable_global_task_observables=enable_global_task_observables)
+
+        self.distance_reward_scale = distance_reward_scale
+
         # No-op to get VS Code to recognize the typing
         self._maze_arena: DM_Maze_Arena = self._maze_arena
 
@@ -181,6 +185,14 @@ class DM_Maze_Task(RepeatSingleGoalMazeAugmentedWithTargets):
             physics, self._spawn_position,
             quat,
             rotate_velocity=True)
+
+    def get_reward(self, physics):
+        main_reward = super().get_reward(physics)
+        dist_reward = 0
+        if self.distance_reward_scale != 0:
+            walker_pos = physics.bind(self._walker.root_body).xpos
+            dist_reward = -np.log(0.000001 + np.linalg.norm(walker_pos - self._target_position))
+        return main_reward + dist_reward * self.distance_reward_scale
 
 class DM_Maze_Env(Environment):
     """Environment that wraps the task"""

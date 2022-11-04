@@ -65,8 +65,8 @@ class DM_Maze_Wrapper(DMSuiteEnv):
         walker = ant.Ant()
         arena = DM_Maze_Arena(
             maze=labmaze.FixedMazeWithRandomGoals(self.maze_str))
-        task = DM_Maze_Task(walker, None, arena, 1, contact_termination=True, aliveness_reward=0.1,
-                            enable_global_task_observables=True)
+        task = DM_Maze_Task(walker, None, arena, 1, contact_termination=True, aliveness_reward=0.01,
+                            enable_global_task_observables=True, distance_reward_scale=0.01)
         self.env = DM_Maze_Env(task=task, **config)
 
     def process_config(self, config):
