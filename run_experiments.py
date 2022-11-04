@@ -356,7 +356,7 @@ if __name__=="__main__":
 
         # model_config["shrink_init"] = args.cl_use_rbc_residual # NOTE: This does not actually do anything anymore
     elif args.env == "dm":
-        maze_str = "**********\n*........*\n*.....G..*\n*....P...*\n*........*\n**********\n"
+        maze_str = "**********\n*........*\n*........*\n*...GP...*\n*........*\n**********\n"
         env = DM_Maze_Obs_Wrapper
         env_config = {
             "maze_str": maze_str,
