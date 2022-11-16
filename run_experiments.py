@@ -40,40 +40,12 @@ import random
 import labmaze
 from dm_control.locomotion.walkers import ant
 from dm_maze.model import ComplexInputNetwork
+from utils import read_gridworld, grid_desc_to_dm
 
 class Environments(Enum):
     GRIDWORLD = "gw"
     CITYLEARN = "cl"
     DM_MAZE = "dm"
-
-
-def read_gridworld(filename):
-    with open(filename, 'r') as f:
-        grid_str = f.read()
-        grid, rew, wind_p = grid_str.split("---")
-        grid_desc = eval(grid)
-        rew_map = eval(rew)
-        wind_p = eval(wind_p)
-    return grid_desc, rew_map, wind_p
-
-def initialize_citylearn_params():
-    # Load environment
-    climate_zone = 5
-    buildings = ["Building_1"]
-
-    params = {'root_directory': Path("data/Climate_Zone_" + str(climate_zone)),
-            'building_attributes': 'building_attributes.json', 
-            'weather_file': 'weather.csv', 
-            'solar_profile': 'solar_generation_1kW.csv', 
-            'carbon_intensity': 'carbon_intensity.csv',
-            'building_ids': buildings,
-            'buildings_states_actions': 'buildings_state_action_space.json', 
-            'simulation_period': (0, 8760*1-1),
-            'cost_function': ['ramping','1-load_factor','average_daily_peak','peak_demand','net_electricity_consumption','carbon_emissions'], 
-            'central_agent': True,
-            'save_memory': False }
-    return params
-
 
 def get_agent(env, rllib_config, env_config, eval_env_config, model_config, args, planning_model=None):
     
@@ -248,6 +220,14 @@ def add_args(parser):
         default=1
         )
 
+    # DM MAZE ENV PARAMS
+    parser.add_argument(
+        "--dm_filename",
+        type=str,
+        help="filename to read gridworld specs from. pass an int if you want to auto generate one.",
+        default="gridworlds/sample_grid.txt"
+        )
+
     # ACTIVE RL PARAMS
     parser.add_argument(
         "--use_activerl",
@@ -356,13 +336,16 @@ if __name__=="__main__":
 
         # model_config["shrink_init"] = args.cl_use_rbc_residual # NOTE: This does not actually do anything anymore
     elif args.env == "dm":
-        maze_str = "**********\n*........*\n*........*\n*...GP...*\n*........*\n**********\n"
+        grid_desc, rew_map, wind_p = read_gridworld(args.dm_filename)
+        maze_str, subtarget_rews = grid_desc_to_dm(grid_desc, rew_map, wind_p)
+        #maze_str = "**********\n*........*\n*........*\n*...GP...*\n*........*\n**********\n"
         env = DM_Maze_Obs_Wrapper
         env_config = {
             "maze_str": maze_str,
+            "subtarget_rews": subtarget_rews,
             "random_state": np.random.RandomState(42),
             "strip_singleton_obs_buffer_dim": True,
-            "time_limit": 100
+            "time_limit": 100,
             }
 
         eval_env_config = deepcopy(env_config)

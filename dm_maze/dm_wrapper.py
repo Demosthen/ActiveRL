@@ -65,18 +65,19 @@ class DM_Maze_Wrapper(DMSuiteEnv):
         walker = ant.Ant()
         arena = DM_Maze_Arena(
             maze=labmaze.FixedMazeWithRandomGoals(self.maze_str))
-        task = DM_Maze_Task(walker, None, arena, 1, contact_termination=True, aliveness_reward=0.01,
-                            enable_global_task_observables=True, distance_reward_scale=0.01)
+        task = DM_Maze_Task(walker, None, arena, arena.num_targets, contact_termination=True, aliveness_reward=0.01,
+                            enable_global_task_observables=True, distance_reward_scale=0.01, subtarget_rews=self.subtarget_rews)
         self.env = DM_Maze_Env(task=task, **config)
 
     def process_config(self, config):
         config = deepcopy(config)
 
-        # Read extra config arguments
-        # read in planning model ckpt path and whether this env is used for evaluation or not
+        # Read extra (not from DM_Maze_Env) config arguments
         self.maze_str = config["maze_str"]
+        self.subtarget_rews = config["subtarget_rews"]
 
         del config["maze_str"]
+        del config["subtarget_rews"]
 
         return config
 
