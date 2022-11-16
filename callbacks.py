@@ -104,7 +104,11 @@ class ActiveRLCallback(DefaultCallbacks):
             img_arr = np.transpose(img_arr, [2, 0, 1])
             evaluation_metrics["evaluation"]["per_cell_rewards_img"] = img_arr[None, None, :, :, :]
         if self.is_dm_maze:
-            evaluation_metrics["evaluation"]["single_img"] = evaluation_metrics["evaluation"]["episode_media"]["img"][0]
+            print(evaluation_metrics["evaluation"]["episode_media"].keys())
+            try:
+                evaluation_metrics["evaluation"]["single_img"] = evaluation_metrics["evaluation"]["episode_media"]["img"][0]
+            except Exception as e:
+                print("AAAAAAAAAAAAAAA IT FAILED")
 
     def on_episode_start(
         self,
