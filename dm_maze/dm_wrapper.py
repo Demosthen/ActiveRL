@@ -90,7 +90,6 @@ class DM_Maze_Wrapper(DMSuiteEnv):
         return timestep.observation
 
     def render(self, mode=None):
-        print("HI, I AM RENDERING CORRECTLY")
         pixels = []
         for camera_id in range(3):
             pixels.append(self.physics.render(camera_id=camera_id, width=240))
