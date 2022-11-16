@@ -37,15 +37,27 @@ def grid_desc_to_dm(grid_desc, rew_map, wind_p):
         TODO: How can we represent wind?
     """
     subtarget_rews = []
+    # Initialize new_desc, reserving some space for a wall at the beginning
     new_desc = []
     for i in range(len(grid_desc)):
-        new_desc.append([])
+        # Automatically add wall at beginning of row
+        new_desc.append(["*"])
         for j in range(len(grid_desc[i])):
             curr_char = bytes(grid_desc[i][j], 'utf-8')
             if curr_char in GOAL_SYMBOLS:
                 subtarget_rews.append(rew_map[curr_char])
             new_desc[i].append(MAZE_SYMBOLS[curr_char])
+        # Automatically add wall at end of row 
+        new_desc[i].append("*")
         new_desc[i] = "".join(new_desc[i])
+
+    # Add wall rows at top and bottom of grid
+    width = len(new_desc[0])
+    wall_row = "".join(["*"] * width)
+    new_desc = [wall_row] + new_desc + [wall_row]
+    print(new_desc)
+
+    # Put everything into a string separated by newlines
     new_desc = "\n".join(new_desc) + "\n"
     return new_desc, subtarget_rews
 

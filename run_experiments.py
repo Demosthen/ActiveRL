@@ -228,6 +228,20 @@ def add_args(parser):
         default="gridworlds/sample_grid.txt"
         )
 
+    parser.add_argument(
+        "--aliveness_reward",
+        type=float,
+        help="Reward to give agent for staying alive",
+        default=0.01
+        )
+
+    parser.add_argument(
+        "--distance_reward_scale",
+        type=float,
+        help="Scale of reward for agent getting closer to goal",
+        default=0.01
+        )
+
     # ACTIVE RL PARAMS
     parser.add_argument(
         "--use_activerl",
@@ -346,6 +360,8 @@ if __name__=="__main__":
             "random_state": np.random.RandomState(42),
             "strip_singleton_obs_buffer_dim": True,
             "time_limit": 100,
+            "aliveness_reward": args.aliveness_reward,
+            "distance_reward_scale": args.distance_reward_scale
             }
 
         eval_env_config = deepcopy(env_config)

@@ -65,8 +65,8 @@ class DM_Maze_Wrapper(DMSuiteEnv):
         walker = ant.Ant()
         arena = DM_Maze_Arena(
             maze=labmaze.FixedMazeWithRandomGoals(self.maze_str))
-        task = DM_Maze_Task(walker, None, arena, arena.num_targets, contact_termination=True, aliveness_reward=0.01,
-                            enable_global_task_observables=True, distance_reward_scale=0.01, subtarget_rews=self.subtarget_rews)
+        task = DM_Maze_Task(walker, None, arena, arena.num_targets, contact_termination=True, aliveness_reward=self.aliveness_reward,
+                            enable_global_task_observables=True, distance_reward_scale=self.distance_reward_scale, subtarget_rews=self.subtarget_rews)
         self.env = DM_Maze_Env(task=task, **config)
 
     def process_config(self, config):
@@ -75,9 +75,13 @@ class DM_Maze_Wrapper(DMSuiteEnv):
         # Read extra (not from DM_Maze_Env) config arguments
         self.maze_str = config["maze_str"]
         self.subtarget_rews = config["subtarget_rews"]
+        self.aliveness_reward = config["aliveness_reward"]
+        self.distance_reward_scale = config["distance_reward_scale"]
 
         del config["maze_str"]
         del config["subtarget_rews"]
+        del config["aliveness_reward"]
+        del config["distance_reward_scale"]
 
         return config
 
