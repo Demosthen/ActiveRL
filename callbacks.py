@@ -198,7 +198,7 @@ class ActiveRLCallback(DefaultCallbacks):
             env = base_env.get_unwrapped()[0]
             prefix = "eval_" if self.is_evaluating else "train_"
             episode.custom_metrics[prefix + CL_ENV_KEYS[env.curr_env_idx] + "_reward"] = episode.total_reward #/ self.config["evaluation_duration"]
-        if self.is_evaluating and self.is_dm_maze:
+        if self.is_dm_maze:
             pix = base_env.get_unwrapped()[0].render()
             pix = np.transpose(pix, [2, 0, 1])
             episode.media["img"] = pix[None, None, :, :, :]
