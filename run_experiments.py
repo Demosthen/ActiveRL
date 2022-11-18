@@ -359,7 +359,7 @@ if __name__=="__main__":
             "subtarget_rews": subtarget_rews,
             "random_state": np.random.RandomState(42),
             "strip_singleton_obs_buffer_dim": True,
-            "time_limit": 100,
+            "time_limit": args.horizon / 1000,
             "aliveness_reward": args.aliveness_reward,
             "distance_reward_scale": args.distance_reward_scale
             }
