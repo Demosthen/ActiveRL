@@ -21,4 +21,4 @@ To run a wandb sweep:
 To run an individual run:
 ./master_sbatch_script_nonsweep.sh "COMMAND LINE ARGS NOT INCLUDING THE ACTUAL PYTHON COMMAND" NUMBER_OF_RUNS
 For example: 
-./master_sbatch_script_nonsweep.sh "run_experiments.py --num_timesteps=400000 --gw_steps_per_cell=10 --wandb --env=gw --use_coop --gw_filename=gridworlds/good_bubble.txt --num_descent_steps=10 --seed=1234567 --use_activerl=1" 1
+./master_sbatch_script_nonsweep.sh "run_experiments.py --num_timesteps=400000 --gw_steps_per_cell=10 --wandb --env=gw --no_coop --gw_filename=gridworlds/good_bubble.txt --num_descent_steps=10 --seed=1234567 --use_activerl=1" 1

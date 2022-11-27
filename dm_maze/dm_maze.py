@@ -9,47 +9,58 @@ from dm_control.locomotion.arenas import covering, mazes as maze_arenas
 
 _WALL_GEOM_GROUP = 3
 
+
 def str_maze_to_one_hot_maze(entity_layer):
-    TOKENS = ['.', '+', labmaze.defaults.OBJECT_TOKEN, labmaze.defaults.SPAWN_TOKEN]
+    TOKENS = ['.', '+', labmaze.defaults.OBJECT_TOKEN,
+              labmaze.defaults.SPAWN_TOKEN]
     out_shape = list(entity_layer.shape) + [len(TOKENS)]
     out = np.zeros(out_shape)
     for i, token in enumerate(TOKENS):
         out[entity_layer == token][:, i] = 1
-    return out 
+    return out
+
 
 class DM_Maze_Arena(maze_arenas.MazeWithTargets):
     """
         A Mujoco arena that takes in a fixed maze and encodes the maze as a bunch of blocks with height between 0 and 1
     """
-    def __init__(self, *args, **kwargs):
+
+    def __init__(self, use_all_geoms=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.use_all_geoms = use_all_geoms
         self.use_original_spawn = True
         self.regenerate()
 
     def _make_wall_geoms(self, wall_char):
-        i = 0
-        for x in range(len(self._maze.entity_layer)):
-            for y in range(len(self._maze.entity_layer[0])):
-                wall_mid = covering.GridCoordinates(
-                    x,#(x + 0.5),
-                    y)#(y + 0.5))
-                curr_char = self._maze.entity_layer[x, y]
-                is_wall = int(curr_char == wall_char)
-                wall_pos = np.array([(wall_mid.x - self._x_offset) * self._xy_scale,
-                                    -(wall_mid.y - self._y_offset) * self._xy_scale,
-                                    is_wall * self._z_height / 2 + 0.001])
-                wall_size = np.array([self._xy_scale / 2,
-                                        self._xy_scale / 2,
+        if not self.use_all_geoms:
+            # Consolidates as many wall geoms as possible
+            return super()._make_wall_geoms(wall_char)
+        else:
+            i = 0
+            for x in range(len(self._maze.entity_layer)):
+                for y in range(len(self._maze.entity_layer[0])):
+                    wall_mid = covering.GridCoordinates(
+                        x,  # (x + 0.5),
+                        y)  # (y + 0.5))
+                    curr_char = self._maze.entity_layer[x, y]
+                    is_wall = int(curr_char == wall_char)
+                    wall_pos = np.array([(wall_mid.x - self._x_offset) * self._xy_scale,
+                                        -(wall_mid.y - self._y_offset) *
+                                         self._xy_scale,
                                         is_wall * self._z_height / 2 + 0.001])
-                self._maze_body.add('geom', name='wall{}_{}'.format(wall_char, i),
-                                    type='box', pos=wall_pos, size=wall_size,
-                                    group=_WALL_GEOM_GROUP)
-                self._make_wall_texturing_planes(wall_char, i, wall_pos, wall_size)
-                i += 1
+                    wall_size = np.array([self._xy_scale / 2,
+                                          self._xy_scale / 2,
+                                          is_wall * self._z_height / 2 + 0.001])
+                    self._maze_body.add('geom', name='wall{}_{}'.format(wall_char, i),
+                                        type='box', pos=wall_pos, size=wall_size,
+                                        group=_WALL_GEOM_GROUP)
+                    self._make_wall_texturing_planes(
+                        wall_char, i, wall_pos, wall_size)
+                    i += 1
 
     def _find_spawn_and_target_positions(self):
         grid_positions = self.find_token_grid_positions([
-                labmaze.defaults.OBJECT_TOKEN, labmaze.defaults.SPAWN_TOKEN])
+            labmaze.defaults.OBJECT_TOKEN, labmaze.defaults.SPAWN_TOKEN])
 
         # Only reset spawn positions if we have not been told to use a specific spawn
         if self.use_original_spawn:
@@ -60,9 +71,9 @@ class DM_Maze_Arena(maze_arenas.MazeWithTargets):
 
         # Reset target positions
         self._target_grid_positions = tuple(
-                grid_positions[labmaze.defaults.OBJECT_TOKEN])
+            grid_positions[labmaze.defaults.OBJECT_TOKEN])
         self._target_positions = tuple(
-                self.grid_to_world_positions(self._target_grid_positions))
+            self.grid_to_world_positions(self._target_grid_positions))
         self.num_targets = len(self._target_grid_positions)
 
     def set_spawn(self, pos):
@@ -73,28 +84,31 @@ class DM_Maze_Arena(maze_arenas.MazeWithTargets):
     def reset_original_spawn(self):
         self.use_original_spawn = True
 
+
 class DM_Maze_Task(RepeatSingleGoalMazeAugmentedWithTargets):
     """Augments the single goal maze with many lower reward targets."""
+
     def __init__(self,
-                walker,
-                main_target,
-                maze_arena,
-                num_subtargets=20,
-                target_reward_scale=10.0,
-                subtarget_reward_scale=1.0,
-                subtarget_colors=((0, 0, 0.4), (0, 0, 0.7)),
-                randomize_spawn_position=False, # changed from original
-                randomize_spawn_rotation=False, # changed from original
-                rotation_bias_factor=0,
-                aliveness_reward=0.0,
-                aliveness_threshold=DEFAULT_ALIVE_THRESHOLD,
-                contact_termination=True,
-                physics_timestep=DEFAULT_PHYSICS_TIMESTEP,
-                control_timestep=DEFAULT_CONTROL_TIMESTEP,
-                enable_global_task_observables=False,
-                use_map_layout=False,
-                distance_reward_scale=0,
-                subtarget_rews=None):
+                 walker,
+                 main_target,
+                 maze_arena,
+                 num_subtargets=20,
+                 target_reward_scale=10.0,
+                 subtarget_reward_scale=1.0,
+                 subtarget_colors=((0, 0, 0.4), (0, 0, 0.7)),
+                 randomize_spawn_position=False,  # changed from original
+                 randomize_spawn_rotation=False,  # changed from original
+                 rotation_bias_factor=0,
+                 aliveness_reward=0.0,
+                 aliveness_threshold=DEFAULT_ALIVE_THRESHOLD,
+                 contact_termination=True,
+                 physics_timestep=DEFAULT_PHYSICS_TIMESTEP,
+                 control_timestep=DEFAULT_CONTROL_TIMESTEP,
+                 enable_global_task_observables=False,
+                 use_map_layout=False,
+                 distance_reward_scale=0,
+                 subtarget_rews=None,
+                 use_all_geoms=False):
         super(RepeatSingleGoalMazeAugmentedWithTargets, self).__init__(
             walker=walker,
             target=main_target,
@@ -115,10 +129,11 @@ class DM_Maze_Task(RepeatSingleGoalMazeAugmentedWithTargets):
         # No-op to get VS Code to recognize the typing
         self._maze_arena: DM_Maze_Arena = self._maze_arena
 
-        #Set subtargets
+        # Set subtargets
         self._subtarget_reward_scale = subtarget_reward_scale
         self._subtargets = []
-        self._subtarget_rews = subtarget_rews if subtarget_rews is not None else [self._subtarget_reward_scale] * num_subtargets
+        self._subtarget_rews = subtarget_rews if subtarget_rews is not None else [
+            self._subtarget_reward_scale] * num_subtargets
         for i in range(num_subtargets):
             subtarget = target_sphere.TargetSphere(
                 radius=0.4, rgb1=subtarget_colors[0], rgb2=subtarget_colors[1],
@@ -131,9 +146,10 @@ class DM_Maze_Task(RepeatSingleGoalMazeAugmentedWithTargets):
         # Disable empty sensor observables
         self._walker._observables.sensors_force.enabled = False
         self._walker._observables.sensors_torque.enabled = False
-        
+
         # Change DeepMind's weird string array of maze layout to a 3D array where the last dimension is one hot vectors
         if enable_global_task_observables:
+            
             if use_map_layout:
                 # Reveal maze text map as observable.
                 maze_obs = observable_lib.Generic(
@@ -145,7 +161,10 @@ class DM_Maze_Task(RepeatSingleGoalMazeAugmentedWithTargets):
             else:
                 self._task_observables['maze_layout'].enabled = False
 
+        self.reached_goal_last_ep = False
+
     def _respawn(self, physics, random_state):
+        self.reached_goal_last_ep = False
         self._walker.reinitialize_pose(physics, random_state)
 
         if self._randomize_spawn_position:
@@ -163,8 +182,9 @@ class DM_Maze_Task(RepeatSingleGoalMazeAugmentedWithTargets):
             for i in range(_NUM_RAYS):
                 theta = 2 * np.pi * i / _NUM_RAYS
                 pos = np.array([self._spawn_position[0], self._spawn_position[1], 0.1],
-                            dtype=np.float64)
-                vec = np.array([np.cos(theta), np.sin(theta), 0], dtype=np.float64)
+                               dtype=np.float64)
+                vec = np.array(
+                    [np.cos(theta), np.sin(theta), 0], dtype=np.float64)
                 dist = mjbindings.mjlib.mj_ray(
                     physics.model.ptr, physics.data.ptr, pos, vec,
                     None, 1, -1, geomid_out)
@@ -200,13 +220,14 @@ class DM_Maze_Task(RepeatSingleGoalMazeAugmentedWithTargets):
         dist_reward = 0
         if self.distance_reward_scale != 0:
             walker_pos = physics.bind(self._walker.root_body).xpos
-            dist_reward = -np.log(0.000001 + np.mean([np.linalg.norm(walker_pos - physics.bind(subtarget.root_body).xpos) for subtarget in self._subtargets]))
+            dist_reward = -np.log(0.000001 + np.mean([np.linalg.norm(walker_pos - physics.bind(
+                subtarget.root_body).xpos) for subtarget in self._subtargets]))
         return dist_reward * self.distance_reward_scale
 
     def get_reward(self, physics):
         main_reward = super(RepeatSingleGoalMazeAugmentedWithTargets,
-                        self).get_reward(physics)
-        
+                            self).get_reward(physics)
+
         subtarget_reward = self.get_subtarget_reward(physics)
 
         dist_reward = self.get_dist_reward(physics)
@@ -214,22 +235,27 @@ class DM_Maze_Task(RepeatSingleGoalMazeAugmentedWithTargets):
         return main_reward + subtarget_reward + dist_reward
 
     def should_terminate_episode(self, physics):
-        
+
         # Checks stuff like aliveness and contact termination
         if super(RepeatSingleGoalMaze, self).should_terminate_episode(physics):
+            self.reached_goal_last_ep = False
             return True
 
         for subtarget in self._subtargets:
             if subtarget.activated:
+                self.reached_goal_last_ep = True
                 return True
         # No subtargets have been activated.
+        self.reached_goal_last_ep = False
         return False
 
 
 class DM_Maze_Env(Environment):
     """Environment that wraps the task"""
+
     def __init__(self, task: DM_Maze_Task, time_limit=np.inf, random_state=None, n_sub_steps=None, raise_exception_on_physics_error=True, strip_singleton_obs_buffer_dim=False, max_reset_attempts=1, delayed_observation_padding=ObservationPadding.ZERO):
-        super().__init__(task, time_limit, random_state, n_sub_steps, raise_exception_on_physics_error, strip_singleton_obs_buffer_dim, max_reset_attempts, delayed_observation_padding)
+        super().__init__(task, time_limit, random_state, n_sub_steps, raise_exception_on_physics_error,
+                         strip_singleton_obs_buffer_dim, max_reset_attempts, delayed_observation_padding)
 
     def reset(self, initial_state=None):
         task: DM_Maze_Task = self.task
@@ -244,4 +270,6 @@ class DM_Maze_Env(Environment):
 
         return super().reset()
 
-
+    @property
+    def reached_goal_last_ep(self):
+        return self._task.reached_goal_last_ep

@@ -1,6 +1,7 @@
+from copy import deepcopy
 from typing import Callable, Tuple
 import torch
-from gym.spaces import Space, Box, Discrete
+from gym.spaces import Space, Box, Discrete, Dict
 import torch.optim as optim
 import cooper
 import numpy as np
@@ -8,9 +9,12 @@ from reward_predictor import RewardPredictor
 from uncertain_ppo import UncertainPPOTorchPolicy
 from uncertain_ppo_trainer import UncertainPPO
 from citylearn_model_training.planning_model import LitPlanningModel
+from resettable_env import ResettableEnv
 
 class BoundedUncertaintyMaximization(cooper.ConstrainedMinimizationProblem):
-    def __init__(self, lower_bounds, upper_bounds, lower_bounded_idxs, upper_bounded_idxs, agent: UncertainPPOTorchPolicy, planning_model: LitPlanningModel=None, reward_model: RewardPredictor = None, planning_uncertainty_weight=1):
+    def __init__(self, obs, env: ResettableEnv, lower_bounds, upper_bounds, lower_bounded_idxs, upper_bounded_idxs, agent: UncertainPPOTorchPolicy, planning_model: LitPlanningModel=None, reward_model: RewardPredictor = None, planning_uncertainty_weight=1):
+        self.env = env
+        self.obs = obs
         self.lower_bounds = lower_bounds
         self.upper_bounds = upper_bounds
         self.lower_bounded_idxs = lower_bounded_idxs
@@ -21,8 +25,9 @@ class BoundedUncertaintyMaximization(cooper.ConstrainedMinimizationProblem):
         self.planning_uncertainty_weight = planning_uncertainty_weight
         super().__init__(is_constrained=True)
 
-    def closure(self, obs):
-
+    def closure(self, resettable):
+        obs = self.env.combine_resettable_part(self.obs, resettable)
+        
         if self.planning_model is None:
             # Negative sign added since we want to *maximize* the uncertainty
             loss = - self.agent.compute_value_uncertainty(obs).sum()
@@ -35,8 +40,8 @@ class BoundedUncertaintyMaximization(cooper.ConstrainedMinimizationProblem):
             #print("IS THIS LOSS? ", loss, loss.shape)
 
         # Entries of p >= 0 (equiv. -p <= 0)
-        ineq_defect = torch.cat([obs[self.lower_bounded_idxs] - self.lower_bounds, self.upper_bounds - obs[self.upper_bounded_idxs]])
-
+        #resettable, obs = self.env.separate_resettable_part(obs)
+        ineq_defect = torch.cat([resettable[self.lower_bounded_idxs] - self.lower_bounds, self.upper_bounds - resettable[self.upper_bounded_idxs]])
         return cooper.CMPState(loss=loss, ineq_defect=ineq_defect)
 
 def get_space_bounds(obs_space: Space):
@@ -47,16 +52,45 @@ def get_space_bounds(obs_space: Space):
     else:
         raise NotImplementedError
 
-def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descent_steps: int = 10, batch_size: int = 1, use_coop=True, planning_model=None, reward_model=None, planning_uncertainty_weight=1):
+def sample_obs(env: ResettableEnv, batch_size: int, device):
+    obs_space = env.observation_space
+    if isinstance(obs_space, Dict):
+        obs = {}
+        with torch.no_grad():
+            for _ in range(batch_size):
+                random_obs = env.sample_obs()
+                if isinstance(random_obs, dict):
+                    for key, val in random_obs.items():
+                        if key not in obs:
+                            obs[key] = []
+                        obs[key].append(torch.tensor(val, device = device, dtype=torch.float32, requires_grad=False))
+        obs = {k: torch.stack(v) for k, v in obs.items()}
+    else:
+        obs = []
+        with torch.no_grad():
+            for i in range(batch_size):
+                random_obs = env.sample_obs()
+                if isinstance(random_obs, dict):
+                    obs.append(torch.torch.tensor(random_obs, device = device, dtype=torch.float32, requires_grad=False))
+
+        obs = torch.stack(obs)
+    resettable_part, obs = env.separate_resettable_part(obs)
+    
+    resettable_part = torch.nn.Parameter(resettable_part.detach(), requires_grad=True) # Make a leaf tensor that is an optimizable Parameter
+    obs = env.combine_resettable_part(obs, resettable_part)
+    return obs, resettable_part
+
+def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_space: Space, num_descent_steps: int = 10, batch_size: int = 1, no_coop=False, planning_model=None, reward_model=None, planning_uncertainty_weight=1):
     """
         Generates states by doing gradient descent to increase an agent's uncertainty
         on states starting from random noise
 
         :param agent: the agent 
+        :param env: an environment that implements the separate_resettable_part and combine_resettable_part methods
         :param obs_space: the observation space
         :param num_descent_steps: the number of gradient descent steps to do
         :param batch_size: the number of observations to concurrently process (CURRENTLY DOESN'T DO ANYTHING, JUST SET IT TO 1)
-        :param use_coop: whether or not to use the constrained optimization solver coop to make sure we don't go out of bounds. WILL LIKELY FAIL IF NOT SET TO TRUE
+        :param no_coop: whether or not to use the constrained optimization solver coop to make sure we don't go out of bounds. WILL LIKELY FAIL IF NOT SET TO TRUE
         :param planning_model: the planning model that was trained offline
         :param reward_model: the reward model you are training online
         :param projection_fn: a function to project a continuous, unconstrained observation vector
@@ -65,17 +99,16 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
         :param planning_uncertainty_weight: relative weight to give to the planning uncertainty compared to agent uncertainty
     """
 #     #TODO: make everything work with batches
-    lower_bounds, upper_bounds = get_space_bounds(obs_space)
+    lower_bounds, upper_bounds = env.resettable_bounds()#get_space_bounds(obs_space)
     lower_bounded_idxs = np.logical_not(np.isinf(lower_bounds))
     upper_bounded_idxs = np.logical_not(np.isinf(upper_bounds))
-    obs = []
-    with torch.no_grad():
-        for i in range(batch_size):
-            random_obs = obs_space.sample()
-            obs.append(torch.tensor(random_obs, device = agent.device, dtype=torch.float32))
-    obs = torch.nn.Parameter(torch.stack(obs), requires_grad=True)
-    if use_coop:
+
+    obs, resettable = sample_obs(env, batch_size, agent.device)
+
+    if not no_coop:
         cmp = BoundedUncertaintyMaximization(
+                                                obs,
+                                                env,
                                                 torch.tensor(lower_bounds[lower_bounded_idxs], device=agent.device), 
                                                 torch.tensor(upper_bounds[upper_bounded_idxs], device=agent.device), 
                                                 torch.tensor(lower_bounded_idxs[None, :], device=agent.device), 
@@ -87,7 +120,7 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
                                                 )
         formulation = cooper.LagrangianFormulation(cmp)
 
-        primal_optimizer = cooper.optim.ExtraAdam([obs], lr=0.1)
+        primal_optimizer = cooper.optim.ExtraAdam([resettable], lr=0.1)
 
         # Define the dual optimizer. Note that this optimizer has NOT been fully instantiated
         # yet. Cooper takes care of this, once it has initialized the formulation state.
@@ -96,21 +129,24 @@ def generate_states(agent: UncertainPPOTorchPolicy, obs_space: Space, num_descen
 #         # Wrap the formulation and both optimizers inside a ConstrainedOptimizer
         optimizer = cooper.ConstrainedOptimizer(formulation, primal_optimizer, dual_optimizer)
     else:
-        optimizer = optim.Adam([obs], lr=0.1)
+        optimizer = optim.Adam([resettable], lr=0.1)
     uncertainties = []
     
     for _ in range(num_descent_steps):
         optimizer.zero_grad()
         agent.model.zero_grad()
-        if use_coop:
-            lagrangian = formulation.composite_objective(cmp.closure, obs)
+        # for v in obs.values():
+        #     v.grad = None
+        if not no_coop:
+            lagrangian = formulation.composite_objective(cmp.closure, resettable)
             formulation.custom_backward(lagrangian)
-            optimizer.step(cmp.closure, obs)
+            optimizer.step(cmp.closure, resettable)
             uncertainties.append(cmp.state)
         else:
-            uncertainty = agent.compute_value_uncertainty(obs)
+            uncertainty = agent.compute_value_uncertainty(resettable)
             loss = - uncertainty.sum()
             loss.backward()
             optimizer.step()
             uncertainties.append(uncertainty)
+    print("RESETTABLE PART OF STATE: ", resettable)
     return obs, uncertainties

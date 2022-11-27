@@ -37,8 +37,6 @@ from citylearn_model_training.planning_model import get_planning_model
 from datetime import datetime
 import numpy as np
 import random
-import labmaze
-from dm_control.locomotion.walkers import ant
 from dm_maze.model import ComplexInputNetwork
 from utils import read_gridworld, grid_desc_to_dm
 
@@ -87,7 +85,7 @@ def get_agent(env, rllib_config, env_config, eval_env_config, model_config, args
     }
 
     
-    config["callbacks"] = lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, use_coop=args.use_coop, planning_model=planning_model, config=config, run_active_rl=args.use_activerl, planning_uncertainty_weight=args.planning_uncertainty_weight, args=args)
+    config["callbacks"] = lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, no_coop=args.no_coop, planning_model=planning_model, config=config, run_active_rl=args.use_activerl, planning_uncertainty_weight=args.planning_uncertainty_weight, args=args)
     config.update(rllib_config)
     agent = UncertainPPO(config = config, logger_creator = utils.custom_logger_creator(args.log_path))
 
@@ -242,6 +240,12 @@ def add_args(parser):
         default=0.01
         )
 
+    parser.add_argument(
+        "--use_all_geoms",
+        action="store_true",
+        help="Whether to use all possible geoms or try to consolidate them for faster speed (if you turn this on things will slow down significantly)",
+        )
+
     # ACTIVE RL PARAMS
     parser.add_argument(
         "--use_activerl",
@@ -256,7 +260,7 @@ def add_args(parser):
         default=10
     )
     parser.add_argument(
-        "--use_coop",
+        "--no_coop",
         action="store_true",
         help="Whether or not to use the constrained optimizer for Active RL optimization"
     )
@@ -361,7 +365,8 @@ if __name__=="__main__":
             "strip_singleton_obs_buffer_dim": True,
             "time_limit": args.horizon / 1000,
             "aliveness_reward": args.aliveness_reward,
-            "distance_reward_scale": args.distance_reward_scale
+            "distance_reward_scale": args.distance_reward_scale,
+            "use_all_geoms": args.use_all_geoms
             }
 
         eval_env_config = deepcopy(env_config)

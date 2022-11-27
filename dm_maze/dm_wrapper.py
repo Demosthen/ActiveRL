@@ -13,10 +13,12 @@ import numpy as np
 import labmaze
 from dm_maze.dm_maze import DM_Maze_Env, DM_Maze_Task, DM_Maze_Arena
 from dm_control.locomotion.walkers import ant
-import PIL
+from resettable_env import ResettableEnv
+import torch
 
 def convert_dm_control_to_gym_space(dm_control_space):
     r"""Convert dm_control space to gym space. """
+    print(dm_control_space)
     if isinstance(dm_control_space, specs.BoundedArray):
         if np.ndim(dm_control_space.minimum) == 0:
             dm_min = np.full(dm_control_space.shape, dm_control_space.minimum)
@@ -59,13 +61,12 @@ class DM_Maze_Wrapper(DMSuiteEnv):
         self.action_space = convert_dm_control_to_gym_space(
             self.env.action_spec())
         self.viewer = None
-        self._max_episode_steps = 10000
 
     def initialize_env(self, config):
         walker = ant.Ant()
         arena = DM_Maze_Arena(
             maze=labmaze.FixedMazeWithRandomGoals(self.maze_str))
-        task = DM_Maze_Task(walker, None, arena, arena.num_targets, contact_termination=True, aliveness_reward=self.aliveness_reward,
+        task = DM_Maze_Task(walker, None, arena, arena.num_targets, contact_termination=True, aliveness_reward=self.aliveness_reward, use_all_geoms=self.use_all_geoms,
                             enable_global_task_observables=True, distance_reward_scale=self.distance_reward_scale, subtarget_rews=self.subtarget_rews)
         self.env = DM_Maze_Env(task=task, **config)
 
@@ -77,11 +78,13 @@ class DM_Maze_Wrapper(DMSuiteEnv):
         self.subtarget_rews = config["subtarget_rews"]
         self.aliveness_reward = config["aliveness_reward"]
         self.distance_reward_scale = config["distance_reward_scale"]
+        self.use_all_geoms = config["use_all_geoms"]
 
         del config["maze_str"]
         del config["subtarget_rews"]
         del config["aliveness_reward"]
         del config["distance_reward_scale"]
+        del config["use_all_geoms"]
 
         return config
 
@@ -101,7 +104,7 @@ class DM_Maze_Wrapper(DMSuiteEnv):
     def seed(self, seed):
         return self.env.random_state.seed(seed)
 
-class DM_Maze_Obs_Wrapper(gym.ObservationWrapper):
+class DM_Maze_Obs_Wrapper(gym.ObservationWrapper, ResettableEnv):
     def __init__(self, config: dict):
         env: Env = DM_Maze_Wrapper(config)
         super().__init__(env)
@@ -112,6 +115,8 @@ class DM_Maze_Obs_Wrapper(gym.ObservationWrapper):
         curr_idx = 0
         total_space = {}
         for key, space in obs_space.items():
+            if key == "absolute_position":
+                print(space)
             space: spaces.Box = space
             if len(space.shape) < 3:
                 space_len = int(np.prod(space.shape))
@@ -124,6 +129,7 @@ class DM_Maze_Obs_Wrapper(gym.ObservationWrapper):
 
         low = np.concatenate(low)
         high = np.concatenate(high)
+        print(low)
         self.flat_mapping = flat_mapping
         total_space["flat"] = spaces.Box(low, high, shape=(curr_idx,))
         self.observation_space = spaces.Dict(total_space)
@@ -139,3 +145,42 @@ class DM_Maze_Obs_Wrapper(gym.ObservationWrapper):
                 output[key] = value
         output["flat"] = flat
         return output
+
+    def inverse_observation(self, observation):
+        if observation is None:
+            return None
+        output = OrderedDict({})
+        for k, space in self.env.observation_space.items():
+            if k in self.flat_mapping:
+                idxs = self.flat_mapping[k]
+                output[k] = observation["flat"][..., idxs[0]:idxs[1]].reshape(space.shape)
+            else:
+                output[k] = observation[k]
+        return output
+
+    def separate_resettable_part(self, obs):
+        """Separates the observation into the resettable portion and non-resettable portion"""
+        return obs["flat"][..., 9:12], obs
+
+    def combine_resettable_part(self, obs, resettable):
+        """Combines an observation that has been split like in separate_resettable_part back together"""
+        if isinstance(obs["flat"], torch.Tensor):
+            # Make sure torch doesn't backprop into non-resettable part
+            obs["flat"] = obs["flat"].detach()
+        obs["flat"][..., 9:12] = resettable
+        return obs
+
+    def resettable_bounds(self):
+        """Get bounds for resettable part of observation space"""
+        maze_width = self.task._maze_arena.maze.width
+        maze_height = self.task._maze_arena.maze.height
+        xy_scale = self.task._maze_arena.xy_scale
+        x_offset = xy_scale * (maze_width - 1) / 2
+        y_offset = xy_scale * (maze_height - 1) / 2
+        low = np.array([-x_offset, -y_offset, 0])
+        high = np.array([x_offset, y_offset, 1])
+        return low, high
+
+    def reset(self, initial_state=None):
+        obs = self.env.reset(self.inverse_observation(initial_state))
+        return self.observation(obs)

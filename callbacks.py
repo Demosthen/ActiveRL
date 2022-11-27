@@ -1,7 +1,3 @@
-from ast import Call
-from cProfile import run
-from copy import deepcopy
-from tkinter import ACTIVE
 from typing import Callable, Dict, Tuple, Union
 # from state_generation import generate_states
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
@@ -29,6 +25,7 @@ import wandb
 from torch.utils.tensorboard import SummaryWriter
 from constants import *
 from dm_maze.dm_wrapper import DM_Maze_Obs_Wrapper
+from utils import states_to_np
 
 class ActiveRLCallback(DefaultCallbacks):
     """
@@ -36,12 +33,12 @@ class ActiveRLCallback(DefaultCallbacks):
 
     :param verbose: (int) Verbosity level 0: not output 1: info 2: debug
     """
-    def __init__(self, num_descent_steps: int=10, batch_size: int=64, use_coop: bool=True, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}):
+    def __init__(self, num_descent_steps: int=10, batch_size: int=64, no_coop: bool=False, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}):
         super(ActiveRLCallback, self).__init__()
         self.run_active_rl = run_active_rl
         self.num_descent_steps = num_descent_steps
         self.batch_size = batch_size
-        self.use_coop = use_coop
+        self.no_coop = no_coop
         self.planning_model = planning_model
         self.config = config
         self.is_evaluating = False
@@ -104,7 +101,6 @@ class ActiveRLCallback(DefaultCallbacks):
             img_arr = np.transpose(img_arr, [2, 0, 1])
             evaluation_metrics["evaluation"]["per_cell_rewards_img"] = img_arr[None, None, :, :, :]
         if self.is_dm_maze:
-            print(evaluation_metrics["evaluation"]["episode_media"].keys())
             try:
                 evaluation_metrics["evaluation"]["single_img"] = evaluation_metrics["evaluation"]["episode_media"]["img"][0]
             except Exception as e:
@@ -148,9 +144,10 @@ class ActiveRLCallback(DefaultCallbacks):
                 env.reset(initial_state=initial_state)
 
             elif not self.is_evaluating and self.run_active_rl:
-                new_states, uncertainties = generate_states(policy, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
-                            batch_size=self.batch_size, use_coop=self.use_coop, planning_model=self.planning_model, reward_model=self.reward_model, planning_uncertainty_weight=self.planning_uncertainty_weight)
-                new_states = new_states.detach().cpu().flatten()
+                new_states, uncertainties = generate_states(policy, env=env, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
+                            batch_size=self.batch_size, no_coop=self.no_coop, planning_model=self.planning_model, reward_model=self.reward_model, planning_uncertainty_weight=self.planning_uncertainty_weight)
+                new_states = states_to_np(new_states)
+                #new_states = new_states.detach().cpu().flatten()
                 episode.custom_metrics[UNCERTAINTY_LOSS_KEY] = uncertainties[-1].loss.detach().cpu().numpy()
                 # print(env.observation_space)
                 env.reset(initial_state=new_states)
@@ -192,16 +189,19 @@ class ActiveRLCallback(DefaultCallbacks):
                 these error cases properly with their custom logics.
             kwargs : Forward compatibility placeholder.
         """
+        env = base_env.get_unwrapped()[0]
         if self.is_evaluating and self.is_gridworld:
             self.eval_rewards[self.cell_index % self.num_cells] += episode.total_reward / (self.config["evaluation_duration"] // self.num_cells) 
         if self.is_citylearn:
-            env = base_env.get_unwrapped()[0]
+            
             prefix = "eval_" if self.is_evaluating else "train_"
             episode.custom_metrics[prefix + CL_ENV_KEYS[env.curr_env_idx] + "_reward"] = episode.total_reward #/ self.config["evaluation_duration"]
-        if self.is_evaluating and self.is_dm_maze:
-            pix = base_env.get_unwrapped()[0].render()
-            pix = np.transpose(pix, [2, 0, 1])
-            episode.media["img"] = pix[None, None, :, :, :]
+        if self.is_dm_maze:
+            episode.custom_metrics["reached_goal"] = int(env.reached_goal_last_ep)
+            if self.is_evaluating:
+                pix = env.render()
+                pix = np.transpose(pix, [2, 0, 1])
+                episode.media["img"] = pix[None, None, :, :, :]
 
 
     def on_learn_on_batch(self, policy: Policy, train_batch: SampleBatch, result: dict, **kwargs):

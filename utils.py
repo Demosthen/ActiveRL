@@ -61,3 +61,12 @@ def grid_desc_to_dm(grid_desc, rew_map, wind_p):
     new_desc = "\n".join(new_desc) + "\n"
     return new_desc, subtarget_rews
 
+def states_to_np(state, inplace=True):
+    if not inplace:
+        state = deepcopy(state)
+    if isinstance(state, dict):
+        for k, v in state.items():
+            state[k] = v.detach().squeeze().cpu().numpy()
+        return state
+    else:
+        return state.detach().squeeze().cpu().numpy()
