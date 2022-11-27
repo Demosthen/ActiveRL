@@ -135,18 +135,16 @@ def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_spac
     for _ in range(num_descent_steps):
         optimizer.zero_grad()
         agent.model.zero_grad()
-        # for v in obs.values():
-        #     v.grad = None
         if not no_coop:
             lagrangian = formulation.composite_objective(cmp.closure, resettable)
             formulation.custom_backward(lagrangian)
             optimizer.step(cmp.closure, resettable)
-            uncertainties.append(cmp.state)
+            uncertainties.append(cmp.state.loss)
         else:
-            uncertainty = agent.compute_value_uncertainty(resettable)
+            obs = env.combine_resettable_part(obs, resettable)
+            uncertainty = agent.compute_value_uncertainty(obs)
             loss = - uncertainty.sum()
             loss.backward()
             optimizer.step()
-            uncertainties.append(uncertainty)
-    print("RESETTABLE PART OF STATE: ", resettable)
+            uncertainties.append(uncertainty.detach().cpu().numpy())
     return obs, uncertainties

@@ -148,7 +148,7 @@ class ActiveRLCallback(DefaultCallbacks):
                             batch_size=self.batch_size, no_coop=self.no_coop, planning_model=self.planning_model, reward_model=self.reward_model, planning_uncertainty_weight=self.planning_uncertainty_weight)
                 new_states = states_to_np(new_states)
                 #new_states = new_states.detach().cpu().flatten()
-                episode.custom_metrics[UNCERTAINTY_LOSS_KEY] = uncertainties[-1].loss.detach().cpu().numpy()
+                episode.custom_metrics[UNCERTAINTY_LOSS_KEY] = uncertainties[-1]
                 # print(env.observation_space)
                 env.reset(initial_state=new_states)
                 if self.is_gridworld:

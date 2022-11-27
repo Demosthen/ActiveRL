@@ -66,10 +66,11 @@ def get_agent(env, rllib_config, env_config, eval_env_config, model_config, args
     config["train_batch_size"] = args.train_batch_size
     #config["num_sgd_iter"] = 
     config["disable_env_checking"] = True
-    # divide by 5: 1 driver, 2 workers, 1 evaluation workers
-    config["num_gpus"] = args.num_gpus / 4
-    config["num_gpus_per_worker"] = args.num_gpus / 4
-    config["num_workers"] = 2
+    # 1 driver, N training workers, 1 evaluation workers
+    total_workers = args.num_training_workers + 2
+    config["num_gpus"] = args.num_gpus / total_workers
+    config["num_gpus_per_worker"] = args.num_gpus / total_workers
+    config["num_workers"] = args.num_training_workers
     
     config["clip_param"] = args.clip_param
     config["lr"] = args.lr
@@ -177,6 +178,12 @@ def add_args(parser):
         type=int,
         help="Number of training steps between evaluation runs",
         default=1
+    )
+    parser.add_argument(
+        "--num_training_workers",
+        type=int,
+        help="Number of workers to collect data during training",
+        default=3
     )
     # CITYLEARN ENV PARAMS
     parser.add_argument(

@@ -18,7 +18,6 @@ import torch
 
 def convert_dm_control_to_gym_space(dm_control_space):
     r"""Convert dm_control space to gym space. """
-    print(dm_control_space)
     if isinstance(dm_control_space, specs.BoundedArray):
         if np.ndim(dm_control_space.minimum) == 0:
             dm_min = np.full(dm_control_space.shape, dm_control_space.minimum)
@@ -115,8 +114,6 @@ class DM_Maze_Obs_Wrapper(gym.ObservationWrapper, ResettableEnv):
         curr_idx = 0
         total_space = {}
         for key, space in obs_space.items():
-            if key == "absolute_position":
-                print(space)
             space: spaces.Box = space
             if len(space.shape) < 3:
                 space_len = int(np.prod(space.shape))
@@ -129,7 +126,6 @@ class DM_Maze_Obs_Wrapper(gym.ObservationWrapper, ResettableEnv):
 
         low = np.concatenate(low)
         high = np.concatenate(high)
-        print(low)
         self.flat_mapping = flat_mapping
         total_space["flat"] = spaces.Box(low, high, shape=(curr_idx,))
         self.observation_space = spaces.Dict(total_space)
