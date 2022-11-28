@@ -71,6 +71,7 @@ def get_agent(env, rllib_config, env_config, eval_env_config, model_config, args
     config["num_gpus"] = args.num_gpus / total_workers
     config["num_gpus_per_worker"] = args.num_gpus / total_workers
     config["num_workers"] = args.num_training_workers
+    config["num_envs_per_worker"] = args.num_envs_per_worker
     
     config["clip_param"] = args.clip_param
     config["lr"] = args.lr
@@ -184,6 +185,12 @@ def add_args(parser):
         type=int,
         help="Number of workers to collect data during training",
         default=3
+    )
+    parser.add_argument(
+        "--num_envs_per_worker",
+        type=int,
+        help="Number of workers to collect data during training",
+        default=1
     )
     # CITYLEARN ENV PARAMS
     parser.add_argument(

@@ -12,7 +12,7 @@ import numpy as np
 
 import labmaze
 from dm_maze.dm_maze import DM_Maze_Env, DM_Maze_Task, DM_Maze_Arena
-from dm_control.locomotion.walkers import ant
+from dm_control.locomotion.walkers import ant, jumping_ball
 from resettable_env import ResettableEnv
 import torch
 
