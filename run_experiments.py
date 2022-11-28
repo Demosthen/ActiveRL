@@ -260,6 +260,14 @@ def add_args(parser):
         help="Whether to use all possible geoms or try to consolidate them for faster speed (if you turn this on things will slow down significantly)",
         )
 
+    parser.add_argument(
+        "--walker",
+        type=str,
+        choices=["ant", "ball"],
+        help="What type of walker to use. Ant and ball are currently supported",
+        default="ant"
+        )
+
     # ACTIVE RL PARAMS
     parser.add_argument(
         "--use_activerl",
@@ -380,7 +388,8 @@ if __name__=="__main__":
             "time_limit": args.horizon / 1000,
             "aliveness_reward": args.aliveness_reward,
             "distance_reward_scale": args.distance_reward_scale,
-            "use_all_geoms": args.use_all_geoms
+            "use_all_geoms": args.use_all_geoms,
+            "walker": args.walker
             }
 
         eval_env_config = deepcopy(env_config)

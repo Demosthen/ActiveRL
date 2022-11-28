@@ -62,7 +62,12 @@ class DM_Maze_Wrapper(DMSuiteEnv):
         self.viewer = None
 
     def initialize_env(self, config):
-        walker = ant.Ant()
+        if self.walker == "ant":
+            walker = ant.Ant()
+        elif self.walker == "ball":
+            walker = jumping_ball.RollingBallWithHead()
+        else:
+            raise NotImplementedError()
         arena = DM_Maze_Arena(
             maze=labmaze.FixedMazeWithRandomGoals(self.maze_str))
         task = DM_Maze_Task(walker, None, arena, arena.num_targets, contact_termination=True, aliveness_reward=self.aliveness_reward, use_all_geoms=self.use_all_geoms,
@@ -78,12 +83,14 @@ class DM_Maze_Wrapper(DMSuiteEnv):
         self.aliveness_reward = config["aliveness_reward"]
         self.distance_reward_scale = config["distance_reward_scale"]
         self.use_all_geoms = config["use_all_geoms"]
+        self.walker = config["walker"]
 
         del config["maze_str"]
         del config["subtarget_rews"]
         del config["aliveness_reward"]
         del config["distance_reward_scale"]
         del config["use_all_geoms"]
+        del config["walker"]
 
         return config
 
