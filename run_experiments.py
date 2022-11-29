@@ -407,7 +407,6 @@ if __name__=="__main__":
         rllib_config["horizon"] = args.horizon
         rllib_config["keep_per_episode_custom_metrics"] = False
         rllib_config["batch_mode"] = "complete_episodes"
-        rllib_config["rollout_fragment_length"] = 1000
         rllib_config["evaluation_sample_timeout_s"] = 600
         # rllib_config["record_env"] = True
     else:
