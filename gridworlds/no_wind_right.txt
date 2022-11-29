@@ -1,12 +1,12 @@
 [
-        "WWWWWWWW",
-        "WEGEWWWW",
-        "EEEWEEEG",
-        "SEEEEEEE",
-        "EEWWEEEE",
-        "EEWWWWWW",
-        "WWWWWWWW",
-        "WWWWWWWW"
+        "WWWWWWWWWW",
+        "WWEGEWWWWW",
+        "WEEEWEEEGW",
+        "WSEEEEEEEW",
+        "WEEWWEEEEW",
+        "WEEWWWWWWW",
+        "WWWWWWWWWW",
+        "WWWWWWWWWW"
 ]
 ---
 {
