@@ -138,6 +138,10 @@ class DM_Maze_Obs_Wrapper(gym.ObservationWrapper, ResettableEnv):
         total_space["flat"] = spaces.Box(low, high, shape=(curr_idx,))
         self.observation_space = spaces.Dict(total_space)
 
+    
+    def get_task(self):
+        return self.env._task
+
     def observation(self, observation):
         output = OrderedDict({})
         flat = np.zeros(self.observation_space["flat"].shape)

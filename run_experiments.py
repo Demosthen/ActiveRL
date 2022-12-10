@@ -1,9 +1,12 @@
 import ctypes
 import ctypes.util
-# This line makes sure the dm_maze uses EGL to render, which supports headless setups like savio
-ctypes.CDLL(ctypes.util.find_library('GL'), ctypes.RTLD_GLOBAL)
-from copy import copy, deepcopy
 import os
+# This line makes sure the dm_maze uses EGL to render, which supports headless setups like savio
+# ctypes.CDLL(ctypes.util.find_library('GL'), ctypes.RTLD_GLOBAL)
+os.environ["MUJOCO_GL"] = "osmesa"
+os.environ["PYOPENGL_PLATFORM"] = "osmesa"
+from copy import copy, deepcopy
+
 from enum import Enum
 from pathlib import Path
 from unittest import result
@@ -38,7 +41,8 @@ from datetime import datetime
 import numpy as np
 import random
 from dm_maze.model import ComplexInputNetwork
-from utils import read_gridworld, grid_desc_to_dm
+from utils import flatten_dict_of_lists, read_gridworld, grid_desc_to_dm
+from constants import *
 
 class Environments(Enum):
     GRIDWORLD = "gw"
@@ -93,12 +97,12 @@ def get_agent(env, rllib_config, env_config, eval_env_config, model_config, args
 
     return agent
 
-def train_agent(agent, timesteps, env):
+def train_agent(agent, timesteps, env=None):
     training_steps = 0
     while training_steps < timesteps:
         result = agent.train()
         training_steps = result["timesteps_total"]
-
+        
 def get_log_path(log_dir):
     now = datetime.now()
     date_time = now.strftime("%m-%d-%Y,%H-%M-%S")
@@ -267,6 +271,12 @@ def add_args(parser):
         help="What type of walker to use. Ant and ball are currently supported",
         default="ant"
         )
+    parser.add_argument(
+        "--dm_steps_per_cell",
+        type=int,
+        help="number of times to evaluate each cell, min=1",
+        default=1
+        )
 
     # ACTIVE RL PARAMS
     parser.add_argument(
@@ -394,6 +404,8 @@ if __name__=="__main__":
 
         eval_env_config = deepcopy(env_config)
 
+        dummy_env = env(env_config)
+
         model_config["dim"] = 64
         model_config["conv_filters"] = [
             [16, [8, 8], 4],
@@ -409,6 +421,10 @@ if __name__=="__main__":
         rllib_config["batch_mode"] = "complete_episodes"
         rllib_config["evaluation_sample_timeout_s"] = 600
         rllib_config["rollout_fragment_length"] = 1000
+        dummy_arena = dummy_env.get_task()._maze_arena
+        grid_positions = flatten_dict_of_lists(dummy_arena.find_token_grid_positions(RESPAWNABLE_TOKENS))
+        rllib_config["evaluation_duration"] = max(1, args.dm_steps_per_cell) * len(grid_positions)
+        rllib_config["evaluation_parallel_to_training"] = True
         # rllib_config["record_env"] = True
     else:
         raise NotImplementedError

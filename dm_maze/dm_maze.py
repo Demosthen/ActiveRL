@@ -236,6 +236,11 @@ class DM_Maze_Task(RepeatSingleGoalMazeAugmentedWithTargets):
 
     def should_terminate_episode(self, physics):
 
+        if self._targets_obtained > 0:
+            self.reached_goal_last_ep = True
+            print("REACHED GOAL!!")
+            return True
+
         # Checks stuff like aliveness and contact termination
         if super(RepeatSingleGoalMaze, self).should_terminate_episode(physics):
             self.reached_goal_last_ep = False
@@ -244,6 +249,7 @@ class DM_Maze_Task(RepeatSingleGoalMazeAugmentedWithTargets):
         for subtarget in self._subtargets:
             if subtarget.activated:
                 self.reached_goal_last_ep = True
+                print("REACHED GOAL!")
                 return True
         # No subtargets have been activated.
         self.reached_goal_last_ep = False

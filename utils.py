@@ -55,7 +55,6 @@ def grid_desc_to_dm(grid_desc, rew_map, wind_p):
     width = len(new_desc[0])
     wall_row = "".join(["*"] * width)
     new_desc = [wall_row] + new_desc + [wall_row]
-    print(new_desc)
 
     # Put everything into a string separated by newlines
     new_desc = "\n".join(new_desc) + "\n"
@@ -70,3 +69,9 @@ def states_to_np(state, inplace=True):
         return state
     else:
         return state.detach().squeeze().cpu().numpy()
+
+def flatten_dict_of_lists(d):
+    out = []
+    for k, v in d.items():
+        out.extend(v)
+    return out

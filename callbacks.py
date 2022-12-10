@@ -1,4 +1,6 @@
-from typing import Callable, Dict, Tuple, Union
+from copy import deepcopy
+from typing import Callable, Dict, Optional, Tuple, Union
+from matplotlib import pyplot as plt
 # from state_generation import generate_states
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
 from ray.rllib.env.base_env import BaseEnv
@@ -25,7 +27,10 @@ import wandb
 from torch.utils.tensorboard import SummaryWriter
 from constants import *
 from dm_maze.dm_wrapper import DM_Maze_Obs_Wrapper
-from utils import states_to_np
+from utils import states_to_np, flatten_dict_of_lists
+from constants import DEFAULT_REW_MAP
+from skimage.transform import resize
+from viz_utils import draw_box
 
 class ActiveRLCallback(DefaultCallbacks):
     """
@@ -49,10 +54,12 @@ class ActiveRLCallback(DefaultCallbacks):
         self.is_dm_maze = self.config["env"] == DM_Maze_Obs_Wrapper
         self.planning_uncertainty_weight = planning_uncertainty_weight
         self.eval_rewards = []
+        self.goal_reached = []
         self.use_gpu = args.num_gpus > 0
         self.args = args
-        self.visualization_env = self.config["env"](self.config["env_config"])
-        self.visualization_env.reset()
+        if self.is_gridworld:
+            self.visualization_env = self.config["env"](self.config["env_config"])
+            self.visualization_env.reset()
         if self.planning_model is not None:
             device = "cuda:0" if self.use_gpu else "cpu"
             self.reward_model = RewardPredictor(self.planning_model.obs_size, self.config["model"]["fcnet_hiddens"][0], False, device=device)
@@ -61,24 +68,60 @@ class ActiveRLCallback(DefaultCallbacks):
             self.reward_model = None
             self.reward_optim = None
 
+    def build_dummy_simplegrid_config(self):
+        maze_str = self.config["env_config"]["maze_str"].split()
         
+        maze_width = len(maze_str[0])
+        maze_height = len(maze_str)
+        dummy_line = "".join(["E" for _ in range(maze_width)])
+        dummy_desc = [dummy_line for _ in range(maze_height)]
+        dummy_simplegrid_config = {
+            "desc": dummy_desc,
+            "reward_map": DEFAULT_REW_MAP,
+            "wind_p": 0,
+            "is_evaluation": True
+        }
+        return dummy_simplegrid_config
 
     def on_evaluate_start(self, *, algorithm: UncertainPPO, **kwargs)-> None:
         """
         This method gets called at the beginning of Algorithm.evaluate().
         """
-        #self.is_evaluating = True
-        
-        # if self.num_cells > 0:
-        #     self.eval_rewards = [0 for _ in range(self.num_cells)]
 
         def activate_eval_metrics(worker):
             if hasattr(worker, "callbacks"):
                 worker.callbacks.is_evaluating = True
-                if worker.callbacks.num_cells > 0:
-                    worker.callbacks.eval_rewards = [0 for _ in range(worker.callbacks.num_cells)]
-        
+            return None
         algorithm.evaluation_workers.foreach_worker(activate_eval_metrics)
+        
+
+    def _get_img_bounds(self, img):
+        """ Get bounds of foreground of image (assuming background is uniform and starts at edge of image)"""
+        bg_value = img.flatten()[0]
+        img = deepcopy(img)
+        foreground_prev = np.nonzero(img)
+        img[np.abs(img - bg_value) < 5] = 0
+        foreground = np.nonzero(img)
+        print("BACKGROUND VALUE IS ", bg_value, f" FILTERED OUT {len(foreground_prev[0]) - len(foreground[0])} POINTS")
+        x_low, x_high = np.min(foreground[-2]), np.max(foreground[-2]) + 1
+        y_low, y_high = np.min(foreground[-1]), np.max(foreground[-1]) + 1
+        return x_low, x_high, y_low, y_high
+
+    def _generate_highlighted_img(self, img: np.ndarray, per_cell_rewards: Dict, shift: float, scale: float):
+        """Generates an image overlaid with a grid highlighted according to per_cell_rewards.
+            WARNING: this is currently in-place."""
+        print(f"IMAGE SHAPE: {img.shape}")
+        x_low, x_high, y_low, y_high = self._get_img_bounds(img[:, :, :, :, :img.shape[-2]])
+        highlight_img_h = x_high - x_low
+        highlight_img_w = y_high - y_low
+        highlight_img = np.zeros([3, highlight_img_h, highlight_img_w])
+        for idx, reward in per_cell_rewards.items():
+            grid_pos = self.grid_positions[int(idx)]
+            scaled_reward = (reward + shift) * scale#(reward + 10000) / 300
+            draw_box(highlight_img, grid_pos, self.grid_h, self.grid_w, scaled_reward)
+
+        img[..., :, x_low:x_high, y_low:y_high] = img[..., :, x_low:x_high, y_low:y_high] * 0.75 + 0.25 * np.uint8(highlight_img)
+        return img
 
     def on_evaluate_end(self, *, algorithm: UncertainPPO, evaluation_metrics: dict, **kwargs)-> None:
         """
@@ -88,23 +131,41 @@ class ActiveRLCallback(DefaultCallbacks):
         def access_eval_metrics(worker):
             if hasattr(worker, "callbacks"):
                 worker.callbacks.is_evaluating = False
-                return worker.callbacks.eval_rewards
+                return worker.callbacks.eval_rewards, worker.callbacks.goal_reached, worker.callbacks.grid_h, worker.callbacks.grid_w, worker.callbacks.grid_positions, worker.callbacks.world_positions, worker.callbacks.num_cells
             else:
                 return []
-        rewards = np.array(algorithm.evaluation_workers.foreach_worker(access_eval_metrics))
+        workers_out = algorithm.evaluation_workers.foreach_worker(access_eval_metrics)
+        _, _, self.grid_h, self.grid_w, self.grid_positions, \
+            self.world_positions, self.num_cells = workers_out[0]
+        rewards = np.array([output[0] for output in workers_out])
+        goal_reached = np.array([output[1] for output in workers_out])
         if self.is_gridworld:
-            
             rewards = np.mean(rewards, axis=0)
             per_cell_rewards = {f"{cell}": rew for cell, rew in enumerate(rewards)}
             evaluation_metrics["evaluation"]["per_cell_rewards"] = per_cell_rewards
+            per_cell_rewards["max"] = 10
+            per_cell_rewards["min"] = -5
             img_arr = self.visualization_env.render(mode="rgb_array", reward_dict=per_cell_rewards)
             img_arr = np.transpose(img_arr, [2, 0, 1])
             evaluation_metrics["evaluation"]["per_cell_rewards_img"] = img_arr[None, None, :, :, :]
         if self.is_dm_maze:
-            try:
-                evaluation_metrics["evaluation"]["single_img"] = evaluation_metrics["evaluation"]["episode_media"]["img"][0]
-            except Exception as e:
-                print("AAAAAAAAAAAAAAA IT FAILED")
+            goal_reached_img = evaluation_metrics["evaluation"]["episode_media"]["img"][0]
+            evaluation_metrics["evaluation"]["single_img"] = goal_reached_img
+            
+            rewards = np.mean(rewards, axis=0)
+            per_cell_rewards = {f"{cell}": rew for cell, rew in enumerate(rewards)}
+            goal_reached = np.mean(goal_reached, axis=0)
+            per_cell_goal_reached = {f"{cell}": reached for cell, reached in enumerate(goal_reached)}
+            # per_cell_rewards["max"] = -200
+            # per_cell_rewards["min"] = -500
+            evaluation_metrics["evaluation"]["per_cell_rewards"] = per_cell_rewards
+            evaluation_metrics["evaluation"]["per_cell_goal_reached"] = per_cell_goal_reached
+            shift = 0
+            scale = 1
+            #shift = - rewards.min()
+            #scale = 1 / (rewards.max() - rewards.min())
+            goal_reached_img = self._generate_highlighted_img(goal_reached_img, per_cell_goal_reached, shift, scale)
+            evaluation_metrics["evaluation"]["per_cell_goal_reached_img"] = goal_reached_img[None, None, :, :, :]
 
     def on_episode_start(
         self,
@@ -130,39 +191,54 @@ class ActiveRLCallback(DefaultCallbacks):
                 metrics for the episode.
             kwargs: Forward compatibility placeholder.
         """
-        envs = base_env.get_sub_environments()
+        env = base_env.get_sub_environments()[0]
         # Get the single "default policy"
         policy = next(policies.values())
-        for env in envs:
-            if self.is_evaluating and self.is_gridworld:
-                if self.num_cells < 0:
-                    self.num_cells = env.ncol * env.nrow
-                    self.eval_rewards = [0 for _ in range(self.num_cells)]
+        needs_initialization = self.num_cells < 0
+        
+        if self.is_gridworld:
+            if needs_initialization:
+                self.num_cells = env.ncol * env.nrow
+                self.eval_rewards = [0 for _ in range(self.num_cells)]
+            if self.is_evaluating:
                 self.cell_index += 1
                 initial_state = np.zeros([self.num_cells])
                 initial_state[self.cell_index % self.num_cells] = 1
                 env.reset(initial_state=initial_state)
-
-            elif not self.is_evaluating and self.run_active_rl:
-                new_states, uncertainties = generate_states(policy, env=env, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
-                            batch_size=self.batch_size, no_coop=self.no_coop, planning_model=self.planning_model, reward_model=self.reward_model, planning_uncertainty_weight=self.planning_uncertainty_weight)
-                new_states = states_to_np(new_states)
-                #new_states = new_states.detach().cpu().flatten()
-                episode.custom_metrics[UNCERTAINTY_LOSS_KEY] = uncertainties[-1]
-                # print(env.observation_space)
-                env.reset(initial_state=new_states)
+        elif self.is_citylearn and self.is_evaluating:
+            #Rotate in the next climate zone
+            env.next_env()
+        elif self.is_dm_maze:
+            if needs_initialization:
+                arena = env.get_task()._maze_arena
+                self.grid_h, self.grid_w = arena._maze.entity_layer.shape
+                self.grid_positions = flatten_dict_of_lists(arena.find_token_grid_positions(RESPAWNABLE_TOKENS))
+                self.world_positions = arena.grid_to_world_positions(self.grid_positions)
+                self.num_cells = len(self.world_positions)
+                self.eval_rewards = [0 for _ in range(self.num_cells)]
+                self.goal_reached = [0 for _ in range(self.num_cells)]
+            if self.is_evaluating:
+                self.cell_index += 1
+                initial_world_position = self.world_positions[self.cell_index % self.num_cells]
+                initial_state = env.observation_space.sample()
+                initial_state = env.combine_resettable_part(initial_state, initial_world_position)
+                env.reset(initial_state=initial_state)
+        elif not self.is_evaluating and self.run_active_rl:
+            new_states, uncertainties = generate_states(policy, env=env, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
+                        batch_size=self.batch_size, no_coop=self.no_coop, planning_model=self.planning_model, reward_model=self.reward_model, planning_uncertainty_weight=self.planning_uncertainty_weight)
+            new_states = states_to_np(new_states)
+            episode.custom_metrics[UNCERTAINTY_LOSS_KEY] = uncertainties[-1]
+            env.reset(initial_state=new_states)
+            if self.is_gridworld or self.is_dm_maze:
+                if ACTIVE_STATE_VISITATION_KEY not in episode.custom_metrics:
+                    episode.hist_data[ACTIVE_STATE_VISITATION_KEY] = []
+                to_log, _ = env.separate_resettable_part(new_states)
+                to_log = np.array(to_log)
                 if self.is_gridworld:
-                    if ACTIVE_STATE_VISITATION_KEY not in episode.custom_metrics:
-                        episode.hist_data[ACTIVE_STATE_VISITATION_KEY] = []
-                    episode.hist_data[ACTIVE_STATE_VISITATION_KEY].append(new_states.numpy().argmax())
-            elif self.is_evaluating and self.is_citylearn:
-                #Rotate in the next climate zone
-                env.next_env()
-                
-            
-            # if self.is_citylearn:
-            #     prefix = "eval_" if self.is_evaluating else "train_"
-            #     episode.hist_data[prefix + CL_ENV_KEYS[env.curr_env_idx]] = []
+                    to_log = to_log.argmax()
+                elif self.is_dm_maze:
+                    to_log = to_log[0] * self.grid_w + to_log[1]
+                episode.hist_data[ACTIVE_STATE_VISITATION_KEY].append(new_states.numpy().argmax())
 
     def on_episode_end(
         self,
@@ -171,6 +247,7 @@ class ActiveRLCallback(DefaultCallbacks):
         base_env: BaseEnv,
         policies: Dict[PolicyID, Policy],
         episode: Union[Episode, EpisodeV2],
+        env_index: Optional[int] = None,
         **kwargs)-> None:
         """
         Runs when an episode is done.
@@ -189,20 +266,20 @@ class ActiveRLCallback(DefaultCallbacks):
                 these error cases properly with their custom logics.
             kwargs : Forward compatibility placeholder.
         """
-        env = base_env.get_unwrapped()[0]
-        if self.is_evaluating and self.is_gridworld:
+        env = base_env.get_sub_environments()[0]
+        if self.is_evaluating and (self.is_gridworld or self.is_dm_maze):
             self.eval_rewards[self.cell_index % self.num_cells] += episode.total_reward / (self.config["evaluation_duration"] // self.num_cells) 
         if self.is_citylearn:
-            
             prefix = "eval_" if self.is_evaluating else "train_"
-            episode.custom_metrics[prefix + CL_ENV_KEYS[env.curr_env_idx] + "_reward"] = episode.total_reward #/ self.config["evaluation_duration"]
+            episode.custom_metrics[prefix + CL_ENV_KEYS[env.curr_env_idx] + "_reward"] = episode.total_reward
         if self.is_dm_maze:
+            # episode.custom_metrics["reached_goal"] = int(env.reached_goal_last_ep)
             episode.custom_metrics["reached_goal"] = int(env.reached_goal_last_ep)
             if self.is_evaluating:
+                self.goal_reached[self.cell_index % self.num_cells] = int(env.reached_goal_last_ep)
                 pix = env.render()
                 pix = np.transpose(pix, [2, 0, 1])
                 episode.media["img"] = pix[None, None, :, :, :]
-
 
     def on_learn_on_batch(self, policy: Policy, train_batch: SampleBatch, result: dict, **kwargs):
         """
