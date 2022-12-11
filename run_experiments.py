@@ -163,7 +163,7 @@ def add_args(parser):
     parser.add_argument(
         "--horizon", "--soft_horizon",
         type=int,
-        help="Horizon of timesteps to compute reward over",
+        help="Horizon of timesteps to compute reward over (WARNING, I don't think this does anything for dm_control maze)",
         default=48
     )
     parser.add_argument(
