@@ -21,7 +21,7 @@ import ray
 from citylearn.citylearn import CityLearnEnv
 from callbacks import ActiveRLCallback
 from citylearn_wrapper import CityLearnEnvWrapper
-from dm_maze.dm_maze import DM_Maze_Arena, DM_Maze_Env, DM_Maze_Task
+from dm_maze.dm_maze import DM_Maze_Arena, DM_Maze_Env, DM_Maze_Task, DEFAULT_CONTROL_TIMESTEP
 from dm_maze.dm_wrapper import DM_Maze_Wrapper, DM_Maze_Obs_Wrapper
 from uncertain_ppo import UncertainPPOTorchPolicy
 from uncertain_ppo_trainer import UncertainPPO
@@ -395,7 +395,7 @@ if __name__=="__main__":
             "subtarget_rews": subtarget_rews,
             "random_state": np.random.RandomState(42),
             "strip_singleton_obs_buffer_dim": True,
-            "time_limit": args.horizon / 1000,
+            "time_limit": args.horizon * DEFAULT_CONTROL_TIMESTEP,
             "aliveness_reward": args.aliveness_reward,
             "distance_reward_scale": args.distance_reward_scale,
             "use_all_geoms": args.use_all_geoms,

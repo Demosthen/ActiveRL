@@ -236,21 +236,21 @@ class DM_Maze_Task(RepeatSingleGoalMazeAugmentedWithTargets):
 
     def should_terminate_episode(self, physics):
 
-        if self._targets_obtained > 0:
-            self.reached_goal_last_ep = True
-            print("REACHED GOAL!!")
-            return True
-
+        # if self._targets_obtained > 0:
+        #     self.reached_goal_last_ep = True
+        #     print("REACHED GOAL!!")
+        #     return True
+        for subtarget, rew in zip(self._subtargets, self._subtarget_rews):
+            if subtarget.activated and rew > 0:
+                self.reached_goal_last_ep = True
+                print("REACHED GOAL!")
+                return True
         # Checks stuff like aliveness and contact termination
         if super(RepeatSingleGoalMaze, self).should_terminate_episode(physics):
             self.reached_goal_last_ep = False
             return True
 
-        for subtarget in self._subtargets:
-            if subtarget.activated:
-                self.reached_goal_last_ep = True
-                print("REACHED GOAL!")
-                return True
+        
         # No subtargets have been activated.
         self.reached_goal_last_ep = False
         return False
@@ -260,7 +260,8 @@ class DM_Maze_Env(Environment):
     """Environment that wraps the task"""
 
     def __init__(self, task: DM_Maze_Task, time_limit=np.inf, random_state=None, n_sub_steps=None, raise_exception_on_physics_error=True, strip_singleton_obs_buffer_dim=False, max_reset_attempts=1, delayed_observation_padding=ObservationPadding.ZERO):
-        time_limit=10
+        # time_limit=10
+        print("TIME LIMIT IS: ", time_limit)
         super().__init__(task, time_limit, random_state, n_sub_steps, raise_exception_on_physics_error,
                          strip_singleton_obs_buffer_dim, max_reset_attempts, delayed_observation_padding)
 

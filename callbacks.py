@@ -100,9 +100,8 @@ class ActiveRLCallback(DefaultCallbacks):
         bg_value = img.flatten()[0]
         img = deepcopy(img)
         foreground_prev = np.nonzero(img)
-        img[np.abs(img - bg_value) < 5] = 0
+        img[np.abs(img - bg_value) < 10] = 0
         foreground = np.nonzero(img)
-        print("BACKGROUND VALUE IS ", bg_value, f" FILTERED OUT {len(foreground_prev[0]) - len(foreground[0])} POINTS")
         x_low, x_high = np.min(foreground[-2]), np.max(foreground[-2]) + 1
         y_low, y_high = np.min(foreground[-1]), np.max(foreground[-1]) + 1
         return x_low, x_high, y_low, y_high
