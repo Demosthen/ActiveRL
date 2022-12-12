@@ -221,7 +221,7 @@ class DM_Maze_Task(RepeatSingleGoalMazeAugmentedWithTargets):
         if self.distance_reward_scale != 0:
             walker_pos = physics.bind(self._walker.root_body).xpos
             dist_reward = -np.log(0.000001 + np.mean([np.linalg.norm(walker_pos - physics.bind(
-                subtarget.root_body).xpos) for subtarget in self._subtargets]))
+                subtarget.root_body).xpos) for subtarget, rew in zip(self._subtargets, self._subtarget_rews) if rew > 0]))
         return dist_reward * self.distance_reward_scale
 
     def get_reward(self, physics):
