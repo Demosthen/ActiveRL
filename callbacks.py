@@ -237,7 +237,7 @@ class ActiveRLCallback(DefaultCallbacks):
                     to_log = to_log.argmax()
                 elif self.is_dm_maze:
                     to_log = to_log[0] * self.grid_w + to_log[1]
-                episode.hist_data[ACTIVE_STATE_VISITATION_KEY].append(new_states.numpy().argmax())
+                episode.hist_data[ACTIVE_STATE_VISITATION_KEY].append(to_log)
 
     def on_episode_end(
         self,
