@@ -13,6 +13,7 @@ import numpy as np
 import labmaze
 from dm_maze.dm_maze import DM_Maze_Env, DM_Maze_Task, DM_Maze_Arena
 from dm_control.locomotion.walkers import ant, jumping_ball
+from dm_control.locomotion.props import target_sphere
 from resettable_env import ResettableEnv
 import torch
 
@@ -70,8 +71,8 @@ class DM_Maze_Wrapper(DMSuiteEnv):
         else:
             raise NotImplementedError()
         arena = DM_Maze_Arena(
-            maze=labmaze.FixedMazeWithRandomGoals(self.maze_str))
-        task = DM_Maze_Task(walker, None, arena, arena.num_targets, contact_termination=True, aliveness_reward=self.aliveness_reward, use_all_geoms=self.use_all_geoms,
+            maze=labmaze.FixedMazeWithRandomGoals(self.maze_str), xy_scale=1, z_height=2)
+        task = DM_Maze_Task(walker, target_sphere.TargetSphere(height_above_ground=0.6), arena, arena.num_targets, contact_termination=True, aliveness_reward=self.aliveness_reward, use_all_geoms=self.use_all_geoms,
                             enable_global_task_observables=True, distance_reward_scale=self.distance_reward_scale, subtarget_rews=self.subtarget_rews)
         self.env = DM_Maze_Env(task=task, **config)
 

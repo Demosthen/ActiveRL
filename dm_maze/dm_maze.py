@@ -136,8 +136,7 @@ class DM_Maze_Task(RepeatSingleGoalMazeAugmentedWithTargets):
             self._subtarget_reward_scale] * num_subtargets
         for i in range(num_subtargets):
             subtarget = target_sphere.TargetSphere(
-                radius=0.4, rgb1=subtarget_colors[0], rgb2=subtarget_colors[1],
-                name='subtarget_{}'.format(i)
+                radius=0.6, name='subtarget_{}'.format(i), height_above_ground=0.6
             )
             self._subtargets.append(subtarget)
             self._maze_arena.attach(subtarget)
