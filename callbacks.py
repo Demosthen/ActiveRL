@@ -219,6 +219,8 @@ class SimpleGridCallback(ActiveRLCallback):
             to_log = np.array(to_log)
             to_log = to_log.argmax()
             episode.hist_data[ACTIVE_STATE_VISITATION_KEY].append(to_log)
+            # Limit hist data to last 100 entries so wandb can handle it
+            episode.hist_data[ACTIVE_STATE_VISITATION_KEY] = episode.hist_data[ACTIVE_STATE_VISITATION_KEY][-100:]
 
     def on_episode_end(
         self,
@@ -437,6 +439,9 @@ class DMMazeCallback(ActiveRLCallback):
             to_log = np.array(to_log)
             to_log = to_log[0] * self.grid_w + to_log[1]
             episode.hist_data[ACTIVE_STATE_VISITATION_KEY].append(to_log)
+            # Limit hist data to last 100 entries so wandb can handle it
+            episode.hist_data[ACTIVE_STATE_VISITATION_KEY] = episode.hist_data[ACTIVE_STATE_VISITATION_KEY][-100:]
+
 
     def on_episode_end(
         self,
@@ -468,7 +473,6 @@ class DMMazeCallback(ActiveRLCallback):
         if self.is_evaluating:
             self.eval_rewards[self.cell_index % self.num_cells] += episode.total_reward / (self.config["evaluation_duration"] // self.num_cells) 
 
-        # episode.custom_metrics["reached_goal"] = int(env.reached_goal_last_ep)
         episode.custom_metrics["reached_goal"] = int(env.reached_goal_last_ep)
         if self.is_evaluating:
             self.goal_reached[self.cell_index % self.num_cells] = int(env.reached_goal_last_ep)
