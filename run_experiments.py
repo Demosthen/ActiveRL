@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import argparse
 import ray
 from citylearn.citylearn import CityLearnEnv
-from callbacks import ActiveRLCallback
+from callbacks import ActiveRLCallback, SimpleGridCallback, CitylearnCallback, DMMazeCallback
 from citylearn_wrapper import CityLearnEnvWrapper
 from dm_maze.dm_maze import DM_Maze_Arena, DM_Maze_Env, DM_Maze_Task, DEFAULT_CONTROL_TIMESTEP
 from dm_maze.dm_wrapper import DM_Maze_Wrapper, DM_Maze_Obs_Wrapper
@@ -90,8 +90,15 @@ def get_agent(env, rllib_config, env_config, eval_env_config, model_config, args
         "env_config": eval_env_config
     }
 
-    
-    config["callbacks"] = lambda: ActiveRLCallback(num_descent_steps=args.num_descent_steps, batch_size=1, no_coop=args.no_coop, planning_model=planning_model, config=config, run_active_rl=args.use_activerl, planning_uncertainty_weight=args.planning_uncertainty_weight, args=args)
+    if args.env == "gw":
+        callback_fn = SimpleGridCallback
+    elif args.env == "cl":
+        callback_fn = CitylearnCallback
+    elif args.env == "dm":
+        callback_fn = DMMazeCallback
+    else:
+        raise NotImplementedError()
+    config["callbacks"] = lambda: callback_fn(num_descent_steps=args.num_descent_steps, batch_size=1, no_coop=args.no_coop, planning_model=planning_model, config=config, run_active_rl=args.use_activerl, planning_uncertainty_weight=args.planning_uncertainty_weight, args=args)
     config.update(rllib_config)
     agent = UncertainPPO(config = config, logger_creator = utils.custom_logger_creator(args.log_path))
 
