@@ -158,12 +158,11 @@ class SimpleGridCallback(ActiveRLCallback):
         def access_eval_metrics(worker):
             if hasattr(worker, "callbacks"):
                 worker.callbacks.is_evaluating = False
-                return worker.callbacks.eval_rewards, worker.callbacks.goal_reached, worker.callbacks.grid_h, worker.callbacks.grid_w, worker.callbacks.grid_positions, worker.callbacks.world_positions, worker.callbacks.num_cells
+                return worker.callbacks.eval_rewards, worker.callbacks.num_cells
             else:
                 return []
         workers_out = algorithm.evaluation_workers.foreach_worker(access_eval_metrics)
-        _, _, self.grid_h, self.grid_w, self.grid_positions, \
-            self.world_positions, self.num_cells = workers_out[0]
+        _, self.num_cells = workers_out[0]
         rewards = np.array([output[0] for output in workers_out])
         rewards = np.mean(rewards, axis=0)
         per_cell_rewards = {f"{cell}": rew for cell, rew in enumerate(rewards)}
@@ -315,9 +314,8 @@ class CitylearnCallback(ActiveRLCallback):
             kwargs : Forward compatibility placeholder.
         """
         env = base_env.get_sub_environments()[0]
-        if self.is_citylearn:
-            prefix = "eval_" if self.is_evaluating else "train_"
-            episode.custom_metrics[prefix + CL_ENV_KEYS[env.curr_env_idx] + "_reward"] = episode.total_reward
+        prefix = "eval_" if self.is_evaluating else "train_"
+        episode.custom_metrics[prefix + CL_ENV_KEYS[env.curr_env_idx] + "_reward"] = episode.total_reward
 
 class DMMazeCallback(ActiveRLCallback):
 
@@ -439,6 +437,44 @@ class DMMazeCallback(ActiveRLCallback):
             to_log = np.array(to_log)
             to_log = to_log[0] * self.grid_w + to_log[1]
             episode.hist_data[ACTIVE_STATE_VISITATION_KEY].append(to_log)
+
+    def on_episode_end(
+        self,
+        *,
+        worker: RolloutWorker,
+        base_env: BaseEnv,
+        policies: Dict[PolicyID, Policy],
+        episode: Union[Episode, EpisodeV2],
+        env_index: Optional[int] = None,
+        **kwargs)-> None:
+        """
+        Runs when an episode is done.
+
+        Args:
+            worker: Reference to the current rollout worker.
+            base_env : BaseEnv running the episode. The underlying sub environment
+                objects can be retrieved by calling base_env.get_sub_environments().
+            policies : Mapping of policy id to policy objects. In single agent mode
+                there will only be a single “default_policy”.
+            episode : Episode object which contains episode state. You can use the
+                episode.user_data dict to store temporary data, and episode.custom_metrics
+                to store custom metrics for the episode. In case of environment failures,
+                episode may also be an Exception that gets thrown from the environment
+                before the episode finishes. Users of this callback may then handle
+                these error cases properly with their custom logics.
+            kwargs : Forward compatibility placeholder.
+        """
+        env = base_env.get_sub_environments()[0]
+        if self.is_evaluating:
+            self.eval_rewards[self.cell_index % self.num_cells] += episode.total_reward / (self.config["evaluation_duration"] // self.num_cells) 
+
+        # episode.custom_metrics["reached_goal"] = int(env.reached_goal_last_ep)
+        episode.custom_metrics["reached_goal"] = int(env.reached_goal_last_ep)
+        if self.is_evaluating:
+            self.goal_reached[self.cell_index % self.num_cells] = int(env.reached_goal_last_ep)
+            pix = env.render()
+            pix = np.transpose(pix, [2, 0, 1])
+            episode.media["img"] = pix[None, None, :, :, :]
 
 class ActiveRLCallback_old(DefaultCallbacks):
     """

@@ -60,4 +60,4 @@ class SimpleGridEnvWrapper(gym.core.ObservationWrapper, ResettableEnv):
         
     def resettable_bounds(self):
         """Get bounds for resettable part of observation space"""
-        return np.atleast_1d(self.observation_space.start), np.atleast_1d(self.observation_space.start + self.observation_space.n)
+        return np.atleast_1d(self.observation_space.low), np.atleast_1d(self.observation_space.high)

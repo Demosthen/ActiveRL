@@ -70,8 +70,7 @@ def sample_obs(env: ResettableEnv, batch_size: int, device):
         with torch.no_grad():
             for i in range(batch_size):
                 random_obs = env.sample_obs()
-                if isinstance(random_obs, dict):
-                    obs.append(torch.torch.tensor(random_obs, device = device, dtype=torch.float32, requires_grad=False))
+                obs.append(torch.torch.tensor(random_obs, device = device, dtype=torch.float32, requires_grad=False))
 
         obs = torch.stack(obs)
     resettable_part, obs = env.separate_resettable_part(obs)
