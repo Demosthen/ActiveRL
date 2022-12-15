@@ -554,14 +554,19 @@ class SimpleGrid:
         if reward_dict is not None:
             rewards = np.zeros(self.width * self.height)
             for k, v in reward_dict.items():
-                rewards[int(k)] = v
+                if k == "max":
+                    max_val = v
+                elif k == "min":
+                    min_val = v
+                else:
+                    rewards[int(k)] = v
             rewards = rewards.reshape((self.width, self.height)).T
             val_func = lambda x, max, min: (x - min) / max
             # val_func = lambda x, m, expo: (np.log(x) / np.log(m) if expo else x / m) if x > 1 else 0
             if color_func == None:
                 color_func = lambda x, m, expo: (255 * min(1, 2 * (1 - val_func(x, m, expo))), 255 * min(1, 2 * val_func(x, m, expo)), 0)
-            max_val = 10#np.amax(rewards)
-            min_val = -5
+            # max_val = 10
+            # min_val = -5
 
 
         if highlight_mask is None:

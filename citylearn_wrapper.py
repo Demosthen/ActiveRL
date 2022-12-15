@@ -16,8 +16,9 @@ from gym.envs.toy_text.utils import categorical_sample
 from citylearn_model_training.planning_model import get_planning_model
 from gym.spaces.box import Box
 from rbc_agent import RBCAgent
+from resettable_env import ResettableEnv
 
-class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, gym.core.RewardWrapper):
+class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, gym.core.RewardWrapper, ResettableEnv):
     """
         Wraps the CityLearnEnv, provides an interface to do state transitions from a planning model or from multiple CityLearn environments.
         If you specify a planning_model_ckpt in the config function, will output state transitions from the planning model
@@ -180,4 +181,16 @@ class CityLearnEnvWrapper(gym.core.ObservationWrapper, gym.core.ActionWrapper, g
         else:
             self.curr_obs = self.observation(self.env.reset())
         return self.curr_obs
+
+    def separate_resettable_part(self, obs):
+        """Separates the observation into the resettable portion and non-resettable portion"""
+        return obs, obs
+
+    def combine_resettable_part(self, obs, resettable):
+        """Combines an observation that has been split like in separate_resettable_part back together"""
+        return resettable
+
+    def resettable_bounds(self):
+        """Get bounds for resettable part of observation space"""
+        return self.observation_space.low, self.observation_space.high
         

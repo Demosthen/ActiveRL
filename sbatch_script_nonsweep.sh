@@ -24,7 +24,7 @@
 ##SBATCH --gpus-per-task=1
 #
 # Wall clock limit (8hrs):
-#SBATCH --time=2:59:59
+#SBATCH --time=15:59:59
 #
 # Run 48 examples concurrently
 #SBATCH --array=0
@@ -34,7 +34,7 @@ export PYTHON_PATH=/global/home/users/$USER/.conda/envs/ActiveRL/bin/python
 export WANDB_CACHE_DIR=/global/scratch/users/$USER/.cache/wandb
 # export LD_LIBRARY_PATH=/global/home/users/lucas_spangher/.conda/pkgs:$LD_LIBRARY_PATH
 module load gcc/8.3.0
-
+export MUJOCO_GL=egl
 export PATH=$PYTHON_PATH:$PATH
 
 $PYTHON_PATH $1

@@ -1,6 +1,3 @@
-from mimetypes import init
-from textwrap import wrap
-from typing import Callable
 import gym
 import numpy as np
 from ray.rllib.utils.numpy import one_hot
@@ -8,8 +5,9 @@ import torch
 from gym_simplegrid.envs.simple_grid import SimpleGridEnvRLLib
 from gym.spaces.box import Box
 from gym.envs.toy_text.utils import categorical_sample
+from resettable_env import ResettableEnv
 
-class SimpleGridEnvWrapper(gym.core.ObservationWrapper):
+class SimpleGridEnvWrapper(gym.core.ObservationWrapper, ResettableEnv):
     """
         Wraps the SimpleGridEnv to make discrete observations one hot encoded. Also provides an inverse_observations
         function that can transform the one hot encoded observations back to the original discrete space.
@@ -51,3 +49,15 @@ class SimpleGridEnvWrapper(gym.core.ObservationWrapper):
         if initial_state is not None:
             initial_state = self.inverse_observation(initial_state)
         return self.observation(self.env.reset(initial_state=initial_state))
+
+    def separate_resettable_part(self, obs):
+        """Separates the observation into the resettable portion and non-resettable portion"""
+        return obs, obs
+
+    def combine_resettable_part(self, obs, resettable):
+        """Combines an observation that has been split like in separate_resettable_part back together"""
+        return resettable
+        
+    def resettable_bounds(self):
+        """Get bounds for resettable part of observation space"""
+        return np.atleast_1d(self.observation_space.start), np.atleast_1d(self.observation_space.start + self.observation_space.n)

@@ -421,9 +421,13 @@ class SimpleGridEnv(Env):
         """
         Render the environment to an rgb array.
         """
+        if not hasattr(self, "s"):
+            s = -1
+        else:
+            s = self.s
         img = self.grid.render(
             tile_size=32,
-            agent_pos=(self.s % self.ncol, self.s // self.ncol),
+            agent_pos=(s % self.ncol, s // self.ncol),
             agent_dir=0,
             reward_dict=rewards_dict,
             log_scale=False
