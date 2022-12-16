@@ -71,7 +71,7 @@ def get_agent(env, rllib_config, env_config, eval_env_config, model_config, args
     #config["num_sgd_iter"] = 
     config["disable_env_checking"] = True
     # 1 driver, N training workers, 1 evaluation workers
-    total_workers = args.num_training_workers + 2
+    total_workers = args.num_training_workers + 1 + args.num_eval_workers
     config["num_gpus"] = args.num_gpus / total_workers
     config["num_gpus_per_worker"] = args.num_gpus / total_workers
     config["num_workers"] = args.num_training_workers
@@ -82,7 +82,7 @@ def get_agent(env, rllib_config, env_config, eval_env_config, model_config, args
     if args.num_gpus == 0:
         config["num_gpus_per_worker"] = 0
     config["evaluation_interval"] = args.eval_interval
-    config["evaluation_num_workers"] = 1
+    config["evaluation_num_workers"] = args.num_eval_workers
     
     config["evaluation_duration_unit"] = "episodes"
     
@@ -203,6 +203,12 @@ def add_args(parser):
         type=int,
         help="Number of workers to collect data during training",
         default=3
+    )
+    parser.add_argument(
+        "--num_eval_workers",
+        type=int,
+        help="Number of workers to collect data during eval",
+        default=1
     )
     parser.add_argument(
         "--num_envs_per_worker",
@@ -444,7 +450,7 @@ if __name__=="__main__":
         rllib_config["rollout_fragment_length"] = 1000
         dummy_arena = dummy_env.get_task()._maze_arena
         grid_positions = flatten_dict_of_lists(dummy_arena.find_token_grid_positions(RESPAWNABLE_TOKENS))
-        rllib_config["evaluation_duration"] = 1#max(1, args.dm_steps_per_cell) * len(grid_positions)
+        rllib_config["evaluation_duration"] = args.dm_steps_per_cell#max(1, args.dm_steps_per_cell) * len(grid_positions)
         rllib_config["evaluation_parallel_to_training"] = True
         full_eval_duration = max(1, args.dm_steps_per_cell) * len(grid_positions)
         full_eval_fn = lambda agent: agent.evaluate(lambda x: full_eval_duration - x)
