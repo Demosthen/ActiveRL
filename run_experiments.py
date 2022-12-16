@@ -104,11 +104,18 @@ def get_agent(env, rllib_config, env_config, eval_env_config, model_config, args
 
     return agent
 
-def train_agent(agent, timesteps, env=None):
+def train_agent(agent, timesteps, full_eval_interval, full_eval_fn = None):
     training_steps = 0
+    i = 0
     while training_steps < timesteps:
+        i += 1
         result = agent.train()
-        training_steps = result["timesteps_total"]
+        if i % full_eval_interval == 0 and full_eval_fn is not None:
+            agent.callbacks.full_eval()
+            result["full_evaluation"] = full_eval_fn(agent)["evaluation"]
+            agent._result_logger.on_result(result)
+            agent.callbacks.full_eval()
+        training_steps = result["timesteps_total"]        
         
 def get_log_path(log_dir):
     now = datetime.now()
@@ -333,6 +340,12 @@ def add_args(parser):
         help="Dropout parameter",
         default = 0.5
     )
+    parser.add_argument(
+        "--full_eval_interval",
+        type=int,
+        help="Number of training steps between full evaluation runs (i.e. visiting every state in gridworld or mujoco maze)",
+        default=10
+    )
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
@@ -355,6 +368,7 @@ if __name__=="__main__":
     model_config = {}
     rllib_config = {}
 
+    full_eval_fn = None
     if args.env == "cl":
         env = CityLearnEnvWrapper
         env_config = {
@@ -430,8 +444,10 @@ if __name__=="__main__":
         rllib_config["rollout_fragment_length"] = 1000
         dummy_arena = dummy_env.get_task()._maze_arena
         grid_positions = flatten_dict_of_lists(dummy_arena.find_token_grid_positions(RESPAWNABLE_TOKENS))
-        rllib_config["evaluation_duration"] = max(1, args.dm_steps_per_cell) * len(grid_positions)
+        rllib_config["evaluation_duration"] = 1#max(1, args.dm_steps_per_cell) * len(grid_positions)
         rllib_config["evaluation_parallel_to_training"] = True
+        full_eval_duration = max(1, args.dm_steps_per_cell) * len(grid_positions)
+        full_eval_fn = lambda agent: agent.evaluate(lambda x: full_eval_duration - x)
         # rllib_config["record_env"] = True
     else:
         raise NotImplementedError
@@ -441,7 +457,7 @@ if __name__=="__main__":
 
     agent = get_agent(env, rllib_config, env_config, eval_env_config, model_config, args, planning_model)
     
-    train_agent(agent, timesteps=args.num_timesteps, env=env)
+    train_agent(agent, timesteps=args.num_timesteps, full_eval_interval=args.full_eval_interval, full_eval_fn=full_eval_fn)
 
     result_dict = agent.evaluate()
 
