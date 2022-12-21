@@ -454,8 +454,9 @@ class DMMazeCallback(ActiveRLCallback):
             to_log = np.array(to_log)
             to_log = to_log[0] * self.grid_w + to_log[1]
             episode.hist_data[ACTIVE_STATE_VISITATION_KEY].append(to_log)
+            print("LENGTH OF STATE VISITATION LIST", len(episode.hist_data[ACTIVE_STATE_VISITATION_KEY]))
             # Limit hist data to last 100 entries so wandb can handle it
-            episode.hist_data[ACTIVE_STATE_VISITATION_KEY] = episode.hist_data[ACTIVE_STATE_VISITATION_KEY][-10:]
+            #episode.hist_data[ACTIVE_STATE_VISITATION_KEY] = episode.hist_data[ACTIVE_STATE_VISITATION_KEY][-10:]
 
     def on_episode_end(
         self,
@@ -484,7 +485,7 @@ class DMMazeCallback(ActiveRLCallback):
             kwargs : Forward compatibility placeholder.
         """
         env = base_env.get_sub_environments()[0]
-        episode.custom_metrics["reached_goal"] = int(env.reached_goal_last_ep)
+        episode.custom_metrics["reached_goal"] = 1#int(env.reached_goal_last_ep)
         if self.is_evaluating:
             if self.full_eval_mode:
                 self.eval_rewards[self.cell_index % self.num_cells] += episode.total_reward / (self.config["evaluation_duration"] // self.num_cells)
