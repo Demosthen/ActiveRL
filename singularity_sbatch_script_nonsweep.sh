@@ -41,12 +41,12 @@ export SINGULARITY_TEMPDIR=$BASE_DIR/tmp
 SINGULARITY_CACHE_DIR=/global/scratch/users/$USER/transactive-control-social-game
 PYTHON_DIR=/global/home/users/$USER/.conda/envs/ActiveRL/bin
 export WANDB_API_KEY=87928bf7ce62528545fe624701ab2f3aa25a7547
-if test -f synergym.sif; then
+if test -f sinergym.sif; then
   echo “docker image exists”
 else
-  singularity build synergym.sif docker://alejandrocn7/sinergym:latest
+  singularity build sinergym.sif docker://alejandrocn7/sinergym:latest
 fi
-singularity run --nv --workdir ./tmp --bind $(pwd):$HOME --bind "$LDIR:$HOME/.local" --bind "$PYTHON_DIR:/.env" synergym.sif sh -c ". ./singularity_preamble_new.sh && eval $1"
+singularity run --nv --workdir ./tmp --bind $(pwd):$HOME --bind "$LDIR:$HOME/.local" --bind "$PYTHON_DIR:/.env" sinergym.sif sh -c ". ./singularity_preamble_new.sh && eval $1"
 
 
 
