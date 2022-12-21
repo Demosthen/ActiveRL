@@ -375,12 +375,12 @@ class DMMazeCallback(ActiveRLCallback):
         Runs at the end of Algorithm.evaluate().
         """
         def access_eval_metrics(worker):
-            if hasattr(worker, "callbacks"):
+            if hasattr(worker, "callbacks") and worker.callbacks.num_cells > 0:
                 worker.callbacks.is_evaluating = False
                 return worker.callbacks.eval_rewards, worker.callbacks.goal_reached, worker.callbacks.grid_h, worker.callbacks.grid_w, worker.callbacks.grid_positions, worker.callbacks.world_positions, worker.callbacks.num_cells
             else:
                 return []
-        workers_out = algorithm.evaluation_workers.foreach_worker(access_eval_metrics)
+        workers_out = [out for out in algorithm.evaluation_workers.foreach_worker(access_eval_metrics) if len(out) > 0]
         _, _, self.grid_h, self.grid_w, self.grid_positions, \
             self.world_positions, self.num_cells = workers_out[0]
         rewards = np.array([output[0] for output in workers_out])
@@ -437,6 +437,7 @@ class DMMazeCallback(ActiveRLCallback):
             self.num_cells = len(self.world_positions)
             self.eval_rewards = [0 for _ in range(self.num_cells)]
             self.goal_reached = [0 for _ in range(self.num_cells)]
+            self.frames = []
 
         if self.is_evaluating and self.full_eval_mode:
             # Resets environment to all states, one by one.
@@ -485,7 +486,7 @@ class DMMazeCallback(ActiveRLCallback):
             kwargs : Forward compatibility placeholder.
         """
         env = base_env.get_sub_environments()[0]
-        episode.custom_metrics["reached_goal"] = 1#int(env.reached_goal_last_ep)
+        episode.custom_metrics["reached_goal"] = int(env.reached_goal_last_ep)
         if self.is_evaluating:
             if self.full_eval_mode:
                 self.eval_rewards[self.cell_index % self.num_cells] += episode.total_reward / (self.config["evaluation_duration"] // self.num_cells)
@@ -493,6 +494,36 @@ class DMMazeCallback(ActiveRLCallback):
             pix = env.render()
             pix = np.transpose(pix, [2, 0, 1])
             episode.media["img"] = pix[None, None, :, :, :]
+
+    def on_episode_step(
+        self,
+        *,
+        worker: "RolloutWorker",
+        base_env: BaseEnv,
+        policies: Optional[Dict[PolicyID, Policy]] = None,
+        episode: Union[Episode, EpisodeV2],
+        env_index: Optional[int] = None,
+        **kwargs,
+    ) -> None:
+        """Runs on each episode step.
+
+        Args:
+            worker: Reference to the current rollout worker.
+            base_env: BaseEnv running the episode. The underlying
+                sub environment objects can be retrieved by calling
+                `base_env.get_sub_environments()`.
+            policies: Mapping of policy id to policy objects.
+                In single agent mode there will only be a single
+                "default_policy".
+            episode: Episode object which contains episode
+                state. You can use the `episode.user_data` dict to store
+                temporary data, and `episode.custom_metrics` to store custom
+                metrics for the episode.
+            env_index: The index of the sub-environment that stepped the episode
+                (within the vector of sub-environments of the BaseEnv).
+            kwargs: Forward compatibility placeholder.
+        """
+        if episode.
 
 # class ActiveRLCallback_old(DefaultCallbacks):
 #     """
