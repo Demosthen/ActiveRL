@@ -385,8 +385,10 @@ class DMMazeCallback(ActiveRLCallback):
             self.world_positions, self.num_cells = workers_out[0]
         rewards = np.array([output[0] for output in workers_out])
         goal_reached = np.array([output[1] for output in workers_out])
-        goal_reached_img = evaluation_metrics["evaluation"]["episode_media"]["img"][0]
-        evaluation_metrics["evaluation"]["single_img"] = goal_reached_img
+        goal_reached_vid = np.stack(evaluation_metrics["evaluation"]["episode_media"]["img"][0])
+        goal_reached_img = goal_reached_vid[-1]
+        evaluation_metrics["evaluation"]["single_img"] = goal_reached_img[None, None, :, :, :]
+        evaluation_metrics["evaluation"]["vid"] = goal_reached_vid[None, :, :, :, :]
         if self.full_eval_mode:
             rewards = np.mean(rewards, axis=0)
             per_cell_rewards = {f"{cell}": rew for cell, rew in enumerate(rewards)}
@@ -426,6 +428,8 @@ class DMMazeCallback(ActiveRLCallback):
         env = base_env.get_sub_environments()[0]
         # Get the single "default policy"
         policy = next(policies.values())
+        episode.media["img"] = []
+        episode.user_data["env_num_steps"] = 0
         needs_initialization = self.num_cells < 0
         
         if needs_initialization:
@@ -437,7 +441,6 @@ class DMMazeCallback(ActiveRLCallback):
             self.num_cells = len(self.world_positions)
             self.eval_rewards = [0 for _ in range(self.num_cells)]
             self.goal_reached = [0 for _ in range(self.num_cells)]
-            self.frames = []
 
         if self.is_evaluating and self.full_eval_mode:
             # Resets environment to all states, one by one.
@@ -455,9 +458,6 @@ class DMMazeCallback(ActiveRLCallback):
             to_log = np.array(to_log)
             to_log = to_log[0] * self.grid_w + to_log[1]
             episode.hist_data[ACTIVE_STATE_VISITATION_KEY].append(to_log)
-            print("LENGTH OF STATE VISITATION LIST", len(episode.hist_data[ACTIVE_STATE_VISITATION_KEY]))
-            # Limit hist data to last 100 entries so wandb can handle it
-            #episode.hist_data[ACTIVE_STATE_VISITATION_KEY] = episode.hist_data[ACTIVE_STATE_VISITATION_KEY][-10:]
 
     def on_episode_end(
         self,
@@ -493,7 +493,7 @@ class DMMazeCallback(ActiveRLCallback):
                 self.goal_reached[self.cell_index % self.num_cells] = int(env.reached_goal_last_ep)
             pix = env.render()
             pix = np.transpose(pix, [2, 0, 1])
-            episode.media["img"] = pix[None, None, :, :, :]
+            # episode.media["img"] = pix[None, None, :, :, :]
 
     def on_episode_step(
         self,
@@ -523,7 +523,12 @@ class DMMazeCallback(ActiveRLCallback):
                 (within the vector of sub-environments of the BaseEnv).
             kwargs: Forward compatibility placeholder.
         """
-        if episode.
+        env = base_env.get_sub_environments()[0]
+        episode.user_data["env_num_steps"] += 1
+        if episode.user_data["env_num_steps"] % 50 == 0:
+            pix = env.render()
+            pix = np.transpose(pix, [2, 0, 1])
+            episode.media["img"].append(pix)
 
 # class ActiveRLCallback_old(DefaultCallbacks):
 #     """
