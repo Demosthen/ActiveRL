@@ -386,8 +386,8 @@ class DMMazeCallback(ActiveRLCallback):
         rewards = np.array([output[0] for output in workers_out])
         goal_reached = np.array([output[1] for output in workers_out])
         goal_reached_vid = np.stack(evaluation_metrics["evaluation"]["episode_media"]["img"][0])
-        goal_reached_img = goal_reached_vid[-1]
-        evaluation_metrics["evaluation"]["single_img"] = goal_reached_img[None, None, :, :, :]
+        goal_reached_img = goal_reached_vid[-1][None, None, :, :, :]
+        evaluation_metrics["evaluation"]["single_img"] = goal_reached_img
         evaluation_metrics["evaluation"]["vid"] = goal_reached_vid[None, :, :, :, :]
         if self.full_eval_mode:
             rewards = np.mean(rewards, axis=0)
