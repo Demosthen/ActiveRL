@@ -14,6 +14,7 @@ import labmaze
 from dm_maze.dm_maze import DM_Maze_Env, DM_Maze_Task, DM_Maze_Arena
 from dm_control.locomotion.walkers import ant, jumping_ball
 from dm_control.locomotion.props import target_sphere
+from dm_control.locomotion.walkers.rescale import rescale_subtree, rescale_humanoid
 from resettable_env import ResettableEnv
 import torch
 
@@ -46,6 +47,12 @@ def convert_dm_control_to_gym_space(dm_control_space):
                              for key, value in dm_control_space.items()})
         return space
 
+class DummyParent:
+    def __init__(self, walker):
+        self.walker = walker
+    
+    def all_children(self):
+        return [self.walker.root_body]
 
 class DM_Maze_Wrapper(DMSuiteEnv):
     def __init__(self, config):
@@ -66,8 +73,13 @@ class DM_Maze_Wrapper(DMSuiteEnv):
     def initialize_env(self, config):
         if self.walker == "ant":
             walker = ant.Ant()
+            parent_body = DummyParent(walker)
+            rescale_subtree(walker.root_body, 0.75, 0.75)
+
         elif self.walker == "ball":
             walker = jumping_ball.RollingBallWithHead()
+            parent_body = DummyParent(walker)
+            rescale_subtree(walker.root_body, 2, 2)
         else:
             raise NotImplementedError()
         arena = DM_Maze_Arena(

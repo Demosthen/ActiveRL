@@ -385,7 +385,7 @@ class DMMazeCallback(ActiveRLCallback):
             self.world_positions, self.num_cells = workers_out[0]
         rewards = np.array([output[0] for output in workers_out])
         goal_reached = np.array([output[1] for output in workers_out])
-        goal_reached_vid = np.stack(evaluation_metrics["evaluation"]["episode_media"]["img"][0])
+        goal_reached_vid = evaluation_metrics["evaluation"]["episode_media"]["img"][0]
         goal_reached_img = goal_reached_vid[-1][None, None, :, :, :]
         evaluation_metrics["evaluation"]["single_img"] = goal_reached_img
         evaluation_metrics["evaluation"]["vid"] = goal_reached_vid[None, :, :, :, :]
@@ -493,7 +493,7 @@ class DMMazeCallback(ActiveRLCallback):
                 self.goal_reached[self.cell_index % self.num_cells] = int(env.reached_goal_last_ep)
             pix = env.render()
             pix = np.transpose(pix, [2, 0, 1])
-            # episode.media["img"] = pix[None, None, :, :, :]
+            episode.media["img"] = np.stack(episode.media["img"])
 
     def on_episode_step(
         self,

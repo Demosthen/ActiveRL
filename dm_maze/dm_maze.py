@@ -132,11 +132,21 @@ class DM_Maze_Task(RepeatSingleGoalMazeAugmentedWithTargets):
         # Set subtargets
         self._subtarget_reward_scale = subtarget_reward_scale
         self._subtargets = []
+        self._subtarget_reward = [False] * num_subtargets
         self._subtarget_rews = subtarget_rews if subtarget_rews is not None else [
             self._subtarget_reward_scale] * num_subtargets
         for i in range(num_subtargets):
+            if self._subtarget_rews[i] > 0:
+                # Green target for positive reward
+                rgb1=(0, 0.4, 0)
+                rgb2=(0, 0.7, 0)
+            else:
+                # Red target for negative reward
+                rgb1=(0.4, 0, 0)
+                rgb2=(0.7, 0, 0)
             subtarget = target_sphere.TargetSphere(
-                radius=0.6, name='subtarget_{}'.format(i), height_above_ground=0.6
+                radius=0.6, name='subtarget_{}'.format(i), height_above_ground=0.6, 
+                rgb1=rgb1, rgb2=rgb2
             )
             self._subtargets.append(subtarget)
             self._maze_arena.attach(subtarget)
@@ -224,34 +234,30 @@ class DM_Maze_Task(RepeatSingleGoalMazeAugmentedWithTargets):
         return dist_reward * self.distance_reward_scale
 
     def get_reward(self, physics):
-        main_reward = super(RepeatSingleGoalMazeAugmentedWithTargets,
-                            self).get_reward(physics)
+        # main_reward = super(RepeatSingleGoalMazeAugmentedWithTargets,
+        #                     self).get_reward(physics)
+        aliveness_reward = self._aliveness_reward
 
         subtarget_reward = self.get_subtarget_reward(physics)
 
         dist_reward = self.get_dist_reward(physics)
 
-        return main_reward + subtarget_reward + dist_reward
+        return aliveness_reward + subtarget_reward + dist_reward
 
     def should_terminate_episode(self, physics):
 
-        # if self._targets_obtained > 0:
-        #     self.reached_goal_last_ep = True
-        #     print("REACHED GOAL!!")
-        #     return True
         for subtarget, rew in zip(self._subtargets, self._subtarget_rews):
             if subtarget.activated and rew > 0:
                 self.reached_goal_last_ep = True
                 print("REACHED GOAL!")
                 return True
-        # Checks stuff like aliveness and contact termination
-        if super(RepeatSingleGoalMaze, self).should_terminate_episode(physics):
-            self.reached_goal_last_ep = False
-            return True
-
-        
         # No subtargets have been activated.
         self.reached_goal_last_ep = False
+        # Checks stuff like aliveness and contact termination
+        if super(RepeatSingleGoalMaze, self).should_terminate_episode(physics):
+            
+            return True
+
         return False
 
 
