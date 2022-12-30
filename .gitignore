@@ -135,3 +135,7 @@ wandb/
 __pycache__
 citylearn_model_training/__pycache__
 citylearn_model_training/planning_model_data.csv
+slurm*
+*.h5
+*.ckpt
+*.sif

@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import argparse
 import ray
 from citylearn.citylearn import CityLearnEnv
-from callbacks import ActiveRLCallback, SimpleGridCallback, CitylearnCallback, DMMazeCallback
+from callbacks import ActiveRLCallback, SimpleGridCallback, CitylearnCallback, DMMazeCallback, SynergymCallback
 from citylearn_wrapper import CityLearnEnvWrapper
 from dm_maze.dm_maze import DM_Maze_Arena, DM_Maze_Env, DM_Maze_Task, DEFAULT_CONTROL_TIMESTEP
 from dm_maze.dm_wrapper import DM_Maze_Wrapper, DM_Maze_Obs_Wrapper
@@ -34,9 +34,7 @@ from ray.rllib.models.catalog import MODEL_DEFAULTS
 from ray.rllib.algorithms.callbacks import MultiCallbacks
 from simple_grid_wrapper import SimpleGridEnvWrapper
 from citylearn_model_training.planning_model import get_planning_model
-# from stable_baselines3 import PPO
-# from stable_baselines3.common.env_checker import check_env
-# from callbacks import ActiveRLCallback
+from sinergym_wrapper import SynergymWrapper
 from datetime import datetime
 import numpy as np
 import random
@@ -48,6 +46,7 @@ class Environments(Enum):
     GRIDWORLD = "gw"
     CITYLEARN = "cl"
     DM_MAZE = "dm"
+    SINERGYM = "sg"
 
 def get_agent(env, rllib_config, env_config, eval_env_config, model_config, args, planning_model=None):
     
@@ -96,6 +95,8 @@ def get_agent(env, rllib_config, env_config, eval_env_config, model_config, args
         callback_fn = CitylearnCallback
     elif args.env == "dm":
         callback_fn = DMMazeCallback
+    elif args.env == "sg":
+        callback_fn = SynergymCallback
     else:
         raise NotImplementedError()
     config["callbacks"] = lambda: callback_fn(num_descent_steps=args.num_descent_steps, batch_size=1, no_coop=args.no_coop, planning_model=planning_model, config=config, run_active_rl=args.use_activerl, planning_uncertainty_weight=args.planning_uncertainty_weight, args=args)
@@ -415,7 +416,6 @@ if __name__=="__main__":
     elif args.env == "dm":
         grid_desc, rew_map, wind_p = read_gridworld(args.dm_filename)
         maze_str, subtarget_rews = grid_desc_to_dm(grid_desc, rew_map, wind_p)
-        #maze_str = "**********\n*........*\n*........*\n*...GP...*\n*........*\n**********\n"
         env = DM_Maze_Obs_Wrapper
         env_config = {
             "maze_str": maze_str,
@@ -455,6 +455,20 @@ if __name__=="__main__":
         full_eval_duration = max(1, args.dm_steps_per_cell) * len(grid_positions)
         full_eval_fn = lambda agent: agent.evaluate(lambda x: full_eval_duration - x)
         # rllib_config["record_env"] = True
+    elif args.env == "sg":
+        env = SynergymWrapper
+        env_config = {
+            "is_evaluation": False,
+            "weather_variability": (1.0, 0.0, 0.001)
+            }
+
+        eval_env_config = deepcopy(env_config)
+        eval_env_config["is_evaluation"] = True
+
+        rllib_config["evaluation_duration"] = 1
+        rllib_config["horizon"] = args.horizon
+        rllib_config["batch_mode"] = "complete_episodes"
+        rllib_config["evaluation_parallel_to_training"] = True
     else:
         raise NotImplementedError
 

@@ -1,5 +1,19 @@
 # ActiveRL
 
+Instructions for getting this working generally:
+1. Clone repo
+5. Navigate to wherever you cloned the repo
+6. conda install -f environment.yml
+7. conda activate ActiveRL
+8. pip install git+https://github.com/cooper-org/cooper.git
+9. pip install -e gym-simplegrid/ --no-deps
+10. pip install moviepy==1.0.3
+11. pip uninstall pygame
+12. Install bcvtb and EnergyPlus like in step 2 and 3 of https://github.com/ugr-sail/sinergym
+12. pip install sinergym[extras]
+13. pip install gym==0.24.1
+14. python ./download_model.py
+
 Instructions for getting this working on savio:
 
 1. Clone repo
@@ -13,7 +27,9 @@ Instructions for getting this working on savio:
 9. pip install -e gym-simplegrid/ --no-deps
 10. pip install moviepy==1.0.3
 11. pip uninstall pygame
-12. python ./download_model.py
+12. pip install sinergym[extras]
+13. pip install gym==0.24.1
+14. python ./download_model.py
 
 To run a wandb sweep:
 ./master_sbatch_script.sh WANDB_SWEEP_ID NUMBER_OF_RUNS
