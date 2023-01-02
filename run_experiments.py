@@ -298,6 +298,18 @@ def add_args(parser):
         help="number of times to evaluate each cell, min=1",
         default=1
         )
+    parser.add_argument(
+        "--control_timestep",
+        type=float,
+        help="Time between control timesteps in seconds",
+        default=0.1#DEFAULT_CONTROL_TIMESTEP
+        )
+    parser.add_argument(
+        "--physics_timestep",
+        type=float,
+        help="Time between physics timesteps in seconds",
+        default=0.02#DEFAULT_PHYSICS_TIMESTEP
+        )
 
     # ACTIVE RL PARAMS
     parser.add_argument(
@@ -422,24 +434,26 @@ if __name__=="__main__":
             "subtarget_rews": subtarget_rews,
             "random_state": np.random.RandomState(42),
             "strip_singleton_obs_buffer_dim": True,
-            "time_limit": args.horizon * DEFAULT_CONTROL_TIMESTEP,
+            "time_limit": args.horizon * args.control_timestep,
             "aliveness_reward": args.aliveness_reward,
             "distance_reward_scale": args.distance_reward_scale,
             "use_all_geoms": args.use_all_geoms,
-            "walker": args.walker
+            "walker": args.walker,
+            "control_timestep": args.control_timestep,
+            "physics_timestep": args.physics_timestep
             }
 
         eval_env_config = deepcopy(env_config)
 
         dummy_env = env(env_config)
 
-        model_config["dim"] = 64
+        model_config["dim"] = 32
         model_config["conv_filters"] = [
-            [16, [8, 8], 4],
-            [32, [3, 3], 2],
-            [256, [8, 8], 1],
+            [8, [8, 8], 4],
+            [16, [3, 3], 2],
+            [32, [8, 8], 1],
         ]
-        model_config["post_fcnet_hiddens"] = [256]
+        model_config["post_fcnet_hiddens"] = [64, 64]
         model_config["custom_model"] = ComplexInputNetwork
 
         rllib_config["evaluation_duration"] = 1

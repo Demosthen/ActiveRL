@@ -12,4 +12,5 @@ DEFAULT_REW_MAP = {
     b"D": -0.2,
     b"B": -10.0
 }
+
 RESPAWNABLE_TOKENS = [".", "P"]

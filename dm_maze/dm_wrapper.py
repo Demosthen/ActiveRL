@@ -85,7 +85,7 @@ class DM_Maze_Wrapper(DMSuiteEnv):
         arena = DM_Maze_Arena(
             maze=labmaze.FixedMazeWithRandomGoals(self.maze_str), xy_scale=1, z_height=2)
         task = DM_Maze_Task(walker, target_sphere.TargetSphere(height_above_ground=0.6), arena, arena.num_targets, contact_termination=True, aliveness_reward=self.aliveness_reward, use_all_geoms=self.use_all_geoms,
-                            enable_global_task_observables=True, distance_reward_scale=self.distance_reward_scale, subtarget_rews=self.subtarget_rews)
+                            enable_global_task_observables=True, distance_reward_scale=self.distance_reward_scale, subtarget_rews=self.subtarget_rews, physics_timestep=self.physics_timestep, control_timestep=self.control_timestep)
         self.env = DM_Maze_Env(task=task, **config)
 
     def process_config(self, config):
@@ -98,6 +98,9 @@ class DM_Maze_Wrapper(DMSuiteEnv):
         self.distance_reward_scale = config["distance_reward_scale"]
         self.use_all_geoms = config["use_all_geoms"]
         self.walker = config["walker"]
+        self.physics_timestep = config["physics_timestep"]
+        self.control_timestep = config["control_timestep"]
+
 
         del config["maze_str"]
         del config["subtarget_rews"]
@@ -105,6 +108,9 @@ class DM_Maze_Wrapper(DMSuiteEnv):
         del config["distance_reward_scale"]
         del config["use_all_geoms"]
         del config["walker"]
+        del config["physics_timestep"]
+        del config["control_timestep"]
+
 
         return config
 
