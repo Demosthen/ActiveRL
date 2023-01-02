@@ -46,6 +46,8 @@ class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
 
     def combine_resettable_part(self, obs, resettable):
         """Combines an observation that has been split like in separate_resettable_part back together. Make sure this operation is differentiable"""
+        # Make sure torch doesn't backprop into non-resettable part
+        obs = obs.detach()
         obs[..., -3:] = resettable
         return obs
 
@@ -58,7 +60,7 @@ class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
     def reset(self, initial_state=None):
         obs = self.env.reset()
         if initial_state is not None:
-            _, obs, _ = self.env.simulator.reset(self.separate_resettable_part(initial_state))
+            _, obs, _ = self.env.simulator.reset(self.separate_resettable_part(initial_state)[0])
             obs = np.array(obs, dtype=np.float32)
         return self.observation(obs)
 
