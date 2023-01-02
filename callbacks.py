@@ -37,7 +37,7 @@ class ActiveRLCallback(DefaultCallbacks):
 
     :param verbose: (int) Verbosity level 0: not output 1: info 2: debug
     """
-    def __init__(self, num_descent_steps: int=10, batch_size: int=64, no_coop: bool=False, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}):
+    def __init__(self, num_descent_steps: int=10, batch_size: int=64, no_coop: bool=False, planning_model=None, config={}, run_active_rl=0, planning_uncertainty_weight=1, device="cpu", args={}):
         super().__init__()
         self.run_active_rl = run_active_rl
         self.num_descent_steps = num_descent_steps
@@ -109,7 +109,8 @@ class ActiveRLCallback(DefaultCallbacks):
         env = base_env.get_sub_environments()[0]
         # Get the single "default policy"
         policy = next(policies.values())
-        if not self.is_evaluating and self.run_active_rl:
+        run_active_rl = np.random.random() < self.run_active_rl
+        if not self.is_evaluating and run_active_rl:
             self.reset_env(policy, env, episode)
 
     def reset_env(self, policy, env, episode):
@@ -225,7 +226,8 @@ class SimpleGridCallback(ActiveRLCallback):
             initial_state = np.zeros([self.num_cells])
             initial_state[self.cell_index % self.num_cells] = 1
             env.reset(initial_state=initial_state)
-        if not self.is_evaluating and self.run_active_rl:
+        run_active_rl = np.random.random() < self.run_active_rl
+        if not self.is_evaluating and run_active_rl:
             # Actually run Active RL and reset the environment
             new_states = self.reset_env(policy, env, episode)
             
@@ -303,7 +305,8 @@ class CitylearnCallback(ActiveRLCallback):
         if self.is_evaluating:
             #Rotate in the next climate zone
             env.next_env()
-        if not self.is_evaluating and self.run_active_rl:
+        run_active_rl = np.random.random() < self.run_active_rl
+        if not self.is_evaluating and run_active_rl:
             self.reset_env(policy, env, episode)
 
     def on_episode_end(
@@ -443,6 +446,7 @@ class DMMazeCallback(ActiveRLCallback):
             self.eval_rewards = [0 for _ in range(self.num_cells)]
             self.goal_reached = [0 for _ in range(self.num_cells)]
 
+        run_active_rl = np.random.random() < self.run_active_rl
         if self.is_evaluating and self.full_eval_mode:
             # Resets environment to all states, one by one.
             self.cell_index += 1
@@ -450,7 +454,7 @@ class DMMazeCallback(ActiveRLCallback):
             initial_state = env.observation_space.sample()
             initial_state = env.combine_resettable_part(initial_state, initial_world_position)
             env.reset(initial_state=initial_state)
-        elif not self.is_evaluating and self.run_active_rl:
+        elif not self.is_evaluating and run_active_rl:
             # Actually run Active RL and reset the environment
             new_states = self.reset_env(policy, env, episode)
             if ACTIVE_STATE_VISITATION_KEY not in episode.custom_metrics:

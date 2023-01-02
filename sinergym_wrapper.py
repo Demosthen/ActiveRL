@@ -1,5 +1,5 @@
 import gym
-import sinergym
+
 import numpy as np
 from ray.rllib.utils.numpy import one_hot
 import torch
@@ -7,6 +7,7 @@ from gym_simplegrid.envs.simple_grid import SimpleGridEnvRLLib
 from gym.spaces.box import Box
 from gym.envs.toy_text.utils import categorical_sample
 from resettable_env import ResettableEnv
+import sinergym
 
 class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
 
@@ -55,8 +56,10 @@ class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         return low, high
 
     def reset(self, initial_state=None):
-        _, obs, _ = self.env.simulator.reset(self.separate_resettable_part(initial_state))
-        obs = np.array(obs, dtype=np.float32)
+        obs = self.env.reset()
+        if initial_state is not None:
+            _, obs, _ = self.env.simulator.reset(self.separate_resettable_part(initial_state))
+            obs = np.array(obs, dtype=np.float32)
         return self.observation(obs)
 
     

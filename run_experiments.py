@@ -314,8 +314,8 @@ def add_args(parser):
     # ACTIVE RL PARAMS
     parser.add_argument(
         "--use_activerl",
-        type=int,
-        help="set to 1 to use the Active RL callback and 0 to not",
+        type=float,
+        help="Probability of a training episode using an active start. Set to 1 to only use the active start and 0 to use default",
         default=0
     )
     parser.add_argument(
