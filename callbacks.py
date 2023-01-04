@@ -491,11 +491,11 @@ class DMMazeCallback(ActiveRLCallback):
             kwargs : Forward compatibility placeholder.
         """
         env = base_env.get_sub_environments()[0]
-        episode.custom_metrics["reached_goal"] = int(env.reached_goal_last_ep)
+        episode.custom_metrics["reached_goal"] = float(env.reached_goal_last_ep)
         if self.is_evaluating:
             if self.full_eval_mode:
                 self.eval_rewards[self.cell_index % self.num_cells] += episode.total_reward / (self.config["evaluation_duration"] // self.num_cells)
-                self.goal_reached[self.cell_index % self.num_cells] = int(env.reached_goal_last_ep)
+                self.goal_reached[self.cell_index % self.num_cells] = float(env.reached_goal_last_ep)
             pix = env.render()
             pix = np.transpose(pix, [2, 0, 1])
             episode.media["img"] = np.stack(episode.media["img"])
@@ -539,3 +539,112 @@ class SynergymCallback(ActiveRLCallback):
     def __init__(self, num_descent_steps: int=10, batch_size: int=64, no_coop: bool=False, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}):
         super().__init__(num_descent_steps, batch_size, no_coop, planning_model, config, run_active_rl, planning_uncertainty_weight, device, args)
 
+    def on_episode_start(
+        self,
+        *,
+        worker: RolloutWorker,
+        base_env: BaseEnv,
+        policies: Dict[PolicyID, Policy],
+        episode: Union[Episode, EpisodeV2],
+        **kwargs,
+    ) -> None:
+        """Callback run on the rollout worker before each episode starts.
+
+        Args:
+            worker: Reference to the current rollout worker.
+            base_env: BaseEnv running the episode. The underlying
+                sub environment objects can be retrieved by calling
+                `base_env.get_sub_environments()`.
+            policies: Mapping of policy id to policy objects. In single
+                agent mode there will only be a single "default" policy.
+            episode: Episode object which contains the episode's
+                state. You can use the `episode.user_data` dict to store
+                temporary data, and `episode.custom_metrics` to store custom
+                metrics for the episode.
+            kwargs: Forward compatibility placeholder.
+        """
+        episode.user_data["power"] = []
+        episode.user_data["term_comfort"] = []
+        episode.user_data["term_energy"] = []
+        episode.user_data["num_comfort_violations"] = 0
+
+        super().on_episode_start(
+            worker = worker, base_env = base_env,
+            policies = policies, episode=episode,
+            **kwargs,
+        )
+
+    def on_episode_step(
+        self,
+        *,
+        worker: "RolloutWorker",
+        base_env: BaseEnv,
+        policies: Optional[Dict[PolicyID, Policy]] = None,
+        episode: Union[Episode, EpisodeV2],
+        env_index: Optional[int] = None,
+        **kwargs,
+    ) -> None:
+        """Runs on each episode step.
+
+        Args:
+            worker: Reference to the current rollout worker.
+            base_env: BaseEnv running the episode. The underlying
+                sub environment objects can be retrieved by calling
+                `base_env.get_sub_environments()`.
+            policies: Mapping of policy id to policy objects.
+                In single agent mode there will only be a single
+                "default_policy".
+            episode: Episode object which contains episode
+                state. You can use the `episode.user_data` dict to store
+                temporary data, and `episode.custom_metrics` to store custom
+                metrics for the episode.
+            env_index: The index of the sub-environment that stepped the episode
+                (within the vector of sub-environments of the BaseEnv).
+            kwargs: Forward compatibility placeholder.
+        """
+        env = base_env.get_sub_environments()[0]
+        info = episode.last_info_for()
+        episode.user_data["power"].append(info["total_power"])
+        episode.user_data["term_comfort"].append(info["comfort_penalty"])
+        episode.user_data["term_energy"].append(info["total_power_no_units"])
+        if info["comfort_penalty"] != 0:
+            episode.user_data["num_comfort_violations"] += 1
+
+    def on_episode_end(
+        self,
+        *,
+        worker: RolloutWorker,
+        base_env: BaseEnv,
+        policies: Dict[PolicyID, Policy],
+        episode: Union[Episode, EpisodeV2],
+        env_index: Optional[int] = None,
+        **kwargs)-> None:
+        """
+        Runs when an episode is done.
+
+        Args:
+            worker: Reference to the current rollout worker.
+            base_env : BaseEnv running the episode. The underlying sub environment
+                objects can be retrieved by calling base_env.get_sub_environments().
+            policies : Mapping of policy id to policy objects. In single agent mode
+                there will only be a single “default_policy”.
+            episode : Episode object which contains episode state. You can use the
+                episode.user_data dict to store temporary data, and episode.custom_metrics
+                to store custom metrics for the episode. In case of environment failures,
+                episode may also be an Exception that gets thrown from the environment
+                before the episode finishes. Users of this callback may then handle
+                these error cases properly with their custom logics.
+            kwargs : Forward compatibility placeholder.
+        """
+        episode.custom_metrics["cum_power"] = np.sum(episode.user_data["power"])
+        episode.custom_metrics["mean_power"] = np.mean(episode.user_data["power"])
+        episode.custom_metrics["cum_comfort_penalty"] = np.sum(episode.user_data["term_comfort"])
+        episode.custom_metrics["mean_comfort_penalty"] = np.mean(episode.user_data["term_comfort"])
+        episode.custom_metrics["cum_power_penalty"] = np.sum(episode.user_data["term_energy"])
+        episode.custom_metrics["mean_power_penalty"] = np.mean(episode.user_data["term_energy"])
+        episode.custom_metrics["num_comfort_violations"] = episode.user_data["num_comfort_violations"]
+        try:
+            episode.custom_metrics['comfort_violation_time(%)'] = episode.user_data["num_comfort_violations"] / \
+                episode.length * 100
+        except ZeroDivisionError:
+            episode.custom_metrics['comfort_violation_time(%)'] = np.nan
