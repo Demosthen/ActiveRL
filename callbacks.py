@@ -529,11 +529,11 @@ class DMMazeCallback(ActiveRLCallback):
             kwargs: Forward compatibility placeholder.
         """
         env = base_env.get_sub_environments()[0]
-        episode.user_data["env_num_steps"] += 1
-        if episode.user_data["env_num_steps"] % 50 == 0:
+        if episode.user_data["env_num_steps"] % 20 == 0:
             pix = env.render()
             pix = np.transpose(pix, [2, 0, 1])
             episode.media["img"].append(pix)
+        episode.user_data["env_num_steps"] += 1
 
 class SynergymCallback(ActiveRLCallback):
     def __init__(self, num_descent_steps: int=10, batch_size: int=64, no_coop: bool=False, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}):
