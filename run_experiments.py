@@ -112,10 +112,10 @@ def train_agent(agent, timesteps, full_eval_interval, full_eval_fn = None):
         i += 1
         result = agent.train()
         if i % full_eval_interval == 0 and full_eval_fn is not None:
-            agent.callbacks.full_eval()
+            agent.callbacks.full_eval(agent)
             result["full_evaluation"] = full_eval_fn(agent)["evaluation"]
             agent._result_logger.on_result(result)
-            agent.callbacks.full_eval()
+            agent.callbacks.limited_eval(agent)
         training_steps = result["timesteps_total"]        
         
 def get_log_path(log_dir):
@@ -459,12 +459,12 @@ if __name__=="__main__":
         rllib_config["evaluation_duration"] = 1
         rllib_config["horizon"] = args.horizon
         rllib_config["keep_per_episode_custom_metrics"] = False
-        rllib_config["batch_mode"] = "complete_episodes"
+        rllib_config["batch_mode"] = "truncate_episodes"
         rllib_config["evaluation_sample_timeout_s"] = 600
         rllib_config["rollout_fragment_length"] = 1000
         dummy_arena = dummy_env.get_task()._maze_arena
         grid_positions = flatten_dict_of_lists(dummy_arena.find_token_grid_positions(RESPAWNABLE_TOKENS))
-        rllib_config["evaluation_duration"] = args.dm_steps_per_cell#max(1, args.dm_steps_per_cell) * len(grid_positions)
+        rllib_config["evaluation_duration"] = args.dm_steps_per_cell
         rllib_config["evaluation_parallel_to_training"] = True
         full_eval_duration = max(1, args.dm_steps_per_cell) * len(grid_positions)
         full_eval_fn = lambda agent: agent.evaluate(lambda x: full_eval_duration - x)

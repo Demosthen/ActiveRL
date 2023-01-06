@@ -49,7 +49,7 @@ class ActiveRLCallback(DefaultCallbacks):
         self.planning_uncertainty_weight = planning_uncertainty_weight
         self.use_gpu = args.num_gpus > 0
         self.args = args
-        self.limited_eval()
+        self.full_eval_mode = False
         if self.planning_model is not None:
             device = "cuda:0" if self.use_gpu else "cpu"
             self.reward_model = RewardPredictor(self.planning_model.obs_size, self.config["model"]["fcnet_hiddens"][0], False, device=device)
@@ -143,19 +143,27 @@ class ActiveRLCallback(DefaultCallbacks):
             loss.backward()
             self.reward_optim.step()
 
-    def full_eval(self):
+    def full_eval(self, algorithm):
         """
             Sets callback into full evaluation mode. Similar to pytorch\'s eval function,
             this does not *actually* run any evaluations
         """
         self.full_eval_mode = True
+        def set_full_eval(worker):
+            if hasattr(worker, "callbacks"):
+                worker.callbacks.full_eval_mode = True
+        algorithm.evaluation_workers.foreach_worker(set_full_eval)
 
-    def limited_eval(self):
+    def limited_eval(self, algorithm):
         """
             Sets callback into limited evaluation mode. Similar to pytorch\'s eval function,
             this does not *actually* run any evaluations
         """
         self.full_eval_mode = False
+        def set_limited_eval(worker):
+            if hasattr(worker, "callbacks"):
+                worker.callbacks.full_eval_mode = False
+        algorithm.evaluation_workers.foreach_worker(set_limited_eval)
 
 class SimpleGridCallback(ActiveRLCallback):
     def __init__(self, num_descent_steps: int = 10, batch_size: int = 64, no_coop: bool = False, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}):
@@ -453,6 +461,7 @@ class DMMazeCallback(ActiveRLCallback):
             initial_world_position = self.world_positions[self.cell_index % self.num_cells]
             initial_state = env.observation_space.sample()
             initial_state = env.combine_resettable_part(initial_state, initial_world_position)
+            print(self.cell_index)
             env.reset(initial_state=initial_state)
         elif not self.is_evaluating and run_active_rl:
             # Actually run Active RL and reset the environment
@@ -494,8 +503,9 @@ class DMMazeCallback(ActiveRLCallback):
         episode.custom_metrics["reached_goal"] = float(env.reached_goal_last_ep)
         if self.is_evaluating:
             if self.full_eval_mode:
-                self.eval_rewards[self.cell_index % self.num_cells] += episode.total_reward / (self.config["evaluation_duration"] // self.num_cells)
-                self.goal_reached[self.cell_index % self.num_cells] = float(env.reached_goal_last_ep)
+                num_repeats_per_cell = self.config["evaluation_duration"]
+                self.eval_rewards[self.cell_index % self.num_cells] += episode.total_reward / num_repeats_per_cell
+                self.goal_reached[self.cell_index % self.num_cells] += float(env.reached_goal_last_ep) / num_repeats_per_cell
             pix = env.render()
             pix = np.transpose(pix, [2, 0, 1])
             episode.media["img"] = np.stack(episode.media["img"])
