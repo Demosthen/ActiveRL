@@ -8,22 +8,26 @@ from gym.spaces.box import Box
 from gym.envs.toy_text.utils import categorical_sample
 from resettable_env import ResettableEnv
 import sinergym
+import time
+import os
 
 class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
 
     def __init__(self, config):
+        # Waits a process-specific amount of time so as to avoid a race condition
+        sleep_time = (os.getpid() % 10) / 10
+        print(sleep_time)
+        time.sleep(sleep_time)
         env = gym.make('Eplus-5Zone-hot-discrete-stochastic-v1')
         env.weather_variability = config["weather_variability"]
         super().__init__(env)
         self.env = env
-
         # Augment observation space with weather variability info
         obs_space = env.observation_space
         obs_space_shape_list = list(obs_space.shape)
         obs_space_shape_list[-1] += 3
-
-        low = list(obs_space.low) + [-5e5, -5e5, -5e5]
-        high = list(obs_space.high) + [5e5, 5e5, 5e5]
+        low = list(obs_space.low) + [-1., 0., 0.]
+        high = list(obs_space.high) + [1., 1., 5.]
         self.observation_space = Box(
             low = np.array(low), 
             high = np.array(high),
@@ -60,7 +64,8 @@ class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
     def reset(self, initial_state=None):
         obs = self.env.reset()
         if initial_state is not None:
-            _, obs, _ = self.env.simulator.reset(self.separate_resettable_part(initial_state)[0])
+            print(self.separate_resettable_part(initial_state)[0])
+            _, obs, _ = self.env.simulator.reset(tuple(self.separate_resettable_part(initial_state)[0]))
             obs = np.array(obs, dtype=np.float32)
         return self.observation(obs)
 

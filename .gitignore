@@ -139,3 +139,4 @@ slurm*
 *.h5
 *.ckpt
 *.sif
+Eplus-env*

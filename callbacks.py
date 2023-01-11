@@ -235,7 +235,7 @@ class SimpleGridCallback(ActiveRLCallback):
                 episode.hist_data[ACTIVE_STATE_VISITATION_KEY] = []
             to_log, _ = env.separate_resettable_part(new_states)
             to_log = np.array(to_log)
-            to_log = to_log.argmax()
+            to_log = to_log.argmax()    
             episode.hist_data[ACTIVE_STATE_VISITATION_KEY] = [to_log]
             #episode.hist_data[ACTIVE_STATE_VISITATION_KEY].append(to_log)
             # Limit hist data to last 100 entries so wandb can handle it

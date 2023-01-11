@@ -83,6 +83,7 @@ dependencies:
   - pcre=8.45=h295c915_0
   - pexpect=4.8.0=pyhd3eb1b0_3
   - pickleshare=0.7.5=pyhd3eb1b0_1003
+  - pip=22.3.1
   - prometheus_client=0.14.1=py310h06a4308_0
   - prompt-toolkit=3.0.20=pyhd3eb1b0_0
   - prompt_toolkit=3.0.20=hd3eb1b0_0
@@ -143,6 +144,8 @@ dependencies:
     - debugpy==1.5.1
     - distlib==0.3.6
     - dm-tree==0.1.7
+    - dm_control==1.0.9
+    - dm2gym==0.2.0
     - docker-pycreds==0.4.0
     - entrypoints==0.4
     - fastjsonschema==2.16.2
