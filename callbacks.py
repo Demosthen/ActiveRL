@@ -31,6 +31,7 @@ from utils import states_to_np, flatten_dict_of_lists
 from constants import DEFAULT_REW_MAP
 from skimage.transform import resize
 from viz_utils import draw_box
+
 class ActiveRLCallback(DefaultCallbacks):
     """
     A custom callback that derives from ``DefaultCallbacks``.
@@ -577,6 +578,7 @@ class SynergymCallback(ActiveRLCallback):
         episode.user_data["term_comfort"] = []
         episode.user_data["term_energy"] = []
         episode.user_data["num_comfort_violations"] = 0
+        episode.user_data["out_temperature"] = []
 
         super().on_episode_start(
             worker = worker, base_env = base_env,
@@ -617,6 +619,7 @@ class SynergymCallback(ActiveRLCallback):
         episode.user_data["power"].append(info["total_power"])
         episode.user_data["term_comfort"].append(info["comfort_penalty"])
         episode.user_data["term_energy"].append(info["total_power_no_units"])
+        episode.user_data["out_temperature"].append(info["out_temperature"])
         if info["comfort_penalty"] != 0:
             episode.user_data["num_comfort_violations"] += 1
 
@@ -653,8 +656,12 @@ class SynergymCallback(ActiveRLCallback):
         episode.custom_metrics["cum_power_penalty"] = np.sum(episode.user_data["term_energy"])
         episode.custom_metrics["mean_power_penalty"] = np.mean(episode.user_data["term_energy"])
         episode.custom_metrics["num_comfort_violations"] = episode.user_data["num_comfort_violations"]
+        episode.custom_metrics["out_temperature_mean"] = np.mean(episode.user_data["out_temperature"])
+        episode.custom_metrics["out_temperature_std"] = np.std(episode.user_data["out_temperature"])
+        episode.hist_data["out_temperature"] = episode.user_data["out_temperature"][::3000]
         try:
             episode.custom_metrics['comfort_violation_time(%)'] = episode.user_data["num_comfort_violations"] / \
                 episode.length * 100
         except ZeroDivisionError:
             episode.custom_metrics['comfort_violation_time(%)'] = np.nan
+        

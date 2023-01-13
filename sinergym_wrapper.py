@@ -19,7 +19,9 @@ class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         print(sleep_time)
         time.sleep(sleep_time)
         env = gym.make('Eplus-5Zone-hot-discrete-stochastic-v1')
-        env.weather_variability = config["weather_variability"]
+        self.weather_variability = config["weather_variability"]
+        self.scenario_idx = 0
+        env.weather_variability = self.weather_variability[self.scenario_idx]
         super().__init__(env)
         self.env = env
         # Augment observation space with weather variability info
@@ -57,16 +59,23 @@ class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
 
     def resettable_bounds(self):
         """Get bounds for resettable part of observation space"""
-        low = np.array([-1., 0., 0.])
-        high = np.array([1., 1., 5.])
+        low = np.array([0., -20., 0.])
+        high = np.array([10., 20., 5.])
         return low, high
 
     def reset(self, initial_state=None):
         obs = self.env.reset()
         if initial_state is not None:
+            # Reset simulator with specified weather variability
             print(self.separate_resettable_part(initial_state)[0])
             _, obs, _ = self.env.simulator.reset(tuple(self.separate_resettable_part(initial_state)[0]))
             obs = np.array(obs, dtype=np.float32)
+        else:
+            # Cycle through the weather variability scenarios
+            curr_weather_variability = self.weather_variability[self.scenario_idx]
+            print(curr_weather_variability)
+            self.env.simulator.reset(curr_weather_variability)
+            self.scenario_idx = (self.scenario_idx + 1) % len(self.weather_variability)
         return self.observation(obs)
 
     
