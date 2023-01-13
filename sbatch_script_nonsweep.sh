@@ -36,5 +36,8 @@ export WANDB_CACHE_DIR=/global/scratch/users/$USER/.cache/wandb
 module load gcc/8.3.0
 export MUJOCO_GL=egl
 export PATH=$PYTHON_PATH:$PATH
+export BCVTB_PATH=/global/scratch/users/$USER/ActiveRL/bcvtb
+export EPLUS_PATH=/global/scratch/users/$USER/ActiveRL/EnergyPlus-9-5-0
+
 
 $PYTHON_PATH $1

@@ -3,7 +3,7 @@ import ctypes.util
 import os
 # This line makes sure the dm_maze uses EGL to render, which supports headless setups like savio
 # ctypes.CDLL(ctypes.util.find_library('GL'), ctypes.RTLD_GLOBAL)
-os.environ["MUJOCO_GL"] = "egl"
+# os.environ["MUJOCO_GL"] = "egl"
 # os.environ["PYOPENGL_PLATFORM"] = "osmesa"
 from copy import copy, deepcopy
 
@@ -19,10 +19,8 @@ import matplotlib.pyplot as plt
 import argparse
 import ray
 from citylearn.citylearn import CityLearnEnv
-from callbacks import ActiveRLCallback, SimpleGridCallback, CitylearnCallback, DMMazeCallback
 from citylearn_wrapper import CityLearnEnvWrapper
-from dm_maze.dm_maze import DM_Maze_Arena, DM_Maze_Env, DM_Maze_Task, DEFAULT_CONTROL_TIMESTEP
-from dm_maze.dm_wrapper import DM_Maze_Wrapper, DM_Maze_Obs_Wrapper
+
 from uncertain_ppo import UncertainPPOTorchPolicy
 from uncertain_ppo_trainer import UncertainPPO
 from ray.air.callbacks.wandb import WandbLoggerCallback
@@ -34,9 +32,7 @@ from ray.rllib.models.catalog import MODEL_DEFAULTS
 from ray.rllib.algorithms.callbacks import MultiCallbacks
 from simple_grid_wrapper import SimpleGridEnvWrapper
 from citylearn_model_training.planning_model import get_planning_model
-# from stable_baselines3 import PPO
-# from stable_baselines3.common.env_checker import check_env
-# from callbacks import ActiveRLCallback
+from sinergym_wrapper import SynergymWrapper
 from datetime import datetime
 import numpy as np
 import random
@@ -48,8 +44,9 @@ class Environments(Enum):
     GRIDWORLD = "gw"
     CITYLEARN = "cl"
     DM_MAZE = "dm"
+    SINERGYM = "sg"
 
-def get_agent(env, rllib_config, env_config, eval_env_config, model_config, args, planning_model=None):
+def get_agent(env, callback_fn, rllib_config, env_config, eval_env_config, model_config, args, planning_model=None):
     
     config = DEFAULT_CONFIG.copy()
     config["seed"] = args.seed
@@ -90,14 +87,6 @@ def get_agent(env, rllib_config, env_config, eval_env_config, model_config, args
         "env_config": eval_env_config
     }
 
-    if args.env == "gw":
-        callback_fn = SimpleGridCallback
-    elif args.env == "cl":
-        callback_fn = CitylearnCallback
-    elif args.env == "dm":
-        callback_fn = DMMazeCallback
-    else:
-        raise NotImplementedError()
     config["callbacks"] = lambda: callback_fn(num_descent_steps=args.num_descent_steps, batch_size=1, no_coop=args.no_coop, planning_model=planning_model, config=config, run_active_rl=args.use_activerl, planning_uncertainty_weight=args.planning_uncertainty_weight, args=args)
     config.update(rllib_config)
     agent = UncertainPPO(config = config, logger_creator = utils.custom_logger_creator(args.log_path))
@@ -111,10 +100,10 @@ def train_agent(agent, timesteps, full_eval_interval, full_eval_fn = None):
         i += 1
         result = agent.train()
         if i % full_eval_interval == 0 and full_eval_fn is not None:
-            agent.callbacks.full_eval()
+            agent.callbacks.full_eval(agent)
             result["full_evaluation"] = full_eval_fn(agent)["evaluation"]
             agent._result_logger.on_result(result)
-            agent.callbacks.full_eval()
+            agent.callbacks.limited_eval(agent)
         training_steps = result["timesteps_total"]        
         
 def get_log_path(log_dir):
@@ -297,12 +286,24 @@ def add_args(parser):
         help="number of times to evaluate each cell, min=1",
         default=1
         )
+    parser.add_argument(
+        "--control_timestep",
+        type=float,
+        help="Time between control timesteps in seconds",
+        default=0.1#DEFAULT_CONTROL_TIMESTEP
+        )
+    parser.add_argument(
+        "--physics_timestep",
+        type=float,
+        help="Time between physics timesteps in seconds",
+        default=0.02#DEFAULT_PHYSICS_TIMESTEP
+        )
 
     # ACTIVE RL PARAMS
     parser.add_argument(
         "--use_activerl",
-        type=int,
-        help="set to 1 to use the Active RL callback and 0 to not",
+        type=float,
+        help="Probability of a training episode using an active start. Set to 1 to only use the active start and 0 to use default",
         default=0
     )
     parser.add_argument(
@@ -376,6 +377,9 @@ if __name__=="__main__":
 
     full_eval_fn = None
     if args.env == "cl":
+        from callbacks import CitylearnCallback
+
+        callback_fn = CitylearnCallback
         env = CityLearnEnvWrapper
         env_config = {
             "schema": Path(args.cl_filename),
@@ -394,7 +398,9 @@ if __name__=="__main__":
         rllib_config["soft_horizon"] = False
 
     elif args.env == "gw": 
-        
+        from callbacks import SimpleGridCallback
+
+        callback_fn = SimpleGridCallback
         env = SimpleGridEnvWrapper
         env_config = {"is_evaluation": False}
         if args.gw_filename.strip().isnumeric():
@@ -413,55 +419,79 @@ if __name__=="__main__":
 
         # model_config["shrink_init"] = args.cl_use_rbc_residual # NOTE: This does not actually do anything anymore
     elif args.env == "dm":
+        from callbacks import DMMazeCallback
+        from dm_maze.dm_wrapper import DM_Maze_Obs_Wrapper
+        callback_fn = DMMazeCallback
         grid_desc, rew_map, wind_p = read_gridworld(args.dm_filename)
         maze_str, subtarget_rews = grid_desc_to_dm(grid_desc, rew_map, wind_p)
-        #maze_str = "**********\n*........*\n*........*\n*...GP...*\n*........*\n**********\n"
         env = DM_Maze_Obs_Wrapper
         env_config = {
             "maze_str": maze_str,
             "subtarget_rews": subtarget_rews,
             "random_state": np.random.RandomState(42),
             "strip_singleton_obs_buffer_dim": True,
-            "time_limit": args.horizon * DEFAULT_CONTROL_TIMESTEP,
+            "time_limit": args.horizon * args.control_timestep,
             "aliveness_reward": args.aliveness_reward,
             "distance_reward_scale": args.distance_reward_scale,
             "use_all_geoms": args.use_all_geoms,
-            "walker": args.walker
+            "walker": args.walker,
+            "control_timestep": args.control_timestep,
+            "physics_timestep": args.physics_timestep
             }
 
         eval_env_config = deepcopy(env_config)
 
         dummy_env = env(env_config)
 
-        model_config["dim"] = 64
+        model_config["dim"] = 32
         model_config["conv_filters"] = [
-            [16, [8, 8], 4],
-            [32, [3, 3], 2],
-            [256, [8, 8], 1],
+            [8, [8, 8], 4],
+            [16, [3, 3], 2],
+            [32, [8, 8], 1],
         ]
-        model_config["post_fcnet_hiddens"] = [256]
+        model_config["post_fcnet_hiddens"] = [64, 64]
         model_config["custom_model"] = ComplexInputNetwork
 
         rllib_config["evaluation_duration"] = 1
         rllib_config["horizon"] = args.horizon
         rllib_config["keep_per_episode_custom_metrics"] = False
-        rllib_config["batch_mode"] = "complete_episodes"
+        rllib_config["batch_mode"] = "truncate_episodes"
         rllib_config["evaluation_sample_timeout_s"] = 600
         rllib_config["rollout_fragment_length"] = 1000
         dummy_arena = dummy_env.get_task()._maze_arena
         grid_positions = flatten_dict_of_lists(dummy_arena.find_token_grid_positions(RESPAWNABLE_TOKENS))
-        rllib_config["evaluation_duration"] = args.dm_steps_per_cell#max(1, args.dm_steps_per_cell) * len(grid_positions)
+        rllib_config["evaluation_duration"] = args.dm_steps_per_cell
         rllib_config["evaluation_parallel_to_training"] = True
         full_eval_duration = max(1, args.dm_steps_per_cell) * len(grid_positions)
         full_eval_fn = lambda agent: agent.evaluate(lambda x: full_eval_duration - x)
         # rllib_config["record_env"] = True
+    elif args.env == "sg":
+        from callbacks import SynergymCallback
+        callback_fn = SynergymCallback
+        env = SynergymWrapper
+        env_config = {
+            "is_evaluation": False,
+            # sigma, mean, tau for OU Process
+            "weather_variability": [(1.0, 0.0, 0.001)]
+            }
+
+        eval_env_config = deepcopy(env_config)
+        eval_env_config["is_evaluation"] = True
+        eval_env_config["weather_variability"] = [(1, -10, 0.001),
+                                                  (1, 10, 0.001),
+                                                  (20, 0, 0.001)]
+
+        rllib_config["evaluation_duration"] = len(eval_env_config["weather_variability"])
+        rllib_config["horizon"] = args.horizon
+        rllib_config["batch_mode"] = "complete_episodes"
+        rllib_config["evaluation_parallel_to_training"] = True
     else:
         raise NotImplementedError
 
     # planning model is None if the ckpt file path is None
     planning_model = get_planning_model(args.planning_model_ckpt)
 
-    agent = get_agent(env, rllib_config, env_config, eval_env_config, model_config, args, planning_model)
+    agent = get_agent(env, callback_fn, rllib_config, env_config, eval_env_config, model_config, args, planning_model)
     
     train_agent(agent, timesteps=args.num_timesteps, full_eval_interval=args.full_eval_interval, full_eval_fn=full_eval_fn)
 
