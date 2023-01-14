@@ -94,7 +94,6 @@ class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
     def step(self, action):
         """Returns modified observations and inputs modified actions"""
         action = self.replace_action(self.last_untransformed_obs, action)
-        print("ACTION GIVEN AT THIS STEP ISSSSSS", action)
         obs, reward, done, info = self.env.step(action)
         self.last_untransformed_obs = obs
         return self.observation(obs), reward, done, info
@@ -103,7 +102,6 @@ class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         if self.replacement_controller is None:
             return action
         elif isinstance(self.replacement_controller, RandomController):
-            print("ACTION REPLACEEDDDDEEDED3EDE")
             return self.replacement_controller.act()
         else:
             return self.replacement_controller.act(obs)
