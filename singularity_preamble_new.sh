@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # ENERGYPLUS_VERSION=9.5.0
 # ENERGYPLUS_INSTALL_VERSION=9-5-0
 # ENERGYPLUS_SHA=de239b2e5f
@@ -52,12 +52,23 @@
 # echo "Post install stuffs!"
 
 
-rm python 
-ln -s /.env/python python
-chmod +x python
-alias python=./python
-python -m pip install sinergym[extras]
-python -m pip install gym==0.24.1
+# rm python 
+# ln -s /.env/python python
+# chmod +x python
+# alias python=./python
+# python -m pip install -e sinergym[extras]
+# # python -m pip install gym==0.24.1
+# export LD_LIBRARY_PATH=/global/scratch/users/djang/ActiveRL/libs:/global/software/sl-7.x86_64/modules/langs/gcc/12.1.0/lib64:${LD_LIBRARY_PATH}
 export PATH=/global/home/users/djang/.conda/envs/ActiveRL/bin:$PATH
-export BCVTB_PATH=/global/scratch/users/$USER/ActiveRL/bcvtb
-export EPLUS_PATH=/global/scratch/users/$USER/ActiveRL/EnergyPlus-9-5-0
+# export PYTHONHOME=/global/home/users/djang/.conda/envs/ActiveRL/bin
+
+# export BCVTB_PATH=/global/scratch/users/$USER/ActiveRL/bcvtb
+# export EPLUS_PATH=/global/scratch/users/$USER/ActiveRL/EnergyPlus-9-5-0
+# alias python=/global/home/users/djang/.conda/envs/ActiveRL/bin/python
+PYTHON_PATH=/home/miniconda/envs/ActiveRL/bin/python
+# source /home/miniconda/bin/activate \
+# && conda activate ActiveRL \
+# && which python \
+$PYTHON_PATH -m pip install -e gym-simplegrid \
+&& $PYTHON_PATH -m pip install dm_control==1.0.9 \
+&& $PYTHON_PATH -m pip install dm2gym==0.2.0
