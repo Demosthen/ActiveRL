@@ -121,7 +121,7 @@ def define_constants(args):
 
 def process_combo_args(args):
     if args.sinergym_sweep is not None:
-        arglist = args.sinergym_sweep.split()
+        arglist = args.sinergym_sweep.split(",")
         if len(arglist) != 3:
             raise ValueError("sinergym sweep combo arg does not have three elements")
         args.use_activerl = float(arglist[0])
@@ -381,8 +381,8 @@ def add_args(parser):
     parser.add_argument(
         "--sinergym_sweep",
         type=str,
-        help="Sets use_activerl, use_rbc, and use_random, respectively, all at the same time. Pass in the values as a space delimited string. \
-            For example, \'0.1 0 0\' denotes setting use_activerl to 0.1 and use_rbc and use_random to 0",
+        help="Sets use_activerl, use_rbc, and use_random, respectively, all at the same time. Pass in the values as a comma delimited string. \
+            For example, \'0.1,0,0\' denotes setting use_activerl to 0.1 and use_rbc and use_random to 0",
         default=None
     )
 
