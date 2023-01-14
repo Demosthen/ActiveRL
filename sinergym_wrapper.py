@@ -10,6 +10,7 @@ from resettable_env import ResettableEnv
 import sinergym
 import time
 import os
+from sinergym.utils.controllers import RBC5Zone, RBCDatacenter, RandomController
 
 class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
 
@@ -18,7 +19,8 @@ class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         sleep_time = (os.getpid() % 10) / 10
         print(sleep_time)
         time.sleep(sleep_time)
-        env = gym.make('Eplus-5Zone-hot-discrete-stochastic-v1')
+        self.env_name = 'Eplus-5Zone-hot-discrete-stochastic-v1'
+        env = gym.make(self.env_name)
         self.weather_variability = config["weather_variability"]
         self.scenario_idx = 0
         env.weather_variability = self.weather_variability[self.scenario_idx]
@@ -36,6 +38,16 @@ class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             shape = obs_space_shape_list,
             dtype=np.float32)
         self.is_evaluation = config["is_evaluation"]
+        self.last_untransformed_obs = None
+        if config["use_rbc"]:
+            if "5Zone" in self.env_name:
+                self.replacement_controller = RBC5Zone(self.env)
+            else:
+                self.replacement_controller = RBCDatacenter(self.env)
+        elif config["use_random"]:
+            self.replacement_controller = RandomController(self.env)
+        else:
+            self.replacement_controller = None
 
     def observation(self, observation):
         variability = np.array(self.env.weather_variability)
@@ -65,6 +77,7 @@ class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
 
     def reset(self, initial_state=None):
         obs = self.env.reset()
+        self.last_untransformed_obs = obs
         if initial_state is not None:
             # Reset simulator with specified weather variability
             print(self.separate_resettable_part(initial_state)[0])
@@ -78,6 +91,22 @@ class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             self.scenario_idx = (self.scenario_idx + 1) % len(self.weather_variability)
         return self.observation(obs)
 
+    def step(self, action):
+        """Returns modified observations and inputs modified actions"""
+        action = self.replace_action(self.last_untransformed_obs, action)
+        print("ACTION GIVEN AT THIS STEP ISSSSSS", action)
+        obs, reward, done, info = self.env.step(action)
+        self.last_untransformed_obs = obs
+        return self.observation(obs), reward, done, info
+
+    def replace_action(self, obs, action):
+        if self.replacement_controller is None:
+            return action
+        elif isinstance(self.replacement_controller, RandomController):
+            print("ACTION REPLACEEDDDDEEDED3EDE")
+            return self.replacement_controller.act()
+        else:
+            return self.replacement_controller.act(obs)
     
     
     

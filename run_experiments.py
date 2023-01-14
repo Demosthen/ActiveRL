@@ -299,6 +299,20 @@ def add_args(parser):
         default=0.02#DEFAULT_PHYSICS_TIMESTEP
         )
 
+    # SINERGYM ENV PARAMS
+    parser.add_argument(
+        "--use_rbc",
+        type=int,
+        help="Whether or not to override all actions with that of Rule Based Controller (RBC). Set to 1 to enable.",
+        default=0
+        )
+    parser.add_argument(
+        "--use_random",
+        type=int,
+        help="Whether or not to override all actions with that of Random Controller. Set to 1 to enable.",
+        default=0
+        )
+
     # ACTIVE RL PARAMS
     parser.add_argument(
         "--use_activerl",
@@ -472,7 +486,9 @@ if __name__=="__main__":
         env_config = {
             "is_evaluation": False,
             # sigma, mean, tau for OU Process
-            "weather_variability": [(1.0, 0.0, 0.001)]
+            "weather_variability": [(1.0, 0.0, 0.001)],
+            "use_rbc": args.use_rbc,
+            "use_random": args.use_random
             }
 
         eval_env_config = deepcopy(env_config)
