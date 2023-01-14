@@ -119,6 +119,16 @@ def define_constants(args):
     CL_FOLDER = args.cl_eval_folder#"./data/single_building" if args.single_building_eval else "./data/all_buildings"
     CL_EVAL_PATHS = [os.path.join(CL_FOLDER, "Test_cold_Texas/schema.json"), os.path.join(CL_FOLDER, "Test_dry_Cali/schema.json"), os.path.join(CL_FOLDER, "Test_hot_new_york/schema.json"), os.path.join(CL_FOLDER, "Test_snowy_Cali_winter/schema.json")]
 
+def process_combo_args(args):
+    if args.sinergym_sweep is not None:
+        arglist = args.sinergym_sweep.split()
+        if len(arglist) != 3:
+            raise ValueError("sinergym sweep combo arg does not have three elements")
+        args.use_activerl = float(arglist[0])
+        args.use_rbc = int(arglist[1])
+        args.use_random = int(arglist[2])
+    return args
+
 def add_args(parser):
     # GENERAL PARAMS
     parser.add_argument(
@@ -367,13 +377,21 @@ def add_args(parser):
         help="Number of training steps between full evaluation runs (i.e. visiting every state in gridworld or mujoco maze)",
         default=10
     )
+    # Combo args for wandb sweeps
+    parser.add_argument(
+        "--sinergym_sweep",
+        type=str,
+        help="Sets use_activerl, use_rbc, and use_random, respectively, all at the same time. Pass in the values as a space delimited string. \
+            For example, \'0.1 0 0\' denotes setting use_activerl to 0.1 and use_rbc and use_random to 0",
+        default=None
+    )
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
     add_args(parser)
     args = parser.parse_args()
+    args = process_combo_args(args)
     define_constants(args)
-
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     random.seed(args.seed)
