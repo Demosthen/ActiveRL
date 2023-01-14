@@ -59,7 +59,7 @@
 # python -m pip install -e sinergym[extras]
 # # python -m pip install gym==0.24.1
 # export LD_LIBRARY_PATH=/global/scratch/users/djang/ActiveRL/libs:/global/software/sl-7.x86_64/modules/langs/gcc/12.1.0/lib64:${LD_LIBRARY_PATH}
-export PATH=/global/home/users/djang/.conda/envs/ActiveRL/bin:$PATH
+export PATH=/home/miniconda/envs/ActiveRL/bin/:/global/home/users/$USER/.conda/envs/ActiveRL/bin:/global/home/users/$USER/.local/bin:$PATH
 # export PYTHONHOME=/global/home/users/djang/.conda/envs/ActiveRL/bin
 
 # export BCVTB_PATH=/global/scratch/users/$USER/ActiveRL/bcvtb
@@ -69,6 +69,8 @@ PYTHON_PATH=/home/miniconda/envs/ActiveRL/bin/python
 # source /home/miniconda/bin/activate \
 # && conda activate ActiveRL \
 # && which python \
+alias python=$PYTHON_PATH
 $PYTHON_PATH -m pip install -e gym-simplegrid \
 && $PYTHON_PATH -m pip install dm_control==1.0.9 \
-&& $PYTHON_PATH -m pip install dm2gym==0.2.0
+&& $PYTHON_PATH -m pip install dm2gym==0.2.0 \
+&& $PYTHON_PATH -m pip install gym==0.24.1
