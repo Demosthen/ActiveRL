@@ -99,6 +99,7 @@ class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         return self.observation(obs), reward, done, info
 
     def replace_action(self, obs, action):
+        """Replace RL Controller\'s actions with those from a baseline controller"""
         if self.replacement_controller is None:
             return action
         elif isinstance(self.replacement_controller, RandomController):
