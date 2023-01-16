@@ -140,3 +140,5 @@ slurm*
 *.ckpt
 *.sif
 Eplus-env*
+bcvtb
+EnergyPlus-9-5-0

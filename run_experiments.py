@@ -4,7 +4,7 @@ import os
 # This line makes sure the dm_maze uses EGL to render, which supports headless setups like savio
 # ctypes.CDLL(ctypes.util.find_library('GL'), ctypes.RTLD_GLOBAL)
 # os.environ["MUJOCO_GL"] = "egl"
-# os.environ["PYOPENGL_PLATFORM"] = "osmesa"
+os.environ["PYOPENGL_PLATFORM"] = "osmesa"
 from copy import copy, deepcopy
 
 from enum import Enum

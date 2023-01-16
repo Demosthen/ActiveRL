@@ -15,12 +15,10 @@ from sinergym.utils.controllers import RBC5Zone, RBCDatacenter, RandomController
 class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
 
     def __init__(self, config):
-        # Waits a process-specific amount of time so as to avoid a race condition
-        sleep_time = (os.getpid() % 10) / 10
-        print(sleep_time)
-        time.sleep(sleep_time)
-        self.env_name = 'Eplus-5Zone-hot-discrete-stochastic-v1'
-        env = gym.make(self.env_name)
+        curr_pid = os.getpid()
+        self.base_env_name = 'Eplus-5Zone-hot-discrete-stochastic-v1'
+        # Overrides env_name so initializing multiple Sinergym envs will not result in a race condition
+        env = gym.make(self.base_env_name, env_name=self.base_env_name + str(os.getpid()))
         self.weather_variability = config["weather_variability"]
         self.scenario_idx = 0
         env.weather_variability = self.weather_variability[self.scenario_idx]
@@ -40,7 +38,7 @@ class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         self.is_evaluation = config["is_evaluation"]
         self.last_untransformed_obs = None
         if config["use_rbc"]:
-            if "5Zone" in self.env_name:
+            if "5Zone" in self.base_env_name:
                 self.replacement_controller = RBC5Zone(self.env)
             else:
                 self.replacement_controller = RBCDatacenter(self.env)
