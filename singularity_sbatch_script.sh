@@ -24,12 +24,12 @@
 ##SBATCH --gpus-per-task=1
 #
 # Wall clock limit (8hrs):
-#SBATCH --time=15:58:59
+#SBATCH --time=3:58:59
 #
 # Run 48 examples concurrently
 #SBATCH --array=0
 BASE_DIR=/global/scratch/users/$USER
-LDIR=$BASE_DIR/.local$SLURM_ARRAY_TASK_ID
+LDIR=$BASE_DIR/.local$$
 LOGDIR_BASE=$BASE_DIR/logs
 rm -rf $LDIR
 mkdir -p $LDIR

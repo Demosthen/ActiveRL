@@ -513,7 +513,7 @@ if __name__=="__main__":
         eval_env_config["is_evaluation"] = True
         eval_env_config["weather_variability"] = [(1, -30, 0.001),
                                                   (1, 30, 0.001),
-                                                  (30, 0, 0.001)]
+                                                  (20, 0, 0.001)]
 
         rllib_config["evaluation_duration"] = len(eval_env_config["weather_variability"])
         rllib_config["horizon"] = args.horizon
