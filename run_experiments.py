@@ -56,7 +56,7 @@ def get_agent(env, callback_fn, rllib_config, env_config, eval_env_config, model
     config["model"]["num_dropout_evals"] = args.num_dropout_evals
 
     config["train_batch_size"] = args.train_batch_size
-    #config["num_sgd_iter"] = 
+    config["num_sgd_iter"] = args.num_sgd_iter
     config["disable_env_checking"] = True
     # 1 driver, N training workers, 1 evaluation workers
     total_workers = args.num_training_workers + 1 + args.num_eval_workers
@@ -67,6 +67,7 @@ def get_agent(env, callback_fn, rllib_config, env_config, eval_env_config, model
     
     config["clip_param"] = args.clip_param
     config["lr"] = args.lr
+    config["gamma"] = args.gamma
     if args.num_gpus == 0:
         config["num_gpus_per_worker"] = 0
     config["evaluation_interval"] = args.eval_interval
@@ -141,6 +142,12 @@ def add_args(parser):
         action="store_true",
         help="whether or not to log with wandb"
     )
+    parser.add_argument(
+        "--project",
+        type=str,
+        help="wandb project to send metrics to",
+        default="active-rl"
+    )
     
     # GENERAL ENV PARAMS
     parser.add_argument(
@@ -181,6 +188,18 @@ def add_args(parser):
         type=float,
         help="Learning rate for PPO",
         default=5e-5
+    )
+    parser.add_argument(
+        "--gamma",
+        type=float,
+        help="Gamma for PPO",
+        default=0.99
+    )
+    parser.add_argument(
+        "--num_sgd_iter",
+        type=int,
+        help="num_sgd_iter for PPO",
+        default=30
     )
     parser.add_argument(
         "--eval_interval",
@@ -356,6 +375,7 @@ def add_args(parser):
         help="Number of dropout evaluations to run to estimate uncertainty",
         default=5
     )
+    
     parser.add_argument(
         "--dropout",
         type=float,
@@ -388,7 +408,7 @@ if __name__=="__main__":
     random.seed(args.seed)
 
     if args.wandb:
-        run = wandb.init(project="active-rl", entity="social-game-rl")
+        run = wandb.init(project=args.project, entity="social-game-rl")
         args.log_path = get_log_path(args.log_path)
         wandb.tensorboard.patch(root_logdir=args.log_path) # patching the logdir directly seems to work
         wandb.config.update(args)
