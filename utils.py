@@ -2,6 +2,9 @@ import os
 from ray.tune.logger import UnifiedLogger
 from copy import deepcopy
 from collections import defaultdict
+import cProfile
+import io
+import pstats
 
 MAZE_SYMBOLS = defaultdict(lambda: ".")
 MAZE_SYMBOLS.update({
@@ -75,3 +78,21 @@ def flatten_dict_of_lists(d):
     for k, v in d.items():
         out.extend(v)
     return out
+
+def print_profile(profile: cProfile.Profile, log_file: str = None, n: int = 20):
+    """
+    Prints profiling results to stdout, sorted by total amount of time spent in each function,
+    and to log file if specified.
+    :profile: the actual cProfile.Profile instance
+    :log_file: path to where to log the profiling stats
+    :n: how many lines to print
+    """
+    s = io.StringIO()
+    sortby = "cumulative"  # Ordered
+    ps = pstats.Stats(profile, stream=s).strip_dirs().sort_stats(sortby)
+    ps.print_stats(n)
+    print(s.getvalue())
+    if log_file is not None:
+        with open(log_file, "w") as f:
+            f.write(s.getvalue())
+        # profile.dump_stats(log_file)

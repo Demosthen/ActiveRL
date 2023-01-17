@@ -45,7 +45,7 @@ class FangerReward(LinearReward):
         # Reward parameters
         self.W_energy = energy_weight
         self.lambda_energy = lambda_energy
-        self.lambda_ppd = lambda_ppd
+        self.lambda_temp = lambda_ppd
 
     def _get_comfort(self,
                      obs_dict: Dict[str,
@@ -60,5 +60,8 @@ class FangerReward(LinearReward):
         occupancies = [v for k, v in obs_dict.items() if k in self.occupancy_name]
         comfort = 0.0
         for ppd, occupancy in zip(ppds, occupancies):
-            comfort += ppd * (occupancy > 0)
+            zone_comfort = ppd * (occupancy > 0)
+            # If ppd < 20% it is within ASHRAE standards so it is not penalized
+            if zone_comfort >= 20:
+                comfort += zone_comfort
         return comfort, (0, 0)

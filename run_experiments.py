@@ -4,7 +4,7 @@ import os
 # This line makes sure the dm_maze uses EGL to render, which supports headless setups like savio
 # ctypes.CDLL(ctypes.util.find_library('GL'), ctypes.RTLD_GLOBAL)
 # os.environ["MUJOCO_GL"] = "egl"
-os.environ["PYOPENGL_PLATFORM"] = "osmesa"
+# os.environ["PYOPENGL_PLATFORM"] = "osmesa"
 from copy import copy, deepcopy
 
 from enum import Enum
@@ -28,8 +28,9 @@ from datetime import datetime
 import numpy as np
 import random
 from dm_maze.model import ComplexInputNetwork
-from utils import flatten_dict_of_lists, read_gridworld, grid_desc_to_dm
+from utils import flatten_dict_of_lists, read_gridworld, grid_desc_to_dm, print_profile
 from constants import *
+import cProfile
 
 class Environments(Enum):
     GRIDWORLD = "gw"
@@ -85,7 +86,7 @@ def get_agent(env, callback_fn, rllib_config, env_config, eval_env_config, model
 
     return agent
 
-def train_agent(agent, timesteps, full_eval_interval, full_eval_fn = None):
+def train_agent(agent, timesteps, full_eval_interval, full_eval_fn = None, profile=None):
     training_steps = 0
     i = 0
     while training_steps < timesteps:
@@ -96,6 +97,8 @@ def train_agent(agent, timesteps, full_eval_interval, full_eval_fn = None):
             result["full_evaluation"] = full_eval_fn(agent)["evaluation"]
             agent._result_logger.on_result(result)
             agent.callbacks.limited_eval(agent)
+        if profile is not None:
+            print_profile(profile, None)
         training_steps = result["timesteps_total"]        
         
 def get_log_path(log_dir):
@@ -148,7 +151,11 @@ def add_args(parser):
         help="wandb project to send metrics to",
         default="active-rl"
     )
-    
+    parser.add_argument(
+        "--profile",
+        action="store_true",
+        help="Whether to profile this run to debug performance"
+        )    
     # GENERAL ENV PARAMS
     parser.add_argument(
         "--env",
@@ -538,7 +545,17 @@ if __name__=="__main__":
 
     agent = get_agent(env, callback_fn, rllib_config, env_config, eval_env_config, model_config, args, planning_model)
     
-    train_agent(agent, timesteps=args.num_timesteps, full_eval_interval=args.full_eval_interval, full_eval_fn=full_eval_fn)
+    if args.profile:
+        profile = cProfile.Profile()
+        profile.enable()
+
+    train_agent(agent, timesteps=args.num_timesteps, full_eval_interval=args.full_eval_interval, full_eval_fn=full_eval_fn, profile=profile)
+
+    if args.profile:
+        profile.disable()
+        profile_log_path = os.path.join(args.log_path, "profile_log.txt")
+        print_profile(profile, profile_log_path)
+        wandb.save(profile_log_path)
 
     result_dict = agent.evaluate()
 
