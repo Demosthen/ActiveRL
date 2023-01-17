@@ -9,30 +9,21 @@ from copy import copy, deepcopy
 
 from enum import Enum
 from pathlib import Path
-from unittest import result
-import gym 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from gym_simplegrid.envs.simple_grid import SimpleGridEnvRLLib 
-import matplotlib.pyplot as plt
 import argparse
 import ray
-from citylearn.citylearn import CityLearnEnv
 from citylearn_wrapper import CityLearnEnvWrapper
-
-from uncertain_ppo import UncertainPPOTorchPolicy
+from citylearn_model_training.planning_model import get_planning_model
 from uncertain_ppo_trainer import UncertainPPO
-from ray.air.callbacks.wandb import WandbLoggerCallback
 import wandb
 import utils
 # from state_generation import generate_states
 from ray.rllib.algorithms.ppo import DEFAULT_CONFIG
 from ray.rllib.models.catalog import MODEL_DEFAULTS
-from ray.rllib.algorithms.callbacks import MultiCallbacks
 from simple_grid_wrapper import SimpleGridEnvWrapper
-from citylearn_model_training.planning_model import get_planning_model
-from sinergym_wrapper import SynergymWrapper
+from sinergym_wrapper import SinergymWrapper
+
 from datetime import datetime
 import numpy as np
 import random
@@ -500,7 +491,7 @@ if __name__=="__main__":
     elif args.env == "sg":
         from callbacks import SynergymCallback
         callback_fn = SynergymCallback
-        env = SynergymWrapper
+        env = SinergymWrapper
         env_config = {
             "is_evaluation": False,
             # sigma, mean, tau for OU Process

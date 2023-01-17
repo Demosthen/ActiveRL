@@ -1,24 +1,27 @@
 import gym
-
 import numpy as np
-from ray.rllib.utils.numpy import one_hot
-import torch
-from gym_simplegrid.envs.simple_grid import SimpleGridEnvRLLib
 from gym.spaces.box import Box
-from gym.envs.toy_text.utils import categorical_sample
 from resettable_env import ResettableEnv
 import sinergym
-import time
 import os
+from sinergym_reward import FangerReward
 from sinergym.utils.controllers import RBC5Zone, RBCDatacenter, RandomController
+from sinergym.utils.wrappers import NormalizeObservation
 
-class SynergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
+class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
 
     def __init__(self, config):
         curr_pid = os.getpid()
         self.base_env_name = 'Eplus-5Zone-hot-discrete-stochastic-v1'
         # Overrides env_name so initializing multiple Sinergym envs will not result in a race condition
-        env = gym.make(self.base_env_name, env_name=self.base_env_name + str(os.getpid()))
+        env = NormalizeObservation(gym.make(self.base_env_name, 
+                        env_name=self.base_env_name + str(os.getpid()), 
+                        reward=FangerReward,
+                        reward_kwargs={
+                            'energy_variable': 'Facility Total HVAC Electricity Demand Rate(Whole Building)',
+                            'ppd_variable': 'Zone Thermal Comfort Fanger Model PPD(SPACE1-1 PEOPLE 1)',
+                            'occupancy_variable': 'Zone People Occupant Count(SPACE1-1)'
+                        }))
         self.weather_variability = config["weather_variability"]
         self.scenario_idx = 0
         env.weather_variability = self.weather_variability[self.scenario_idx]
