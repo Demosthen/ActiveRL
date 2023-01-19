@@ -35,8 +35,8 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         obs_space = env.observation_space
         obs_space_shape_list = list(obs_space.shape)
         obs_space_shape_list[-1] += 3
-        self.variability_low = np.array([0., -35, 0.00099])
-        self.variability_high = np.array([25., 35, 0.00011])
+        self.variability_low = np.array([0., -25, 0.00099])
+        self.variability_high = np.array([20., 25, 0.00011])
         self.variability_offset = (self.variability_high + self.variability_low) / 2
         self.variability_scale = (self.variability_high - self.variability_low) / 2
         low = list(obs_space.low) + [-1., -1., -1.]#self.variability_low
