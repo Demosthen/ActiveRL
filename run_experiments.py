@@ -529,9 +529,9 @@ if __name__=="__main__":
 
         eval_env_config = deepcopy(env_config)
         eval_env_config["is_evaluation"] = True
-        eval_env_config["weather_variability"] = [(1, -30, 0.001),
-                                                  (1, 30, 0.001),
-                                                  (20, 0, 0.001)]
+        eval_env_config["weather_variability"] = [(1, -40, 0.001),
+                                                  (1, 20, 0.001),
+                                                  (15, 0, 0.001)]
 
         rllib_config["evaluation_duration"] = len(eval_env_config["weather_variability"])
         rllib_config["horizon"] = args.horizon
@@ -548,6 +548,8 @@ if __name__=="__main__":
     if args.profile:
         profile = cProfile.Profile()
         profile.enable()
+    else:
+        profile = None
 
     train_agent(agent, timesteps=args.num_timesteps, full_eval_interval=args.full_eval_interval, full_eval_fn=full_eval_fn, profile=profile)
 
