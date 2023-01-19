@@ -658,7 +658,7 @@ class SynergymCallback(ActiveRLCallback):
         episode.custom_metrics["num_comfort_violations"] = episode.user_data["num_comfort_violations"]
         episode.custom_metrics["out_temperature_mean"] = np.mean(episode.user_data["out_temperature"])
         episode.custom_metrics["out_temperature_std"] = np.std(episode.user_data["out_temperature"])
-        episode.hist_data["out_temperature"] = episode.user_data["out_temperature"][::3000]
+        episode.hist_data["out_temperature"] = episode.user_data["out_temperature"][::6000]
         try:
             episode.custom_metrics['comfort_violation_time(%)'] = episode.user_data["num_comfort_violations"] / \
                 episode.length * 100
