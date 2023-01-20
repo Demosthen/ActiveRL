@@ -28,7 +28,7 @@ from datetime import datetime
 import numpy as np
 import random
 from dm_maze.model import ComplexInputNetwork
-from utils import flatten_dict_of_lists, read_gridworld, grid_desc_to_dm, print_profile
+from utils import *
 from constants import *
 import cProfile
 
@@ -521,16 +521,17 @@ if __name__=="__main__":
         env = SinergymWrapper
         env_config = {
             # sigma, mean, tau for OU Process
-            "weather_variability": [(1.0, 0.0, 0.001)],
+            "weather_variability": [build_variability_dict(["drybulb"], [], (1., 0., 0.001))],
+            "variability_low": {"drybulb": (0.0, -35., 0.001)},
+            "variability_high": {"drybulb": (20.0, 35., 0.001)},
             "use_rbc": args.use_rbc,
             "use_random": args.use_random
             }
 
         eval_env_config = deepcopy(env_config)
-        eval_env_config["is_evaluation"] = True
-        eval_env_config["weather_variability"] = [(1, -40, 0.001),
-                                                  (1, 20, 0.001),
-                                                  (15, 0, 0.001)]
+        eval_env_config["weather_variability"] = [build_variability_dict(["drybulb"], [], (1, -30, 0.001)),
+                                                  build_variability_dict(["drybulb"], [], (1, 30, 0.001)),
+                                                  build_variability_dict(["drybulb"], [], (15, 0, 0.001))]
 
         rllib_config["evaluation_duration"] = len(eval_env_config["weather_variability"])
         rllib_config["horizon"] = args.horizon

@@ -96,3 +96,23 @@ def print_profile(profile: cProfile.Profile, log_file: str = None, n: int = 20):
         with open(log_file, "w") as f:
             f.write(s.getvalue())
         # profile.dump_stats(log_file)
+
+def build_variability_dict(names, rev_names, variability):
+    """ 
+        Builds a weather variability dictionary that applies the specified
+        variability to the weather variables names provided, with the offset parameter
+        negated for variables provided in rev_names. For example, 
+        build_variability_dict(names=["a", "b"], rev_names=["c"], (1, 20, 0.001))
+        outputs {"a": (1, 20, 0.001), "b": (1, 20, 0.001), "c": (1, -20, 0.001)}
+    """
+    ret = {}
+
+    rev_variability = deepcopy(variability)
+    rev_variability[1] *= -1
+
+    for name in names:
+        ret[name] = variability
+    
+    for name in rev_names:
+        ret[name] = rev_variability
+    return ret
