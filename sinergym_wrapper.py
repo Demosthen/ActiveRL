@@ -155,9 +155,24 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         return low, high
 
     def reset(self, initial_state=None):
+        """
+        Resets the environment. Pass a tensor with the same shape as the observation as initial_state
+        to reset the weather variability to that state. Pass an int to specify a scenario_idx in the 
+        pre-set weather variabilities in the environment. Pass nothing to use the default weather variability.
+        """
         obs = self.env.reset()
         self.last_untransformed_obs = obs
-        if initial_state is not None:
+        if isinstance(initial_state, int):
+            if initial_state < 0 or initial_state >= len(self.weather_variability):
+                raise IndexError("initial state does not specify a valid weather variability.") 
+            # Set to specified weather variability scenario
+            self.scenario_idx = initial_state
+            curr_weather_variability = self.weather_variability[self.scenario_idx]
+            print("PRESET VARIABILITY", curr_weather_variability)
+            self.env.simulator.reset(curr_weather_variability)
+            # self.scenario_idx = (self.scenario_idx + 1) % len(self.weather_variability)
+            
+        elif initial_state is not None:
             # Reset simulator with specified weather variability
             variability = initial_state[..., -self.num_variability_dims:]
             variability = variability * self.variability_scale + self.variability_offset
@@ -169,13 +184,6 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             #TODO: make variability a dict
             _, obs, _ = self.env.simulator.reset(variability_dict)
             obs = np.array(obs, dtype=np.float32)
-        else:
-            # Cycle through the weather variability scenarios
-            curr_weather_variability = self.weather_variability[self.scenario_idx]
-            print("PRESET VARIABILITY", curr_weather_variability)
-            #TODO: make variability a dict
-            self.env.simulator.reset(curr_weather_variability)
-            self.scenario_idx = (self.scenario_idx + 1) % len(self.weather_variability)
         return self.observation(obs)
 
     def step(self, action):

@@ -34,7 +34,7 @@ from viz_utils import draw_box
 
 class ActiveRLCallback(DefaultCallbacks):
     """
-    A custom callback that derives from ``DefaultCallbacks``.
+    A custom callback that derives from ``DefaultCallbacks``. Not yet vectorized.
 
     :param verbose: (int) Verbosity level 0: not output 1: info 2: debug
     """
@@ -167,6 +167,7 @@ class ActiveRLCallback(DefaultCallbacks):
         algorithm.evaluation_workers.foreach_worker(set_limited_eval)
 
 class SimpleGridCallback(ActiveRLCallback):
+    """ Note, SimpleGridCallback is not yet vectorized, so logging may be inaccurate if num_envs_per_worker is not 1"""
     def __init__(self, num_descent_steps: int = 10, batch_size: int = 64, no_coop: bool = False, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}):
         super().__init__(num_descent_steps, batch_size, no_coop, planning_model, config, run_active_rl, planning_uncertainty_weight, device, args)
         self.cell_index = -1
@@ -280,6 +281,7 @@ class SimpleGridCallback(ActiveRLCallback):
             self.eval_rewards[self.cell_index % self.num_cells] += episode.total_reward / (self.config["evaluation_duration"] // self.num_cells) 
 
 class CitylearnCallback(ActiveRLCallback):
+    """ Note, CitylearnCallback is not yet vectorized, so logging may be inaccurate if num_envs_per_worker is not 1"""
     def __init__(self, num_descent_steps: int = 10, batch_size: int = 64, no_coop: bool = False, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}):
         super().__init__(num_descent_steps, batch_size, no_coop, planning_model, config, run_active_rl, planning_uncertainty_weight, device, args)
         
@@ -356,6 +358,8 @@ class DMMazeCallback(ActiveRLCallback):
         self.num_cells = -1
         self.eval_rewards = []
         self.goal_reached = []
+        self.num_envs = config["num_envs_per_worker"]
+        self.env_to_cell_index = {k: -1 for k in range(self.num_envs)}
 
     def _get_img_bounds(self, img):
         """ Get bounds of foreground of image (assuming background is uniform and starts at edge of image)"""
@@ -383,7 +387,12 @@ class DMMazeCallback(ActiveRLCallback):
         img[..., :, x_low:x_high, y_low:y_high] = img[..., :, x_low:x_high, y_low:y_high] * 0.75 + 0.25 * np.uint8(highlight_img)
         return img
 
-    def on_evaluate_end(self, *, algorithm: UncertainPPO, evaluation_metrics: dict, **kwargs)-> None:
+    def on_evaluate_end(
+        self, 
+        *,
+        algorithm: UncertainPPO,
+        evaluation_metrics: dict,
+        **kwargs)-> None:
         """
         Runs at the end of Algorithm.evaluate().
         """
@@ -421,6 +430,7 @@ class DMMazeCallback(ActiveRLCallback):
         base_env: BaseEnv,
         policies: Dict[PolicyID, Policy],
         episode: Union[Episode, EpisodeV2],
+        env_index: Optional[int] = None,
         **kwargs,
     ) -> None:
         """Callback run on the rollout worker before each episode starts.
@@ -436,9 +446,11 @@ class DMMazeCallback(ActiveRLCallback):
                 state. You can use the `episode.user_data` dict to store
                 temporary data, and `episode.custom_metrics` to store custom
                 metrics for the episode.
+            env_index: The index of the sub-environment that started the episode
+                (within the vector of sub-environments of the BaseEnv).
             kwargs: Forward compatibility placeholder.
         """
-        env = base_env.get_sub_environments()[0]
+        env = base_env.get_sub_environments()[env_index]
         # Get the single "default policy"
         policy = next(policies.values())
         episode.media["img"] = []
@@ -454,11 +466,13 @@ class DMMazeCallback(ActiveRLCallback):
             self.num_cells = len(self.world_positions)
             self.eval_rewards = [0 for _ in range(self.num_cells)]
             self.goal_reached = [0 for _ in range(self.num_cells)]
+            
 
         run_active_rl = np.random.random() < self.run_active_rl
         if self.is_evaluating and self.full_eval_mode:
             # Resets environment to all states, one by one.
             self.cell_index += 1
+            self.env_to_cell_index[env_index] = self.cell_index
             initial_world_position = self.world_positions[self.cell_index % self.num_cells]
             initial_state = env.observation_space.sample()
             initial_state = env.combine_resettable_part(initial_state, initial_world_position)
@@ -500,13 +514,15 @@ class DMMazeCallback(ActiveRLCallback):
                 these error cases properly with their custom logics.
             kwargs : Forward compatibility placeholder.
         """
-        env = base_env.get_sub_environments()[0]
+        env = base_env.get_sub_environments()[env_index]
+        
         episode.custom_metrics["reached_goal"] = float(env.reached_goal_last_ep)
         if self.is_evaluating:
             if self.full_eval_mode:
                 num_repeats_per_cell = self.config["evaluation_duration"]
-                self.eval_rewards[self.cell_index % self.num_cells] += episode.total_reward / num_repeats_per_cell
-                self.goal_reached[self.cell_index % self.num_cells] += float(env.reached_goal_last_ep) / num_repeats_per_cell
+                cell_index = self.env_to_cell_index[env_index]
+                self.eval_rewards[cell_index % self.num_cells] += episode.total_reward / num_repeats_per_cell
+                self.goal_reached[cell_index % self.num_cells] += float(env.reached_goal_last_ep) / num_repeats_per_cell
             pix = env.render()
             pix = np.transpose(pix, [2, 0, 1])
             episode.media["img"] = np.stack(episode.media["img"])
@@ -539,7 +555,7 @@ class DMMazeCallback(ActiveRLCallback):
                 (within the vector of sub-environments of the BaseEnv).
             kwargs: Forward compatibility placeholder.
         """
-        env = base_env.get_sub_environments()[0]
+        env = base_env.get_sub_environments()[env_index]
         if episode.user_data["env_num_steps"] % 20 == 0:
             pix = env.render()
             pix = np.transpose(pix, [2, 0, 1])
@@ -549,6 +565,9 @@ class DMMazeCallback(ActiveRLCallback):
 class SynergymCallback(ActiveRLCallback):
     def __init__(self, num_descent_steps: int=10, batch_size: int=64, no_coop: bool=False, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}):
         super().__init__(num_descent_steps, batch_size, no_coop, planning_model, config, run_active_rl, planning_uncertainty_weight, device, args)
+        self.num_envs = config["num_envs_per_worker"]
+        self.env_to_scenario_index = {k: -1 for k in range(self.num_envs)}
+        self.scenario_index = 0
 
     def on_episode_start(
         self,
@@ -557,6 +576,7 @@ class SynergymCallback(ActiveRLCallback):
         base_env: BaseEnv,
         policies: Dict[PolicyID, Policy],
         episode: Union[Episode, EpisodeV2],
+        env_index: Optional[int] = None,
         **kwargs,
     ) -> None:
         """Callback run on the rollout worker before each episode starts.
@@ -580,11 +600,15 @@ class SynergymCallback(ActiveRLCallback):
         episode.user_data["num_comfort_violations"] = 0
         episode.user_data["out_temperature"] = []
 
-        super().on_episode_start(
-            worker = worker, base_env = base_env,
-            policies = policies, episode=episode,
-            **kwargs,
-        )
+        env = base_env.get_sub_environments()[env_index]
+        # Get the single "default policy"
+        policy = next(policies.values())
+        run_active_rl = np.random.random() < self.run_active_rl
+        if not self.is_evaluating and run_active_rl:
+            self.reset_env(policy, env, episode)
+        elif self.is_evaluating:
+            env.reset(self.scenario_index)
+            self.scenario_index = (self.scenario_index + 1) % len(env.weather_variability)
 
     def on_episode_step(
         self,
@@ -614,7 +638,7 @@ class SynergymCallback(ActiveRLCallback):
                 (within the vector of sub-environments of the BaseEnv).
             kwargs: Forward compatibility placeholder.
         """
-        env = base_env.get_sub_environments()[0]
+        env = base_env.get_sub_environments()[env_index]
         info = episode.last_info_for()
         episode.user_data["power"].append(info["total_power"])
         episode.user_data["term_comfort"].append(info["comfort_penalty"])
