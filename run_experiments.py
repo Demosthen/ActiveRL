@@ -520,7 +520,6 @@ if __name__=="__main__":
         callback_fn = SynergymCallback
         env = SinergymWrapper
         env_config = {
-            "is_evaluation": False,
             # sigma, mean, tau for OU Process
             "weather_variability": [(1.0, 0.0, 0.001)],
             "use_rbc": args.use_rbc,

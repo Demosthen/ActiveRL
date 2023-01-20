@@ -28,48 +28,86 @@ LOG_FMT = "[%(asctime)s] %(name)s %(levelname)s:%(message)s"
 class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
 
     def __init__(self, config):
+        """
+        Important config parameters:
+        use_rbc: replaces all actions with those from the rbc
+        use_random: replaces all actions with those from the random controller
+        weather_variability: list of dicts that represent weather_variabilities to reset the environment to
+            The dictionaries should each map a weather variable name (e.g. 'drybulb') to a tuple of OU process parameters.
+            You can specify which weather variability to reset with by calling reset with the initial_state parameter
+            set to the index of the weather variability dict you want.
+            For example, if you set config["weather_variability"] = [{'drybulb': (1.0, 0, 0.001)}, {'drybulb': (2.0, 0, 0.001)}]
+            and call reset(initial_state=0), you would reset using (1.0, 0, 0.001)
+        variability_low: Dict of lower bounds for all specified variability parameters (unnecessary unless you're doing ActiveRL)
+        variability_high: Dict of upper bounds for all specified variability parameters (unnecessary unless you're doing ActiveRL)
+        """
+        # Set up environment
         curr_pid = os.getpid()
         self.base_env_name = 'Eplus-5Zone-hot-discrete-stochastic-v1-FlexibleReset'
         # Overrides env_name so initializing multiple Sinergym envs will not result in a race condition
-        
         env = gym.make(self.base_env_name, 
-                        env_name=self.base_env_name + str(os.getpid()), 
+                        env_name=self.base_env_name + str(curr_pid), 
                         reward=FangerReward,
                         reward_kwargs={
                             'energy_variable': 'Facility Total HVAC Electricity Demand Rate(Whole Building)',
                             'ppd_variable': 'Zone Thermal Comfort Fanger Model PPD(SPACE1-1 PEOPLE 1)',
                             'occupancy_variable': 'Zone People Occupant Count(SPACE1-1)'
                         })
-        if not config["use_rbc"] and not config["use_random"]:
+        
+        # Get controller overrides
+        self.use_rbc = config.get("use_rbc", False)
+        self.use_random = config.get("use_random", False)
+
+        if not self.use_rbc and not self.use_random:
            env =  NormalizeObservation(env, ranges=self._get_ranges(self.base_env_name))
+
+        # Read current weather variability
         self.weather_variability = config["weather_variability"]
         self.scenario_idx = 0
         env.weather_variability = self.weather_variability[self.scenario_idx]
         super().__init__(env)
         self.env = env
+
         # Augment observation space with weather variability info
+        self.variability_idxs = {} # Maps weather variable name to indexes in observation
         obs_space = env.observation_space
         obs_space_shape_list = list(obs_space.shape)
-        obs_space_shape_list[-1] += 3
-        self.variability_low = np.array([0., -25, 0.00099])
-        self.variability_high = np.array([20., 25, 0.00011])
+        i = obs_space_shape_list[-1]
+        self.original_obs_space_shape = obs_space.shape
+        self.variability_low = []
+        self.variability_high = []
+        for key, variability in self.env.weather_variability.items():
+            self.variability_idxs[key] = list(range(i, i+len(variability)))
+            if "variability_low" in config:
+                self.variability_low.extend(config["variability_low"][key])
+            else:
+                self.variability_low.extend(list(variability))
+            
+            if "variability_high" in config:
+                self.variability_high.extend(config["variability_high"][key])
+            else:
+                self.variability_high.extend(list(variability))
+            i += len(variability)
+        obs_space_shape_list[-1] = i
+        self.variability_low = np.array(self.variability_low)
+        self.variability_high = np.array(self.variability_high)
+        self.num_variability_dims = len(self.variability_low)
         self.variability_offset = (self.variability_high + self.variability_low) / 2
         self.variability_scale = (self.variability_high - self.variability_low) / 2
-        low = list(obs_space.low) + [-1., -1., -1.]#self.variability_low
-        high = list(obs_space.high) + [1., 1., 1.]#self.variability_high
+        low = list(obs_space.low) + [-1. for _ in range(self.num_variability_dims)]
+        high = list(obs_space.high) + [1. for _ in range(self.num_variability_dims)]
         self.observation_space = Box(
             low = np.array(low), 
             high = np.array(high),
             shape = obs_space_shape_list,
             dtype=np.float32)
-        self.is_evaluation = config["is_evaluation"]
         self.last_untransformed_obs = None
-        if config["use_rbc"]:
+        if self.use_rbc:
             if "5Zone" in self.base_env_name:
                 self.replacement_controller = RBC5Zone(self.env)
             else:
                 self.replacement_controller = RBCDatacenter(self.env)
-        elif config["use_random"]:
+        elif self.use_random:
             self.replacement_controller = RandomController(self.env)
         else:
             self.replacement_controller = None
@@ -77,7 +115,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
     def _get_ranges(self, env_name):
         if "5Zone" in env_name:
             return RANGES_5ZONE
-        elif "pffice" in env_name:
+        elif "office" in env_name:
             return RANGES_OFFICE
         elif "warehouse" in env_name:
             return RANGES_WAREHOUSE
@@ -88,30 +126,32 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
 
     def observation(self, observation):
         #TODO: make compatible with variability being a dict, and flexible as to what to vary
-        variability = np.array(self.env.weather_variability)
+        variability = np.zeros(self.num_variability_dims)
+        for key, var in self.env.weather_variability.items():
+            idxs = [idx - self.original_obs_space_shape[-1] for idx in self.variability_idxs[key]]
+            variability[idxs] = var
+        
         variability = (variability - self.variability_offset) / self.variability_scale
         return np.concatenate([observation, variability], axis=-1)
 
     def inverse_observation(self, observation):
-        return observation[..., :-3]
+        return observation[..., :-self.num_variability_dims]
 
     def separate_resettable_part(self, obs):
         """Separates the observation into the resettable portion and the original. Make sure this operation is differentiable"""
-        if obs is None:
-            return self.env.weather_variability
-        return obs[..., -3:-1], obs
+        return obs[..., -self.num_variability_dims:], obs
 
     def combine_resettable_part(self, obs, resettable):
         """Combines an observation that has been split like in separate_resettable_part back together. Make sure this operation is differentiable"""
         # Make sure torch doesn't backprop into non-resettable part
         obs = obs.detach()
-        obs[..., -3:-1] = resettable
+        obs[..., -self.num_variability_dims] = resettable
         return obs
 
     def resettable_bounds(self):
         """Get bounds for resettable part of observation space"""
-        low = np.array([-1., -1.])#, 0.])
-        high = np.array([1., 1.])#., 5.])
+        low = [-1. for _ in range(self.num_variability_dims)]
+        high = [1. for _ in range(self.num_variability_dims)]
         return low, high
 
     def reset(self, initial_state=None):
@@ -119,12 +159,15 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         self.last_untransformed_obs = obs
         if initial_state is not None:
             # Reset simulator with specified weather variability
-            variability = initial_state[..., -3:]
+            variability = initial_state[..., -self.num_variability_dims:]
             variability = variability * self.variability_scale + self.variability_offset
-            variability[..., -1] = 0.001
-            print("ACTIVE VARIABILITY", variability)
+            variability_dict = {}
+            for var_name, idxs in self.variability_idxs:
+                variability_dict[var_name] = tuple(variability[idxs])
+            # variability[..., -1] = 0.001
+            print("ACTIVE VARIABILITY", variability_dict)
             #TODO: make variability a dict
-            _, obs, _ = self.env.simulator.reset(tuple(variability))
+            _, obs, _ = self.env.simulator.reset(variability_dict)
             obs = np.array(obs, dtype=np.float32)
         else:
             # Cycle through the weather variability scenarios
