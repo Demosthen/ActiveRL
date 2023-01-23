@@ -339,6 +339,11 @@ def add_args(parser):
         help="Whether or not to override all actions with that of Random Controller. Set to 1 to enable.",
         default=0
         )
+    parser.add_argument(
+        "--only_drybulb",
+        action="store_true",
+        help="Whether to restrict the weather variability changes to only drybulb outdoor temperature",
+        )
 
     # ACTIVE RL PARAMS
     parser.add_argument(
@@ -519,19 +524,27 @@ if __name__=="__main__":
         from callbacks import SynergymCallback
         callback_fn = SynergymCallback
         env = SinergymWrapper
+        
+        
+        if args.only_drybulb:
+            weather_var_names =['drybulb']
+            weather_var_rev_names = []
+        else:
+            weather_var_names = ['drybulb', 'relhum', "winddir", "dirnorrad", "difhorrad"]
+            weather_var_rev_names = ["windspd"]
+        
+        weather_var_config = get_variability_configs(weather_var_names, weather_var_rev_names)
         env_config = {
             # sigma, mean, tau for OU Process
-            "weather_variability": [build_variability_dict(["drybulb"], [], (1., 0., 0.001))],
-            "variability_low": {"drybulb": (0.0, -35., 0.001)},
-            "variability_high": {"drybulb": (20.0, 35., 0.001)},
+            "weather_variability": weather_var_config["train_var"],
+            "variability_low": weather_var_config["train_var_low"],
+            "variability_high": weather_var_config["train_var_high"],
             "use_rbc": args.use_rbc,
             "use_random": args.use_random
             }
 
         eval_env_config = deepcopy(env_config)
-        eval_env_config["weather_variability"] = [build_variability_dict(["drybulb"], [], (1, -30, 0.001)),
-                                                  build_variability_dict(["drybulb"], [], (1, 30, 0.001)),
-                                                  build_variability_dict(["drybulb"], [], (15, 0, 0.001))]
+        eval_env_config["weather_variability"] = weather_var_config["eval_var"]
 
         rllib_config["evaluation_duration"] = len(eval_env_config["weather_variability"])
         rllib_config["horizon"] = args.horizon

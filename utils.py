@@ -118,3 +118,27 @@ def build_variability_dict(names, rev_names, variability):
     for name in rev_names:
         ret[name] = rev_variability
     return ret
+
+def get_variability_configs(names, rev_names=[]):
+    """
+        Utility function to easily construct config arguments for the weather_variability
+        related parameters of sinergym.
+
+        :param names: Names of weather variables to add variability to
+        :param rev_names: Names of weather variables to add variability that is inversely correlated with
+                            the variability added to variables specified in the names param
+
+        :return : Outputs a dictionary of variability configurations.
+    """
+    train_variability = [build_variability_dict(names, rev_names, (1., 0., 0.001))]
+    train_variability_low = {name: (0.0, -25., 0.000999) for name in names + rev_names}
+    train_variability_high = {name: (15.0, 25., 0.000101) for name in names + rev_names}
+    eval_variability = [build_variability_dict(names, rev_names, (1, -20, 0.001)),
+                        build_variability_dict(names, rev_names, (1, 20, 0.001)),
+                        build_variability_dict(names, rev_names, (10, 0, 0.001))]   
+    
+    return {"train_var": train_variability, 
+            "train_var_low": train_variability_low, 
+            "train_var_high": train_variability_high,
+            "eval_var": eval_variability}
+    
