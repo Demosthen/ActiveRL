@@ -107,8 +107,10 @@ def build_variability_dict(names, rev_names, variability):
     """
     ret = {}
 
-    rev_variability = deepcopy(variability)
+    # Need to make it a list since tuple is not mutable
+    rev_variability = list(deepcopy(variability))
     rev_variability[1] *= -1
+    rev_variability = tuple(rev_variability)
 
     for name in names:
         ret[name] = variability

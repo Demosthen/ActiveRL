@@ -112,7 +112,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         else:
             self.replacement_controller = None
 
-    def _get_ranges(self, env_name):
+    def _get_ranges(self, env_name: str):
         if "5Zone" in env_name:
             return RANGES_5ZONE
         elif "office" in env_name:
@@ -124,7 +124,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         else:
             raise NotImplementedError()
 
-    def observation(self, observation):
+    def observation(self, observation: np.ndarray):
         #TODO: make compatible with variability being a dict, and flexible as to what to vary
         variability = np.zeros(self.num_variability_dims)
         for key, var in self.env.weather_variability.items():
@@ -134,27 +134,27 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         variability = (variability - self.variability_offset) / self.variability_scale
         return np.concatenate([observation, variability], axis=-1)
 
-    def inverse_observation(self, observation):
+    def inverse_observation(self, observation: np.ndarray):
         return observation[..., :-self.num_variability_dims]
 
-    def separate_resettable_part(self, obs):
+    def separate_resettable_part(self, obs: np.ndarray):
         """Separates the observation into the resettable portion and the original. Make sure this operation is differentiable"""
         return obs[..., -self.num_variability_dims:], obs
 
-    def combine_resettable_part(self, obs, resettable):
+    def combine_resettable_part(self, obs: np.ndarray, resettable: np.ndarray):
         """Combines an observation that has been split like in separate_resettable_part back together. Make sure this operation is differentiable"""
         # Make sure torch doesn't backprop into non-resettable part
         obs = obs.detach()
-        obs[..., -self.num_variability_dims] = resettable
+        obs[..., -self.num_variability_dims:] = resettable
         return obs
 
-    def resettable_bounds(self):
+    def resettable_bounds(self) -> np.ndarray: 
         """Get bounds for resettable part of observation space"""
-        low = [-1. for _ in range(self.num_variability_dims)]
-        high = [1. for _ in range(self.num_variability_dims)]
+        low = np.array([-1. for _ in range(self.num_variability_dims)])
+        high = np.array([1. for _ in range(self.num_variability_dims)])
         return low, high
 
-    def reset(self, initial_state=None):
+    def reset(self, initial_state: Optional[Union[int, np.ndarray]]=None):
         """
         Resets the environment. Pass a tensor with the same shape as the observation as initial_state
         to reset the weather variability to that state. Pass an int to specify a scenario_idx in the 
@@ -177,7 +177,8 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             variability = initial_state[..., -self.num_variability_dims:]
             variability = variability * self.variability_scale + self.variability_offset
             variability_dict = {}
-            for var_name, idxs in self.variability_idxs:
+            for var_name, idxs in self.variability_idxs.items():
+                idxs = [idx - self.original_obs_space_shape[-1] for idx in idxs]
                 variability_dict[var_name] = tuple(variability[idxs])
             # variability[..., -1] = 0.001
             print("ACTIVE VARIABILITY", variability_dict)
