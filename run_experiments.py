@@ -546,6 +546,12 @@ if __name__=="__main__":
         eval_env_config = deepcopy(env_config)
         eval_env_config["weather_variability"] = weather_var_config["eval_var"]
 
+        if args.wandb:
+            wandb.config.update({
+                "train_weather_variability": env_config["weather_variability"],
+                "eval_weather_variability": eval_env_config["weather_variability"],
+                "weather_variables": weather_var_names + weather_var_rev_names})
+
         rllib_config["evaluation_duration"] = len(eval_env_config["weather_variability"])
         rllib_config["horizon"] = args.horizon
         rllib_config["batch_mode"] = "complete_episodes"
