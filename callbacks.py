@@ -38,7 +38,17 @@ class ActiveRLCallback(DefaultCallbacks):
 
     :param verbose: (int) Verbosity level 0: not output 1: info 2: debug
     """
-    def __init__(self, num_descent_steps: int=10, batch_size: int=64, no_coop: bool=False, planning_model=None, config={}, run_active_rl=0, planning_uncertainty_weight=1, device="cpu", args={}):
+    def __init__(self, 
+                 num_descent_steps: int=10, 
+                 batch_size: int=64, 
+                 no_coop: bool=False, 
+                 planning_model=None, 
+                 config={}, 
+                 run_active_rl=0, 
+                 planning_uncertainty_weight=1, 
+                 device="cpu", 
+                 args={}, 
+                 uniform_reset = False):
         super().__init__()
         self.run_active_rl = run_active_rl
         self.num_descent_steps = num_descent_steps
@@ -50,6 +60,7 @@ class ActiveRLCallback(DefaultCallbacks):
         self.planning_uncertainty_weight = planning_uncertainty_weight
         self.use_gpu = args.num_gpus > 0
         self.args = args
+        self.uniform_reset = uniform_reset
         self.full_eval_mode = False
         if self.planning_model is not None:
             device = "cuda:0" if self.use_gpu else "cpu"
@@ -111,12 +122,21 @@ class ActiveRLCallback(DefaultCallbacks):
         # Get the single "default policy"
         policy = next(policies.values())
         run_active_rl = np.random.random() < self.run_active_rl
-        if not self.is_evaluating and run_active_rl:
+        if not self.is_evaluating and (run_active_rl or self.uniform_reset):
             self.reset_env(policy, env, episode)
 
     def reset_env(self, policy, env, episode):
-        new_states, uncertainties = generate_states(policy, env=env, obs_space=env.observation_space, num_descent_steps=self.num_descent_steps, 
-                        batch_size=self.batch_size, no_coop=self.no_coop, planning_model=self.planning_model, reward_model=self.reward_model, planning_uncertainty_weight=self.planning_uncertainty_weight)
+        new_states, uncertainties = generate_states(
+            policy, 
+            env=env, 
+            obs_space=env.observation_space, 
+            num_descent_steps=self.num_descent_steps, 
+            batch_size=self.batch_size, 
+            no_coop=self.no_coop, 
+            planning_model=self.planning_model, 
+            reward_model=self.reward_model, 
+            planning_uncertainty_weight=self.planning_uncertainty_weight, 
+            uniform_reset=self.uniform_reset)
         new_states = states_to_np(new_states)
         episode.custom_metrics[UNCERTAINTY_LOSS_KEY] = uncertainties[-1]
         env.reset(initial_state=new_states)
@@ -168,8 +188,8 @@ class ActiveRLCallback(DefaultCallbacks):
 
 class SimpleGridCallback(ActiveRLCallback):
     """ Note, SimpleGridCallback is not yet vectorized, so logging may be inaccurate if num_envs_per_worker is not 1"""
-    def __init__(self, num_descent_steps: int = 10, batch_size: int = 64, no_coop: bool = False, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}):
-        super().__init__(num_descent_steps, batch_size, no_coop, planning_model, config, run_active_rl, planning_uncertainty_weight, device, args)
+    def __init__(self, num_descent_steps: int = 10, batch_size: int = 64, no_coop: bool = False, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}, uniform_reset=False):
+        super().__init__(num_descent_steps, batch_size, no_coop, planning_model, config, run_active_rl, planning_uncertainty_weight, device, args, uniform_reset)
         self.cell_index = -1
         self.num_cells = -1
         self.eval_rewards = []
@@ -237,7 +257,7 @@ class SimpleGridCallback(ActiveRLCallback):
             initial_state[self.cell_index % self.num_cells] = 1
             env.reset(initial_state=initial_state)
         run_active_rl = np.random.random() < self.run_active_rl
-        if not self.is_evaluating and run_active_rl:
+        if not self.is_evaluating and (run_active_rl or self.uniform_reset):
             # Actually run Active RL and reset the environment
             new_states = self.reset_env(policy, env, episode)
             
@@ -282,8 +302,8 @@ class SimpleGridCallback(ActiveRLCallback):
 
 class CitylearnCallback(ActiveRLCallback):
     """ Note, CitylearnCallback is not yet vectorized, so logging may be inaccurate if num_envs_per_worker is not 1"""
-    def __init__(self, num_descent_steps: int = 10, batch_size: int = 64, no_coop: bool = False, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}):
-        super().__init__(num_descent_steps, batch_size, no_coop, planning_model, config, run_active_rl, planning_uncertainty_weight, device, args)
+    def __init__(self, num_descent_steps: int = 10, batch_size: int = 64, no_coop: bool = False, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}, uniform_reset=False):
+        super().__init__(num_descent_steps, batch_size, no_coop, planning_model, config, run_active_rl, planning_uncertainty_weight, device, args, uniform_reset)
         
     def on_episode_start(
         self,
@@ -317,7 +337,7 @@ class CitylearnCallback(ActiveRLCallback):
             #Rotate in the next climate zone
             env.next_env()
         run_active_rl = np.random.random() < self.run_active_rl
-        if not self.is_evaluating and run_active_rl:
+        if not self.is_evaluating and (run_active_rl or self.uniform_reset):
             self.reset_env(policy, env, episode)
 
     def on_episode_end(
@@ -352,8 +372,8 @@ class CitylearnCallback(ActiveRLCallback):
 
 class DMMazeCallback(ActiveRLCallback):
 
-    def __init__(self, num_descent_steps: int = 10, batch_size: int = 64, no_coop: bool = False, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}):
-        super().__init__(num_descent_steps, batch_size, no_coop, planning_model, config, run_active_rl, planning_uncertainty_weight, device, args)
+    def __init__(self, num_descent_steps: int = 10, batch_size: int = 64, no_coop: bool = False, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}, uniform_reset=False):
+        super().__init__(num_descent_steps, batch_size, no_coop, planning_model, config, run_active_rl, planning_uncertainty_weight, device, args, uniform_reset)
         self.cell_index = -1
         self.num_cells = -1
         self.eval_rewards = []
@@ -478,7 +498,7 @@ class DMMazeCallback(ActiveRLCallback):
             initial_state = env.combine_resettable_part(initial_state, initial_world_position)
             print(self.cell_index)
             env.reset(initial_state=initial_state)
-        elif not self.is_evaluating and run_active_rl:
+        elif not self.is_evaluating and (run_active_rl or self.uniform_reset):
             # Actually run Active RL and reset the environment
             new_states = self.reset_env(policy, env, episode)
             if ACTIVE_STATE_VISITATION_KEY not in episode.custom_metrics:
@@ -563,8 +583,21 @@ class DMMazeCallback(ActiveRLCallback):
         episode.user_data["env_num_steps"] += 1
 
 class SynergymCallback(ActiveRLCallback):
-    def __init__(self, num_descent_steps: int=10, batch_size: int=64, no_coop: bool=False, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}):
-        super().__init__(num_descent_steps, batch_size, no_coop, planning_model, config, run_active_rl, planning_uncertainty_weight, device, args)
+    def __init__(self, 
+                 num_descent_steps: int=10, 
+                 batch_size: int=64, 
+                 no_coop: bool=False, 
+                 planning_model=None, 
+                 config={}, 
+                 run_active_rl=False, 
+                 planning_uncertainty_weight=1, 
+                 device="cpu", 
+                 args={}, 
+                 uniform_reset=False):
+        super().__init__(num_descent_steps, batch_size, no_coop, 
+                         planning_model, config, run_active_rl, 
+                         planning_uncertainty_weight, device, args, 
+                         uniform_reset)
         self.num_envs = config["num_envs_per_worker"]
         self.env_to_scenario_index = {k: -1 for k in range(self.num_envs)}
         self.scenario_index = 0
@@ -594,20 +627,23 @@ class SynergymCallback(ActiveRLCallback):
                 metrics for the episode.
             kwargs: Forward compatibility placeholder.
         """
+
         episode.user_data["power"] = []
         episode.user_data["term_comfort"] = []
         episode.user_data["term_energy"] = []
         episode.user_data["num_comfort_violations"] = 0
         episode.user_data["out_temperature"] = []
+        episode.user_data[f"reward"]= []
 
         env = base_env.get_sub_environments()[env_index]
         # Get the single "default policy"
         policy = next(policies.values())
         run_active_rl = np.random.random() < self.run_active_rl
-        if not self.is_evaluating and run_active_rl:
+        if not self.is_evaluating and (run_active_rl or self.uniform_reset):
             self.reset_env(policy, env, episode)
         elif self.is_evaluating:
             env.reset(self.scenario_index)
+            self.env_to_scenario_index[env_index] = self.scenario_index
             self.scenario_index = (self.scenario_index + 1) % len(env.weather_variability)
 
     def on_episode_step(
@@ -644,6 +680,7 @@ class SynergymCallback(ActiveRLCallback):
         episode.user_data["term_comfort"].append(info["comfort_penalty"])
         episode.user_data["term_energy"].append(info["total_power_no_units"])
         episode.user_data["out_temperature"].append(info["out_temperature"])
+        episode.user_data[f"reward"].append(episode.last_reward_for())
         if info["comfort_penalty"] != 0:
             episode.user_data["num_comfort_violations"] += 1
 
@@ -673,19 +710,29 @@ class SynergymCallback(ActiveRLCallback):
                 these error cases properly with their custom logics.
             kwargs : Forward compatibility placeholder.
         """
-        episode.custom_metrics["cum_power"] = np.sum(episode.user_data["power"])
-        episode.custom_metrics["mean_power"] = np.mean(episode.user_data["power"])
-        episode.custom_metrics["cum_comfort_penalty"] = np.sum(episode.user_data["term_comfort"])
-        episode.custom_metrics["mean_comfort_penalty"] = np.mean(episode.user_data["term_comfort"])
-        episode.custom_metrics["cum_power_penalty"] = np.sum(episode.user_data["term_energy"])
-        episode.custom_metrics["mean_power_penalty"] = np.mean(episode.user_data["term_energy"])
-        episode.custom_metrics["num_comfort_violations"] = episode.user_data["num_comfort_violations"]
-        episode.custom_metrics["out_temperature_mean"] = np.mean(episode.user_data["out_temperature"])
-        episode.custom_metrics["out_temperature_std"] = np.std(episode.user_data["out_temperature"])
+        to_log = {}
+        to_log["cum_power"] = np.sum(episode.user_data["power"])
+        to_log["mean_power"] = np.mean(episode.user_data["power"])
+        to_log["cum_comfort_penalty"] = np.sum(episode.user_data["term_comfort"])
+        to_log["mean_comfort_penalty"] = np.mean(episode.user_data["term_comfort"])
+        to_log["cum_power_penalty"] = np.sum(episode.user_data["term_energy"])
+        to_log["mean_power_penalty"] = np.mean(episode.user_data["term_energy"])
+        to_log["num_comfort_violations"] = episode.user_data["num_comfort_violations"]
+        to_log["out_temperature_mean"] = np.mean(episode.user_data["out_temperature"])
+        to_log["out_temperature_std"] = np.std(episode.user_data["out_temperature"])
+        to_log["reward_mean"] = np.mean(episode.user_data["reward"])
+        to_log["reward_sum"] = np.sum(episode.user_data["reward"])
         episode.hist_data["out_temperature"] = episode.user_data["out_temperature"][::6000]
+        
         try:
-            episode.custom_metrics['comfort_violation_time(%)'] = episode.user_data["num_comfort_violations"] / \
+            to_log['comfort_violation_time(%)'] = episode.user_data["num_comfort_violations"] / \
                 episode.length * 100
         except ZeroDivisionError:
-            episode.custom_metrics['comfort_violation_time(%)'] = np.nan
+            to_log['comfort_violation_time(%)'] = np.nan
+
+        # Log both scenario specific and aggregated logs
+        episode.custom_metrics.update(to_log)
+        scenario_index = self.env_to_scenario_index[env_index]
+        env_specific_log = {f"env_{scenario_index}_{key}": val for key, val in to_log.items()}
+        episode.custom_metrics.update(env_specific_log)
         

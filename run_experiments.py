@@ -80,7 +80,7 @@ def get_agent(env, callback_fn, rllib_config, env_config, eval_env_config, model
         "env_config": eval_env_config
     }
 
-    config["callbacks"] = lambda: callback_fn(num_descent_steps=args.num_descent_steps, batch_size=1, no_coop=args.no_coop, planning_model=planning_model, config=config, run_active_rl=args.use_activerl, planning_uncertainty_weight=args.planning_uncertainty_weight, args=args)
+    config["callbacks"] = lambda: callback_fn(num_descent_steps=args.num_descent_steps, batch_size=1, no_coop=args.no_coop, planning_model=planning_model, config=config, run_active_rl=args.use_activerl, planning_uncertainty_weight=args.planning_uncertainty_weight, args=args, uniform_reset=args.use_random_reset)
     config.update(rllib_config)
     agent = UncertainPPO(config = config, logger_creator = utils.custom_logger_creator(args.log_path))
 
@@ -350,6 +350,12 @@ def add_args(parser):
         "--use_activerl",
         type=float,
         help="Probability of a training episode using an active start. Set to 1 to only use the active start and 0 to use default",
+        default=0
+    )
+    parser.add_argument(
+        "--use_random_reset",
+        type=float,
+        help="Whether or not to reset the environment random states",
         default=0
     )
     parser.add_argument(

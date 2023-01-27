@@ -79,7 +79,15 @@ def sample_obs(env: ResettableEnv, batch_size: int, device):
     obs = env.combine_resettable_part(obs, resettable_part)
     return obs, resettable_part
 
-def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_space: Space, num_descent_steps: int = 10, batch_size: int = 1, no_coop=False, planning_model=None, reward_model=None, planning_uncertainty_weight=1):
+def random_state(lower_bounds: np.ndarray, upper_bounds: np.ndarray):
+    """Returns a random state that was uniform randomly sampled between lower_bounds and upper_bounds"""
+    ret = np.random.random(lower_bounds.shape)
+    ret -= lower_bounds
+    ret *= (upper_bounds - lower_bounds)
+    return ret
+
+
+def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_space: Space, num_descent_steps: int = 10, batch_size: int = 1, no_coop=False, planning_model=None, reward_model=None, planning_uncertainty_weight=1, uniform_reset=False):
     """
         Generates states by doing gradient descent to increase an agent's uncertainty
         on states starting from random noise
@@ -96,6 +104,7 @@ def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_spac
                                 to the actual observation space (e.g. if the observation space is actually
                                 discrete then you can round the features in the observation vector)
         :param planning_uncertainty_weight: relative weight to give to the planning uncertainty compared to agent uncertainty
+        :param uniform_reset: whether to just sample uniform random from the resettable_bounds space
     """
 #     #TODO: make everything work with batches
     lower_bounds, upper_bounds = env.resettable_bounds()#get_space_bounds(obs_space)
@@ -103,6 +112,8 @@ def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_spac
     upper_bounded_idxs = np.logical_not(np.isinf(upper_bounds))
 
     obs, resettable = sample_obs(env, batch_size, agent.device)
+    if uniform_reset:
+        return obs, [0]
 
     if not no_coop:
         cmp = BoundedUncertaintyMaximization(

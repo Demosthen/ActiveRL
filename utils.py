@@ -133,7 +133,8 @@ def get_variability_configs(names, rev_names=[]):
     train_variability = [build_variability_dict(names, rev_names, (1., 0., 0.001))]
     train_variability_low = {name: (0.0, -25., 0.000999) for name in names + rev_names}
     train_variability_high = {name: (15.0, 25., 0.00101) for name in names + rev_names}
-    eval_variability = [build_variability_dict(names, rev_names, (1, -20, 0.001)),
+    eval_variability = [build_variability_dict(names, rev_names, (1, 0, 0.001)),
+                        build_variability_dict(names, rev_names, (1, -20, 0.001)),
                         build_variability_dict(names, rev_names, (1, 20, 0.001)),
                         build_variability_dict(names, rev_names, (10, 0, 0.001))]   
     
