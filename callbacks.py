@@ -62,6 +62,7 @@ class ActiveRLCallback(DefaultCallbacks):
         self.args = args
         self.uniform_reset = uniform_reset
         self.full_eval_mode = False
+        self.activerl_lr = args.activerl_lr
         if self.planning_model is not None:
             device = "cuda:0" if self.use_gpu else "cpu"
             self.reward_model = RewardPredictor(self.planning_model.obs_size, self.config["model"]["fcnet_hiddens"][0], False, device=device)
@@ -188,7 +189,16 @@ class ActiveRLCallback(DefaultCallbacks):
 
 class SimpleGridCallback(ActiveRLCallback):
     """ Note, SimpleGridCallback is not yet vectorized, so logging may be inaccurate if num_envs_per_worker is not 1"""
-    def __init__(self, num_descent_steps: int = 10, batch_size: int = 64, no_coop: bool = False, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}, uniform_reset=False):
+    def __init__(self, 
+                 num_descent_steps: int = 10, 
+                 batch_size: int = 64, 
+                 no_coop: bool = False, 
+                 planning_model=None, config={}, 
+                 run_active_rl=False, 
+                 planning_uncertainty_weight=1, 
+                 device="cpu", 
+                 args={}, 
+                 uniform_reset=False):
         super().__init__(num_descent_steps, batch_size, no_coop, planning_model, config, run_active_rl, planning_uncertainty_weight, device, args, uniform_reset)
         self.cell_index = -1
         self.num_cells = -1

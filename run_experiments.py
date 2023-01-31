@@ -388,6 +388,12 @@ def add_args(parser):
         default=1
     )
     parser.add_argument(
+        "--activerl_lr",
+        type=float,
+        help="Learning rate for Active RL",
+        default=0.1
+    )
+    parser.add_argument(
         "--num_dropout_evals",
         type=int,
         help="Number of dropout evaluations to run to estimate uncertainty",
