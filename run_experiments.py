@@ -599,10 +599,11 @@ if __name__ == "__main__":
                 "weather_variables": weather_var_names + weather_var_rev_names})
 
         rllib_config["evaluation_duration"] = len(
-            eval_env_config["weather_variability"])
+            eval_env_config["weather_variability"]) * args.horizon
+        rllib_config["evaluation_duration_unit"] = "timesteps"
         rllib_config["horizon"] = args.horizon
         rllib_config["soft_horizon"] = True
-        rllib_config["batch_mode"] = "complete_episodes"
+        #rllib_config["batch_mode"] = "complete_episodes"
         rllib_config["evaluation_parallel_to_training"] = True
     else:
         raise NotImplementedError

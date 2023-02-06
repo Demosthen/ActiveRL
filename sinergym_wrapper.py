@@ -64,7 +64,8 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
                             'energy_variable': 'Facility Total HVAC Electricity Demand Rate(Whole Building)',
                             'ppd_variable': 'Zone Thermal Comfort Fanger Model PPD(SPACE1-1 PEOPLE 1)',
                             'occupancy_variable': 'Zone People Occupant Count(SPACE1-1)'
-                        })
+                        },
+                        config_params={'timesteps_per_hour' : 1})
         
         # Get controller overrides
         self.use_rbc = config.get("use_rbc", False)
