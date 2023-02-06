@@ -38,15 +38,27 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             set to the index of the weather variability dict you want.
             For example, if you set config["weather_variability"] = [{'drybulb': (1.0, 0, 0.001)}, {'drybulb': (2.0, 0, 0.001)}]
             and call reset(initial_state=0), you would reset using (1.0, 0, 0.001)
+        sample_environments: whether or not to sample weather variability from a specified csv file for each parameter
+            Set to False by default
+        environment_variability_file: file to read weather variabilities to sample from if sample_environments is True
+            Set to epw_scraper/US_epw_OU_Params.csv by default
         variability_low: Dict of lower bounds for all specified variability parameters (unnecessary unless you're doing ActiveRL)
         variability_high: Dict of upper bounds for all specified variability parameters (unnecessary unless you're doing ActiveRL)
         """
         # Set up environment
         curr_pid = os.getpid()
         self.base_env_name = 'Eplus-5Zone-hot-discrete-stochastic-v1-FlexibleReset'
+
+        weather_file = config.get("weather_file", "USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw")
+        self.environment_variability_file = config.get("environment_variability_file", "epw_scraper/US_epw_OU_params.csv")
+        self.sample_environments = config.get("sample_environments", False)
+        if self.sample_environments:
+            self.OU_param_df = self._load_OU_params(self.environment_variability_file)
+        
         # Overrides env_name so initializing multiple Sinergym envs will not result in a race condition
         env = gym.make(self.base_env_name, 
                         env_name=self.base_env_name + str(curr_pid), 
+                        weather_file=weather_file,
                         reward=FangerReward,
                         reward_kwargs={
                             'energy_variable': 'Facility Total HVAC Electricity Demand Rate(Whole Building)',
@@ -102,6 +114,8 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             shape = obs_space_shape_list,
             dtype=np.float32)
         self.last_untransformed_obs = None
+
+        # Initialize baselines if specified.
         if self.use_rbc:
             if "5Zone" in self.base_env_name:
                 self.replacement_controller = RBC5Zone(self.env)
@@ -111,6 +125,9 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             self.replacement_controller = RandomController(self.env)
         else:
             self.replacement_controller = None
+
+    def _load_OU_params(self, file):
+        return pd.read_csv(file)
 
     def _get_ranges(self, env_name: str):
         if "5Zone" in env_name:
@@ -125,7 +142,6 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             raise NotImplementedError()
 
     def observation(self, observation: np.ndarray):
-        #TODO: make compatible with variability being a dict, and flexible as to what to vary
         variability = np.zeros(self.num_variability_dims)
         for key, var in self.env.weather_variability.items():
             idxs = [idx - self.original_obs_space_shape[-1] for idx in self.variability_idxs[key]]
@@ -153,25 +169,37 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         low = np.array([-1. for _ in range(self.num_variability_dims)])
         high = np.array([1. for _ in range(self.num_variability_dims)])
         return low, high
+    
+    def _sample_variability(self):
+        row = self.OU_param_df.sample(1)
+        ret = {}
+        for variable in self.variability_idxs.keys():
+            OU_param = [0,0,0]
+            for j in range(3):
+                OU_param[j] = np.array(row[f"{variable}_{j}"]).squeeze().item()
+            ret[variable] = OU_param
+        return ret
 
     def reset(self, initial_state: Optional[Union[int, np.ndarray]]=None):
         """
         Resets the environment. Pass a tensor with the same shape as the observation as initial_state
-        to reset the weather variability to that state. Pass an int to specify a scenario_idx in the 
-        pre-set weather variabilities in the environment. Pass nothing to use the default weather variability.
+        to reset the weather variability to that state. Pass a non-negative int to specify a scenario_idx in the 
+        pre-set weather variabilities in the environment. Pass a negative int to sample weather variabilities
+        from a file. Pass nothing to use the default weather variability.
         """
         obs = self.env.reset()
         self.last_untransformed_obs = obs
         if isinstance(initial_state, int):
-            if initial_state < 0 or initial_state >= len(self.weather_variability):
-                raise IndexError("initial state does not specify a valid weather variability.") 
-            # Set to specified weather variability scenario
-            self.scenario_idx = initial_state
-            curr_weather_variability = self.weather_variability[self.scenario_idx]
+            if initial_state < 0 and self.sample_environments:
+                curr_weather_variability = self._sample_variability()
+            elif initial_state >= 0 and initial_state < len(self.weather_variability):
+                # Set to specified weather variability scenario
+                self.scenario_idx = initial_state
+                curr_weather_variability = self.weather_variability[self.scenario_idx]
+            else:
+                raise ValueError("initial state does not specify a valid weather variability.")
             print("PRESET VARIABILITY", curr_weather_variability)
             self.env.simulator.reset(curr_weather_variability)
-            # self.scenario_idx = (self.scenario_idx + 1) % len(self.weather_variability)
-            
         elif initial_state is not None:
             # Reset simulator with specified weather variability
             variability = initial_state[..., -self.num_variability_dims:]

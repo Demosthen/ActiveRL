@@ -32,14 +32,16 @@ from utils import *
 from constants import *
 import cProfile
 
+
 class Environments(Enum):
     GRIDWORLD = "gw"
     CITYLEARN = "cl"
     DM_MAZE = "dm"
     SINERGYM = "sg"
 
+
 def get_agent(env, callback_fn, rllib_config, env_config, eval_env_config, model_config, args, planning_model=None):
-    
+
     config = DEFAULT_CONFIG.copy()
     config["seed"] = args.seed
     config["framework"] = "torch"
@@ -47,13 +49,13 @@ def get_agent(env, callback_fn, rllib_config, env_config, eval_env_config, model
     # Disable default preprocessors, we preprocess ourselves with env wrappers
     config["_disable_preprocessor_api"] = True
     config["env_config"] = env_config
-    
 
     config["model"] = MODEL_DEFAULTS
     # Update model config with environment specific config params
     config["model"].update(model_config)
     # Update model config with Active RL related config params
-    config["model"]["fcnet_activation"] = lambda: nn.Sequential(nn.Tanh(), nn.Dropout(p=args.dropout))#Custom_Activation
+    config["model"]["fcnet_activation"] = lambda: nn.Sequential(
+        nn.Tanh(), nn.Dropout(p=args.dropout))  # Custom_Activation
     config["model"]["num_dropout_evals"] = args.num_dropout_evals
 
     config["train_batch_size"] = args.train_batch_size
@@ -65,7 +67,7 @@ def get_agent(env, callback_fn, rllib_config, env_config, eval_env_config, model
     config["num_gpus_per_worker"] = args.num_gpus / total_workers
     config["num_workers"] = args.num_training_workers
     config["num_envs_per_worker"] = args.num_envs_per_worker
-    
+
     config["clip_param"] = args.clip_param
     config["lr"] = args.lr
     config["gamma"] = args.gamma
@@ -73,20 +75,23 @@ def get_agent(env, callback_fn, rllib_config, env_config, eval_env_config, model
         config["num_gpus_per_worker"] = 0
     config["evaluation_interval"] = args.eval_interval
     config["evaluation_num_workers"] = args.num_eval_workers
-    
+
     config["evaluation_duration_unit"] = "episodes"
-    
+
     config["evaluation_config"] = {
         "env_config": eval_env_config
     }
 
-    config["callbacks"] = lambda: callback_fn(num_descent_steps=args.num_descent_steps, batch_size=1, no_coop=args.no_coop, planning_model=planning_model, config=config, run_active_rl=args.use_activerl, planning_uncertainty_weight=args.planning_uncertainty_weight, args=args, uniform_reset=args.use_random_reset)
+    config["callbacks"] = lambda: callback_fn(num_descent_steps=args.num_descent_steps, batch_size=1, no_coop=args.no_coop, planning_model=planning_model,
+                                              config=config, run_active_rl=args.use_activerl, planning_uncertainty_weight=args.planning_uncertainty_weight, args=args, uniform_reset=args.use_random_reset)
     config.update(rllib_config)
-    agent = UncertainPPO(config = config, logger_creator = utils.custom_logger_creator(args.log_path))
+    agent = UncertainPPO(
+        config=config, logger_creator=utils.custom_logger_creator(args.log_path))
 
     return agent
 
-def train_agent(agent, timesteps, full_eval_interval, full_eval_fn = None, profile=None):
+
+def train_agent(agent, timesteps, full_eval_interval, full_eval_fn=None, profile=None):
     training_steps = 0
     i = 0
     while training_steps < timesteps:
@@ -99,30 +104,37 @@ def train_agent(agent, timesteps, full_eval_interval, full_eval_fn = None, profi
             agent.callbacks.limited_eval(agent)
         if profile is not None:
             print_profile(profile, None)
-        training_steps = result["timesteps_total"]        
-        
+        training_steps = result["timesteps_total"]
+
+
 def get_log_path(log_dir):
     now = datetime.now()
     date_time = now.strftime("%m-%d-%Y,%H-%M-%S")
-    
+
     path = os.path.join(".", log_dir, date_time)
     os.makedirs(path, exist_ok=True)
     return path
 
+
 def define_constants(args):
     global CL_FOLDER, CL_EVAL_PATHS
-    CL_FOLDER = args.cl_eval_folder#"./data/single_building" if args.single_building_eval else "./data/all_buildings"
-    CL_EVAL_PATHS = [os.path.join(CL_FOLDER, "Test_cold_Texas/schema.json"), os.path.join(CL_FOLDER, "Test_dry_Cali/schema.json"), os.path.join(CL_FOLDER, "Test_hot_new_york/schema.json"), os.path.join(CL_FOLDER, "Test_snowy_Cali_winter/schema.json")]
+    # "./data/single_building" if args.single_building_eval else "./data/all_buildings"
+    CL_FOLDER = args.cl_eval_folder
+    CL_EVAL_PATHS = [os.path.join(CL_FOLDER, "Test_cold_Texas/schema.json"), os.path.join(CL_FOLDER, "Test_dry_Cali/schema.json"),
+                     os.path.join(CL_FOLDER, "Test_hot_new_york/schema.json"), os.path.join(CL_FOLDER, "Test_snowy_Cali_winter/schema.json")]
+
 
 def process_combo_args(args):
     if args.sinergym_sweep is not None:
         arglist = args.sinergym_sweep.split(",")
         if len(arglist) != 3:
-            raise ValueError("sinergym sweep combo arg does not have three elements")
+            raise ValueError(
+                "sinergym sweep combo arg does not have three elements")
         args.use_activerl = float(arglist[0])
         args.use_rbc = int(arglist[1])
         args.use_random = int(arglist[2])
     return args
+
 
 def add_args(parser):
     # GENERAL PARAMS
@@ -131,7 +143,7 @@ def add_args(parser):
         type=int,
         help="number of gpus to use, default = 1",
         default=1
-        )
+    )
 
     # LOGGING PARAMS
     parser.add_argument(
@@ -139,7 +151,7 @@ def add_args(parser):
         type=str,
         help="filename to read gridworld specs from. pass an int if you want to auto generate one.",
         default="logs"
-        )
+    )
     parser.add_argument(
         "--wandb",
         action="store_true",
@@ -155,7 +167,7 @@ def add_args(parser):
         "--profile",
         action="store_true",
         help="Whether to profile this run to debug performance"
-        )
+    )
     # GENERAL ENV PARAMS
     parser.add_argument(
         "--env",
@@ -264,13 +276,13 @@ def add_args(parser):
         type=str,
         help="filename to read gridworld specs from. pass an int if you want to auto generate one.",
         default="gridworlds/sample_grid.txt"
-        )
+    )
     parser.add_argument(
         "--gw_steps_per_cell",
         type=int,
         help="number of times to evaluate each cell, min=1",
         default=1
-        )
+    )
 
     # DM MAZE ENV PARAMS
     parser.add_argument(
@@ -278,27 +290,27 @@ def add_args(parser):
         type=str,
         help="filename to read gridworld specs from. pass an int if you want to auto generate one.",
         default="gridworlds/sample_grid.txt"
-        )
+    )
 
     parser.add_argument(
         "--aliveness_reward",
         type=float,
         help="Reward to give agent for staying alive",
         default=0.01
-        )
+    )
 
     parser.add_argument(
         "--distance_reward_scale",
         type=float,
         help="Scale of reward for agent getting closer to goal",
         default=0.01
-        )
+    )
 
     parser.add_argument(
         "--use_all_geoms",
         action="store_true",
         help="Whether to use all possible geoms or try to consolidate them for faster speed (if you turn this on things will slow down significantly)",
-        )
+    )
 
     parser.add_argument(
         "--walker",
@@ -306,25 +318,25 @@ def add_args(parser):
         choices=["ant", "ball"],
         help="What type of walker to use. Ant and ball are currently supported",
         default="ant"
-        )
+    )
     parser.add_argument(
         "--dm_steps_per_cell",
         type=int,
         help="number of times to evaluate each cell, min=1",
         default=1
-        )
+    )
     parser.add_argument(
         "--control_timestep",
         type=float,
         help="Time between control timesteps in seconds",
-        default=0.1#DEFAULT_CONTROL_TIMESTEP
-        )
+        default=0.1  # DEFAULT_CONTROL_TIMESTEP
+    )
     parser.add_argument(
         "--physics_timestep",
         type=float,
         help="Time between physics timesteps in seconds",
-        default=0.02#DEFAULT_PHYSICS_TIMESTEP
-        )
+        default=0.02  # DEFAULT_PHYSICS_TIMESTEP
+    )
 
     # SINERGYM ENV PARAMS
     parser.add_argument(
@@ -332,18 +344,29 @@ def add_args(parser):
         type=int,
         help="Whether or not to override all actions with that of Rule Based Controller (RBC). Set to 1 to enable.",
         default=0
-        )
+    )
     parser.add_argument(
         "--use_random",
         type=int,
         help="Whether or not to override all actions with that of Random Controller. Set to 1 to enable.",
         default=0
-        )
+    )
     parser.add_argument(
         "--only_drybulb",
         action="store_true",
         help="Whether to restrict the weather variability changes to only drybulb outdoor temperature",
-        )
+    )
+    parser.add_argument(
+        "--sample_envs",
+        action="store_true",
+        help="Whether to randomly sample environments from the US",
+    )
+    parser.add_argument(
+        "--sinergym_timesteps_per_hour",
+        type=int,
+        default=4,
+        help="How many timesteps to have in each hour",
+    )
 
     # ACTIVE RL PARAMS
     parser.add_argument(
@@ -399,12 +422,12 @@ def add_args(parser):
         help="Number of dropout evaluations to run to estimate uncertainty",
         default=5
     )
-    
+
     parser.add_argument(
         "--dropout",
         type=float,
         help="Dropout parameter",
-        default = 0.5
+        default=0.5
     )
     parser.add_argument(
         "--full_eval_interval",
@@ -421,7 +444,8 @@ def add_args(parser):
         default=None
     )
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     add_args(parser)
     args = parser.parse_args()
@@ -434,9 +458,10 @@ if __name__=="__main__":
     if args.wandb:
         run = wandb.init(project=args.project, entity="social-game-rl")
         args.log_path = get_log_path(args.log_path)
-        wandb.tensorboard.patch(root_logdir=args.log_path) # patching the logdir directly seems to work
+        # patching the logdir directly seems to work
+        wandb.tensorboard.patch(root_logdir=args.log_path)
         wandb.config.update(args)
-        
+
     ray.init()
 
     model_config = {}
@@ -457,14 +482,15 @@ if __name__=="__main__":
         }
 
         eval_env_config = deepcopy(env_config)
-        eval_env_config["schema"] = [Path(filename) for filename in CL_EVAL_PATHS]
+        eval_env_config["schema"] = [Path(filename)
+                                     for filename in CL_EVAL_PATHS]
         eval_env_config["is_evaluation"] = True
 
         rllib_config["horizon"] = args.horizon
         rllib_config["evaluation_duration"] = len(CL_EVAL_PATHS)
         rllib_config["soft_horizon"] = False
 
-    elif args.env == "gw": 
+    elif args.env == "gw":
         from callbacks import SimpleGridCallback
 
         callback_fn = SimpleGridCallback
@@ -477,12 +503,14 @@ if __name__=="__main__":
             env_config["desc"] = grid_desc
             env_config["reward_map"] = rew_map
             env_config["wind_p"] = wind_p
-        
+
         eval_env_config = deepcopy(env_config)
         eval_env_config["is_evaluation"] = True
 
         dummy_env = env(env_config)
-        rllib_config["evaluation_duration"] = max(1, args.gw_steps_per_cell) * dummy_env.nrow * dummy_env.ncol # TODO: is there a better way of counting this?
+        # TODO: is there a better way of counting this?
+        rllib_config["evaluation_duration"] = max(
+            1, args.gw_steps_per_cell) * dummy_env.nrow * dummy_env.ncol
 
         # model_config["shrink_init"] = args.cl_use_rbc_residual # NOTE: This does not actually do anything anymore
     elif args.env == "dm":
@@ -504,7 +532,7 @@ if __name__=="__main__":
             "walker": args.walker,
             "control_timestep": args.control_timestep,
             "physics_timestep": args.physics_timestep
-            }
+        }
 
         eval_env_config = deepcopy(env_config)
 
@@ -526,34 +554,40 @@ if __name__=="__main__":
         rllib_config["evaluation_sample_timeout_s"] = 600
         rllib_config["rollout_fragment_length"] = 1000
         dummy_arena = dummy_env.get_task()._maze_arena
-        grid_positions = flatten_dict_of_lists(dummy_arena.find_token_grid_positions(RESPAWNABLE_TOKENS))
+        grid_positions = flatten_dict_of_lists(
+            dummy_arena.find_token_grid_positions(RESPAWNABLE_TOKENS))
         rllib_config["evaluation_duration"] = args.dm_steps_per_cell
         rllib_config["evaluation_parallel_to_training"] = True
-        full_eval_duration = max(1, args.dm_steps_per_cell) * len(grid_positions)
-        full_eval_fn = lambda agent: agent.evaluate(lambda x: full_eval_duration - x)
+        full_eval_duration = max(
+            1, args.dm_steps_per_cell) * len(grid_positions)
+
+        def full_eval_fn(agent): return agent.evaluate(
+            lambda x: full_eval_duration - x)
         # rllib_config["record_env"] = True
     elif args.env == "sg":
-        from callbacks import SynergymCallback
-        callback_fn = SynergymCallback
+        from callbacks import SinergymCallback
+        callback_fn = SinergymCallback
         env = SinergymWrapper
-        
-        
+
         if args.only_drybulb:
-            weather_var_names =['drybulb']
+            weather_var_names = ['drybulb']
             weather_var_rev_names = []
         else:
-            weather_var_names = ['drybulb', 'relhum', "winddir", "dirnorrad", "difhorrad"]
+            weather_var_names = ['drybulb', 'relhum',
+                                 "winddir", "dirnorrad", "difhorrad"]
             weather_var_rev_names = ["windspd"]
-        
-        weather_var_config = get_variability_configs(weather_var_names, weather_var_rev_names)
+
+        weather_var_config = get_variability_configs(
+            weather_var_names, weather_var_rev_names)
         env_config = {
             # sigma, mean, tau for OU Process
             "weather_variability": weather_var_config["train_var"],
             "variability_low": weather_var_config["train_var_low"],
             "variability_high": weather_var_config["train_var_high"],
             "use_rbc": args.use_rbc,
-            "use_random": args.use_random
-            }
+            "use_random": args.use_random,
+            "sample_environments": args.sample_envs
+        }
 
         eval_env_config = deepcopy(env_config)
         eval_env_config["weather_variability"] = weather_var_config["eval_var"]
@@ -564,8 +598,10 @@ if __name__=="__main__":
                 "eval_weather_variability": eval_env_config["weather_variability"],
                 "weather_variables": weather_var_names + weather_var_rev_names})
 
-        rllib_config["evaluation_duration"] = len(eval_env_config["weather_variability"])
+        rllib_config["evaluation_duration"] = len(
+            eval_env_config["weather_variability"])
         rllib_config["horizon"] = args.horizon
+        rllib_config["soft_horizon"] = True
         rllib_config["batch_mode"] = "complete_episodes"
         rllib_config["evaluation_parallel_to_training"] = True
     else:
@@ -574,15 +610,17 @@ if __name__=="__main__":
     # planning model is None if the ckpt file path is None
     planning_model = get_planning_model(args.planning_model_ckpt)
 
-    agent = get_agent(env, callback_fn, rllib_config, env_config, eval_env_config, model_config, args, planning_model)
-    
+    agent = get_agent(env, callback_fn, rllib_config, env_config,
+                      eval_env_config, model_config, args, planning_model)
+
     if args.profile:
         profile = cProfile.Profile()
         profile.enable()
     else:
         profile = None
 
-    train_agent(agent, timesteps=args.num_timesteps, full_eval_interval=args.full_eval_interval, full_eval_fn=full_eval_fn, profile=profile)
+    train_agent(agent, timesteps=args.num_timesteps,
+                full_eval_interval=args.full_eval_interval, full_eval_fn=full_eval_fn, profile=profile)
 
     if args.profile:
         profile.disable()
@@ -597,9 +635,11 @@ if __name__=="__main__":
         print(result_dict["evaluation"]["per_cell_rewards"])
         visualization_env = env(env_config)
         visualization_env.reset()
-        img_arr = visualization_env.render(mode="rgb_array", reward_dict=rewards)
+        img_arr = visualization_env.render(
+            mode="rgb_array", reward_dict=rewards)
         if args.wandb:
-            img = wandb.Image(img_arr, caption="Rewards from starting from each cell")
+            img = wandb.Image(
+                img_arr, caption="Rewards from starting from each cell")
             wandb.log({"per_cell_reward_image": img})
 
     # obs = env.reset()
@@ -612,4 +652,3 @@ if __name__=="__main__":
     #     if done:
     #         obs = env.reset()
     # plt.imsave("test.png", pic)
-    

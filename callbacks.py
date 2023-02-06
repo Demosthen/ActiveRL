@@ -63,6 +63,7 @@ class ActiveRLCallback(DefaultCallbacks):
         self.uniform_reset = uniform_reset
         self.full_eval_mode = False
         self.activerl_lr = args.activerl_lr
+        self.eval_worker_ids = []
         if self.planning_model is not None:
             device = "cuda:0" if self.use_gpu else "cpu"
             self.reward_model = RewardPredictor(self.planning_model.obs_size, self.config["model"]["fcnet_hiddens"][0], False, device=device)
@@ -79,8 +80,14 @@ class ActiveRLCallback(DefaultCallbacks):
         def activate_eval_metrics(worker):
             if hasattr(worker, "callbacks"):
                 worker.callbacks.is_evaluating = True
-            return None
-        algorithm.evaluation_workers.foreach_worker(activate_eval_metrics)
+            return worker.worker_index
+        
+        def set_eval_worker_ids(worker):
+            if hasattr(worker, "callbacks"):
+                worker.callbacks.eval_worker_ids = self.eval_worker_ids
+
+        self.eval_worker_ids = sorted(algorithm.evaluation_workers.foreach_worker(activate_eval_metrics))
+        algorithm.evaluation_workers.foreach_worker(set_eval_worker_ids)
         
 
     def on_evaluate_end(self, *, algorithm: UncertainPPO, evaluation_metrics: dict, **kwargs)-> None:
@@ -592,7 +599,7 @@ class DMMazeCallback(ActiveRLCallback):
             episode.media["img"].append(pix)
         episode.user_data["env_num_steps"] += 1
 
-class SynergymCallback(ActiveRLCallback):
+class SinergymCallback(ActiveRLCallback):
     def __init__(self, 
                  num_descent_steps: int=10, 
                  batch_size: int=64, 
@@ -610,6 +617,7 @@ class SynergymCallback(ActiveRLCallback):
                          uniform_reset)
         self.num_envs = config["num_envs_per_worker"]
         self.env_to_scenario_index = {k: -1 for k in range(self.num_envs)}
+        self.sample_environments = config["env_config"].get("sample_environments", False)
         self.scenario_index = 0
 
     def on_episode_start(
@@ -637,7 +645,6 @@ class SynergymCallback(ActiveRLCallback):
                 metrics for the episode.
             kwargs: Forward compatibility placeholder.
         """
-
         episode.user_data["power"] = []
         episode.user_data["term_comfort"] = []
         episode.user_data["term_energy"] = []
@@ -652,7 +659,15 @@ class SynergymCallback(ActiveRLCallback):
         if not self.is_evaluating and (run_active_rl or self.uniform_reset):
             self.reset_env(policy, env, episode)
         elif self.is_evaluating:
-            env.reset(self.scenario_index)
+            is_default_env_worker = (worker.worker_index == self.eval_worker_ids[0]) and env_index == 0
+            if self.sample_environments and not is_default_env_worker:
+                # Set scenario_index to -1 to sample weather variability.
+                # We also want to make sure the default environment is represented,
+                # so let one environment reset with the default variability.
+                scenario_index = -1
+            else:
+                scenario_index = self.scenario_index
+            env.reset(scenario_index)
             self.env_to_scenario_index[env_index] = self.scenario_index
             self.scenario_index = (self.scenario_index + 1) % len(env.weather_variability)
 
