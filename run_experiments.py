@@ -599,8 +599,9 @@ if __name__ == "__main__":
                 "eval_weather_variability": eval_env_config["weather_variability"],
                 "weather_variables": weather_var_names + weather_var_rev_names})
 
-        rllib_config["evaluation_duration"] = len(
-            eval_env_config["weather_variability"]) * args.horizon
+        # rllib_config["evaluation_duration"] = len(
+        #     eval_env_config["weather_variability"]) * args.horizon
+        rllib_config["evaluation_duration"] = args.num_eval_workers * args.num_envs_per_worker * args.horizon
         rllib_config["evaluation_duration_unit"] = "timesteps"
         rllib_config["horizon"] = args.horizon
         rllib_config["soft_horizon"] = True
