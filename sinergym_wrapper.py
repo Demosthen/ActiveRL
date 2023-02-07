@@ -48,6 +48,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         # Set up environment
         curr_pid = os.getpid()
         self.base_env_name = 'Eplus-5Zone-hot-discrete-stochastic-v1-FlexibleReset'
+        self.timesteps_per_hour = config.get("timesteps_per_hour", 1)
 
         weather_file = config.get("weather_file", "USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw")
         self.environment_variability_file = config.get("environment_variability_file", "epw_scraper/US_epw_OU_params.csv")
@@ -65,7 +66,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
                             'ppd_variable': 'Zone Thermal Comfort Fanger Model PPD(SPACE1-1 PEOPLE 1)',
                             'occupancy_variable': 'Zone People Occupant Count(SPACE1-1)'
                         },
-                        config_params={'timesteps_per_hour' : 1})
+                        config_params={'timesteps_per_hour' : self.timesteps_per_hour})
         
         # Get controller overrides
         self.use_rbc = config.get("use_rbc", False)

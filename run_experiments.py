@@ -364,7 +364,7 @@ def add_args(parser):
     parser.add_argument(
         "--sinergym_timesteps_per_hour",
         type=int,
-        default=4,
+        default=1,
         help="How many timesteps to have in each hour",
     )
 
@@ -586,7 +586,8 @@ if __name__ == "__main__":
             "variability_high": weather_var_config["train_var_high"],
             "use_rbc": args.use_rbc,
             "use_random": args.use_random,
-            "sample_environments": args.sample_envs
+            "sample_environments": args.sample_envs,
+            "sinergym_timesteps_per_hour": args.sinergym_timesteps_per_hour
         }
 
         eval_env_config = deepcopy(env_config)
