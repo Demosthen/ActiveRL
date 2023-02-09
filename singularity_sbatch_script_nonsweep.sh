@@ -15,12 +15,12 @@
 #SBATCH --ntasks=1
 #
 # Processors per task (please always specify the total number of processors twice the number of GPUs):
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=4
 #
-#SBATCH --qos=savio_lowprio
+##SBATCH --qos=savio_lowprio
 ##SBATCH --qos=v100_gpu3_normal
 #Number of GPUs, this can be in the format of "gpu:[1-4]", or "gpu:K80:[1-4] with the type included
-#SBATCH --gres=gpu:TITAN:2
+#SBATCH --gres=gpu:GTX2080TI:2
 ##SBATCH --gpus-per-task=1
 #
 # Wall clock limit (8hrs):

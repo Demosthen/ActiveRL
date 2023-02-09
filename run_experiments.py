@@ -577,8 +577,9 @@ if __name__ == "__main__":
                                  "winddir", "dirnorrad", "difhorrad"]
             weather_var_rev_names = ["windspd"]
 
+        # We only need to include the default evaluation variability since we'll sample the rest later
         weather_var_config = get_variability_configs(
-            weather_var_names, weather_var_rev_names)
+            weather_var_names, weather_var_rev_names, only_default_eval=args.sample_envs)
         env_config = {
             # sigma, mean, tau for OU Process
             "weather_variability": weather_var_config["train_var"],

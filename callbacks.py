@@ -665,12 +665,14 @@ class SinergymCallback(ActiveRLCallback):
                 # We also want to make sure the default environment is represented,
                 # so let one environment reset with the default variability.
                 scenario_index = -2
+                self.scenario_index = (self.scenario_index + 1) % (self.num_envs * len(self.eval_worker_ids))
             else:
                 scenario_index = self.scenario_index
+                self.scenario_index = (self.scenario_index + 1) % len(env.weather_variability)
             print("WHAT IS MY SCENARIO INDEX???", scenario_index)
             env.reset(scenario_index)
             self.env_to_scenario_index[env_index] = scenario_index
-            self.scenario_index = (self.scenario_index + 1) % (self.num_envs * len(self.eval_worker_ids))#len(env.weather_variability)
+            
 
     def on_episode_step(
         self,
