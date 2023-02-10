@@ -144,7 +144,8 @@ class ActiveRLCallback(DefaultCallbacks):
             planning_model=self.planning_model, 
             reward_model=self.reward_model, 
             planning_uncertainty_weight=self.planning_uncertainty_weight, 
-            uniform_reset=self.uniform_reset)
+            uniform_reset=self.uniform_reset,
+            lr=self.activerl_lr)
         new_states = states_to_np(new_states)
         episode.custom_metrics[UNCERTAINTY_LOSS_KEY] = uncertainties[-1]
         env.reset(initial_state=new_states)

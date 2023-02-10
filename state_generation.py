@@ -87,7 +87,7 @@ def random_state(lower_bounds: np.ndarray, upper_bounds: np.ndarray):
     return ret
 
 
-def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_space: Space, num_descent_steps: int = 10, batch_size: int = 1, no_coop=False, planning_model=None, reward_model=None, planning_uncertainty_weight=1, uniform_reset=False):
+def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_space: Space, num_descent_steps: int = 10, batch_size: int = 1, no_coop=False, planning_model=None, reward_model=None, planning_uncertainty_weight=1, uniform_reset=False, lr=0.1):
     """
         Generates states by doing gradient descent to increase an agent's uncertainty
         on states starting from random noise
@@ -105,6 +105,7 @@ def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_spac
                                 discrete then you can round the features in the observation vector)
         :param planning_uncertainty_weight: relative weight to give to the planning uncertainty compared to agent uncertainty
         :param uniform_reset: whether to just sample uniform random from the resettable_bounds space
+        :param lr: learning rate for both primal and dual optimizers
     """
 #     #TODO: make everything work with batches
     lower_bounds, upper_bounds = env.resettable_bounds()#get_space_bounds(obs_space)
@@ -130,16 +131,16 @@ def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_spac
                                                 )
         formulation = cooper.LagrangianFormulation(cmp)
 
-        primal_optimizer = cooper.optim.ExtraAdam([resettable], lr=0.1)
+        primal_optimizer = cooper.optim.ExtraAdam([resettable], lr=lr)
 
         # Define the dual optimizer. Note that this optimizer has NOT been fully instantiated
         # yet. Cooper takes care of this, once it has initialized the formulation state.
-        dual_optimizer = cooper.optim.partial_optimizer(cooper.optim.ExtraAdam, lr=0.1)
+        dual_optimizer = cooper.optim.partial_optimizer(cooper.optim.ExtraAdam, lr=lr)
 
 #         # Wrap the formulation and both optimizers inside a ConstrainedOptimizer
         optimizer = cooper.ConstrainedOptimizer(formulation, primal_optimizer, dual_optimizer)
     else:
-        optimizer = optim.Adam([resettable], lr=0.1)
+        optimizer = optim.Adam([resettable], lr=lr)
     uncertainties = []
     
     for _ in range(num_descent_steps):
