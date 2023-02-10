@@ -19,7 +19,7 @@ class FangerReward(LinearReward):
         energy_variable: str,
         energy_weight: float = 0.5,
         lambda_energy: float = 1e-4,
-        lambda_ppd: float = 1.0
+        lambda_ppd: float = 0.1
     ):
         """
         Linear reward function using Fanger PPD thermal comfort.
@@ -32,7 +32,7 @@ class FangerReward(LinearReward):
             energy_variable (str): Name of the energy/power variable.
             energy_weight (float, optional): Weight given to the energy term. Defaults to 0.5.
             lambda_energy (float, optional): Constant for removing dimensions from power(1/W). Defaults to 1e-4.
-            lambda_temperature (float, optional): Constant for removing dimensions from temperature(1/C). Defaults to 1.0.
+            lambda_ppd(float, optional): Constant for removing dimensions from ppd. Defaults to 0.1.
         """
 
         super(LinearReward, self).__init__(env)
