@@ -6,6 +6,8 @@ import cProfile
 import io
 import pstats
 
+from epw_scraper.epw_data import EPW_Data
+
 MAZE_SYMBOLS = defaultdict(lambda: ".")
 MAZE_SYMBOLS.update({
     b"W": "*",
@@ -119,7 +121,7 @@ def build_variability_dict(names, rev_names, variability):
         ret[name] = rev_variability
     return ret
 
-def get_variability_configs(names, rev_names=[], only_default_eval = False):
+def get_variability_configs(names, rev_names=[], only_default_eval = False, epw_data: EPW_Data = None):
     """
         Utility function to easily construct config arguments for the weather_variability
         related parameters of sinergym.
@@ -133,8 +135,16 @@ def get_variability_configs(names, rev_names=[], only_default_eval = False):
         :return : Outputs a dictionary of variability configurations.
     """
     train_variability = [build_variability_dict(names, rev_names, (1., 0., 0.001))]
-    train_variability_low = {name: (0.0, -25., 0.000999) for name in names + rev_names}
-    train_variability_high = {name: (15.0, 25., 0.00101) for name in names + rev_names}
+    all_names =  names + rev_names
+    if epw_data:
+        epw_means = {name: epw_data.read_OU_param(epw_data.OU_mean, name) for name in all_names}
+        epw_stds = {name: epw_data.read_OU_param(epw_data.OU_std, name) for name in all_names}
+        train_variability_low = {name: tuple(epw_means[name] - 2 * epw_stds[name]) for name in all_names}
+        train_variability_high = {name: tuple(epw_means[name] + 2 * epw_stds[name]) for name in all_names}
+    else:
+        train_variability_low = {name: (0.0, -25., 0.000999) for name in names + rev_names}
+        train_variability_high = {name: (15.0, 25., 0.00101) for name in names + rev_names}
+
     if only_default_eval:
         eval_variability = [build_variability_dict(names, rev_names, (1, 0, 0.001))]
     else:

@@ -9,6 +9,7 @@ from copy import copy, deepcopy
 
 from enum import Enum
 from pathlib import Path
+import pickle
 import torch
 import torch.nn as nn
 import argparse
@@ -31,6 +32,7 @@ from dm_maze.model import ComplexInputNetwork
 from utils import *
 from constants import *
 import cProfile
+from epw_scraper.epw_data import EPW_Data
 
 
 class Environments(Enum):
@@ -577,9 +579,10 @@ if __name__ == "__main__":
                                  "winddir", "dirnorrad", "difhorrad"]
             weather_var_rev_names = ["windspd"]
 
+        epw_data = EPW_Data.load("epw_scraper/US_epw_OU_data.pkl")
         # We only need to include the default evaluation variability since we'll sample the rest later
         weather_var_config = get_variability_configs(
-            weather_var_names, weather_var_rev_names, only_default_eval=args.sample_envs)
+            weather_var_names, weather_var_rev_names, only_default_eval=args.sample_envs, epw_data=epw_data)
         env_config = {
             # sigma, mean, tau for OU Process
             "weather_variability": weather_var_config["train_var"],
@@ -606,8 +609,8 @@ if __name__ == "__main__":
         rllib_config["evaluation_duration_unit"] = "timesteps"
         rllib_config["horizon"] = args.horizon
         rllib_config["soft_horizon"] = True
-        rllib_config["restart_failed_sub_environments"] = True
-        rllib_config["recreate_failed_workers"] = True
+        # rllib_config["restart_failed_sub_environments"] = True
+        # rllib_config["recreate_failed_workers"] = True
         #rllib_config["batch_mode"] = "complete_episodes"
         rllib_config["evaluation_parallel_to_training"] = True
     else:
