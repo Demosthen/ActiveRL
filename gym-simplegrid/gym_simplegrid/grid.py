@@ -545,7 +545,8 @@ class SimpleGrid:
             rewards = np.zeros(self.width * self.height)
             for k, v in reward_dict.items():
                 rewards[int(k)] = v
-            rewards = rewards.reshape((self.width, self.height)).T
+            # rewards = rewards.reshape((self.width, self.height)).T
+            rewards = rewards.reshape((self.height, self.width))
             val_func = lambda x, max, min: (x - min) / max
             # val_func = lambda x, m, expo: (np.log(x) / np.log(m) if expo else x / m) if x > 1 else 0
             if color_func == None:
