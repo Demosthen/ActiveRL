@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 from ray.tune.logger import UnifiedLogger
 from copy import deepcopy
 from collections import defaultdict
@@ -81,7 +82,7 @@ def flatten_dict_of_lists(d):
         out.extend(v)
     return out
 
-def print_profile(profile: cProfile.Profile, log_file: str = None, n: int = 20):
+def print_profile(profile: cProfile.Profile, log_file: Optional[str] = None, n: int = 20):
     """
     Prints profiling results to stdout, sorted by total amount of time spent in each function,
     and to log file if specified.
@@ -121,7 +122,7 @@ def build_variability_dict(names, rev_names, variability):
         ret[name] = rev_variability
     return ret
 
-def get_variability_configs(names, rev_names=[], only_default_eval = False, epw_data: EPW_Data = None):
+def get_variability_configs(names, rev_names=[], only_default_eval = False, epw_data: Optional[EPW_Data] = None):
     """
         Utility function to easily construct config arguments for the weather_variability
         related parameters of sinergym.

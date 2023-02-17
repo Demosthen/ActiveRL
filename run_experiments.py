@@ -10,6 +10,7 @@ from copy import copy, deepcopy
 from enum import Enum
 from pathlib import Path
 import pickle
+from typing import Callable
 import torch
 import torch.nn as nn
 import argparse
@@ -93,7 +94,7 @@ def get_agent(env, callback_fn, rllib_config, env_config, eval_env_config, model
     return agent
 
 
-def train_agent(agent, timesteps, full_eval_interval, full_eval_fn=None, profile=None):
+def train_agent(agent: UncertainPPO, timesteps: int, log_path: str, full_eval_interval: int, full_eval_fn: Optional[Callable]=None, profile: bool=None):
     training_steps = 0
     i = 0
     while training_steps < timesteps:
@@ -104,6 +105,9 @@ def train_agent(agent, timesteps, full_eval_interval, full_eval_fn=None, profile
             result["full_evaluation"] = full_eval_fn(agent)["evaluation"]
             agent._result_logger.on_result(result)
             agent.callbacks.limited_eval(agent)
+        if i % 1 == 0:
+            path = agent.save(f"{log_path}/checkpoint_{i}")
+            print(f"SAVING CHECKPOINT TO {path}")
         if profile is not None:
             print_profile(profile, None)
         training_steps = result["timesteps_total"]
@@ -628,7 +632,7 @@ if __name__ == "__main__":
     else:
         profile = None
 
-    train_agent(agent, timesteps=args.num_timesteps,
+    train_agent(agent, timesteps=args.num_timesteps, log_path=args.log_path,
                 full_eval_interval=args.full_eval_interval, full_eval_fn=full_eval_fn, profile=profile)
 
     if args.profile:
