@@ -15,25 +15,24 @@ import torch
 import torch.nn as nn
 import argparse
 import ray
-from citylearn_wrapper import CityLearnEnvWrapper
-from citylearn_model_training.planning_model import get_planning_model
-from uncertain_ppo_trainer import UncertainPPO
+from citylearn_wrappers.citylearn_wrapper import CityLearnEnvWrapper
+from citylearn_wrappers.citylearn_model_training.planning_model import get_planning_model
+from core.uncertain_ppo.uncertain_ppo_trainer import UncertainPPO
 import wandb
-import utils
 # from state_generation import generate_states
 from ray.rllib.algorithms.ppo import DEFAULT_CONFIG
 from ray.rllib.models.catalog import MODEL_DEFAULTS
-from simple_grid_wrapper import SimpleGridEnvWrapper
-from sinergym_wrapper import SinergymWrapper
+from gridworld.simple_grid_wrapper import SimpleGridEnvWrapper
+from sinergym_wrappers.sinergym_wrapper import SinergymWrapper
 
 from datetime import datetime
 import numpy as np
 import random
-from dm_maze.model import ComplexInputNetwork
-from utils import *
-from constants import *
+from dm_maze_wrappers.model import ComplexInputNetwork
+from core.utils import *
+from core.constants import *
 import cProfile
-from epw_scraper.epw_data import EPW_Data
+from sinergym_wrappers.epw_scraper.epw_data import EPW_Data
 
 
 class Environments(Enum):
@@ -51,6 +50,8 @@ def get_agent(env, callback_fn, rllib_config, env_config, eval_env_config, model
     config["env"] = env
     # Disable default preprocessors, we preprocess ourselves with env wrappers
     config["_disable_preprocessor_api"] = True
+
+    config["rollout_fragment_length"] = "auto"
     config["env_config"] = env_config
 
     config["model"] = MODEL_DEFAULTS
@@ -89,7 +90,7 @@ def get_agent(env, callback_fn, rllib_config, env_config, eval_env_config, model
                                               config=config, run_active_rl=args.use_activerl, planning_uncertainty_weight=args.planning_uncertainty_weight, args=args, uniform_reset=args.use_random_reset)
     config.update(rllib_config)
     agent = UncertainPPO(
-        config=config, logger_creator=utils.custom_logger_creator(args.log_path))
+        config=config, logger_creator=custom_logger_creator(args.log_path))
 
     return agent
 
@@ -475,7 +476,7 @@ if __name__ == "__main__":
 
     full_eval_fn = None
     if args.env == "cl":
-        from callbacks import CitylearnCallback
+        from citylearn_wrappers.callbacks import CitylearnCallback
 
         callback_fn = CitylearnCallback
         env = CityLearnEnvWrapper
@@ -497,7 +498,7 @@ if __name__ == "__main__":
         rllib_config["soft_horizon"] = False
 
     elif args.env == "gw":
-        from callbacks import SimpleGridCallback
+        from gridworld.callbacks import SimpleGridCallback
 
         callback_fn = SimpleGridCallback
         env = SimpleGridEnvWrapper
@@ -520,8 +521,8 @@ if __name__ == "__main__":
 
         # model_config["shrink_init"] = args.cl_use_rbc_residual # NOTE: This does not actually do anything anymore
     elif args.env == "dm":
-        from callbacks import DMMazeCallback
-        from dm_maze.dm_wrapper import DM_Maze_Obs_Wrapper
+        from dm_maze_wrappers.callbacks import DMMazeCallback
+        from dm_maze_wrappers.dm_wrapper import DM_Maze_Obs_Wrapper
         callback_fn = DMMazeCallback
         grid_desc, rew_map, wind_p = read_gridworld(args.dm_filename)
         maze_str, subtarget_rews = grid_desc_to_dm(grid_desc, rew_map, wind_p)
@@ -558,7 +559,7 @@ if __name__ == "__main__":
         rllib_config["keep_per_episode_custom_metrics"] = False
         rllib_config["batch_mode"] = "truncate_episodes"
         rllib_config["evaluation_sample_timeout_s"] = 600
-        rllib_config["rollout_fragment_length"] = 1000
+        rllib_config["rollout_fragment_length"] = "auto"#1000
         dummy_arena = dummy_env.get_task()._maze_arena
         grid_positions = flatten_dict_of_lists(
             dummy_arena.find_token_grid_positions(RESPAWNABLE_TOKENS))
@@ -571,7 +572,7 @@ if __name__ == "__main__":
             lambda x: full_eval_duration - x)
         # rllib_config["record_env"] = True
     elif args.env == "sg":
-        from callbacks import SinergymCallback
+        from sinergym_wrappers.callbacks import SinergymCallback
         callback_fn = SinergymCallback
         env = SinergymWrapper
 
@@ -654,14 +655,3 @@ if __name__ == "__main__":
             img = wandb.Image(
                 img_arr, caption="Rewards from starting from each cell")
             wandb.log({"per_cell_reward_image": img})
-
-    # obs = env.reset()
-    # for i in range(16):
-    #     action, _state = agent.predict(obs)
-    #     pic = env.render(mode="ansi")
-    #     print(pic)
-    #     #action = int(input("- 0: LEFT - 1: DOWN - 2: RIGHT - 3: UP"))
-    #     obs, r, done, info = env.step(action)
-    #     if done:
-    #         obs = env.reset()
-    # plt.imsave("test.png", pic)
