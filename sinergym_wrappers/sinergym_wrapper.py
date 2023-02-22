@@ -51,7 +51,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         self.timesteps_per_hour = config.get("timesteps_per_hour", 1)
 
         weather_file = config.get("weather_file", "USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw")
-        self.environment_variability_file = config.get("environment_variability_file", "epw_scraper/US_epw_OU_params.csv")
+        self.environment_variability_file = config.get("environment_variability_file", "sinergym_wrappers/epw_scraper/US_epw_OU_params.csv")
         self.sample_environments = config.get("sample_environments", False)
         if self.sample_environments:
             self.OU_param_df = self._load_OU_params(self.environment_variability_file)
@@ -543,7 +543,7 @@ registered_envs = list(gym.envs.registry.items())
 for id, env_spec in registered_envs:
     if "Eplus" in id and "FlexibleReset" not in id:
         env_id = env_spec.id + "-FlexibleReset"
-        env_entry_point="sinergym_wrapper:EPlusFlexibleResetEnv"
+        env_entry_point="sinergym_wrappers.sinergym_wrapper:EPlusFlexibleResetEnv"
         env_kwargs = env_spec.kwargs
         if "weather_variability" in env_kwargs:
             # Give weather variability in new format

@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 from typing import Optional
 from ray.tune.logger import UnifiedLogger
@@ -161,3 +162,10 @@ def get_variability_configs(names, rev_names=[], only_default_eval = False, epw_
             "train_var_high": train_variability_high,
             "eval_var": eval_variability}
     
+def get_log_path(log_dir):
+    now = datetime.now()
+    date_time = now.strftime("%m-%d-%Y,%H-%M-%S")
+
+    path = os.path.join(".", log_dir, date_time)
+    os.makedirs(path, exist_ok=True)
+    return path
