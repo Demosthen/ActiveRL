@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+from copy import deepcopy
 from contextlib import closing
 from io import StringIO
 from typing import Optional
@@ -457,6 +457,8 @@ class SimpleGridEnv(Env):
 class SimpleGridEnvRLLib(SimpleGridEnv):
 
     def __init__(self, config):
+        config = deepcopy(config)
+        config["reward_map"] = {bytes(k, "utf-8"): v for k, v in config["reward_map"].items()}
         super().__init__(**config)
 
 def generate_random_map(size=8, p=0.8):
