@@ -45,11 +45,11 @@ def get_config(args):
 
     # rllib_config["evaluation_duration"] = len(
     #     eval_env_config["weather_variability"]) * args.horizon
-    rllib_config["evaluation_duration"] = args.num_eval_workers * args.num_envs_per_worker * args.horizon
+    rllib_config["evaluation_duration"] = args.num_eval_workers * args.num_envs_per_worker * args.horizon * 2
     rllib_config["evaluation_duration_unit"] = "timesteps"
     rllib_config["horizon"] = args.horizon
     rllib_config["soft_horizon"] = True
-    # rllib_config["restart_failed_sub_environments"] = True
+    rllib_config["restart_failed_sub_environments"] = True
     # rllib_config["recreate_failed_workers"] = True
     #rllib_config["batch_mode"] = "complete_episodes"
     rllib_config["evaluation_parallel_to_training"] = True

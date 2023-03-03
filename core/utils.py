@@ -136,7 +136,7 @@ def get_variability_configs(names, rev_names=[], only_default_eval = False, epw_
         :param only_default_eval: Whether to return eval_variability with only the default variability or with other
                             hardcoded variabilities included.
 
-        :return : Outputs a dictionary of variability configurations.
+        :return : Outputs a dictionary of variability configurations, composed of the keys "train_var", "train_var_low", "train_var_high", "eval_var"
     """
     train_variability = [build_variability_dict(names, rev_names, (1., 0., 0.001))]
     all_names =  names + rev_names

@@ -47,7 +47,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         """
         # Set up environment
         curr_pid = os.getpid()
-        self.base_env_name = 'Eplus-5Zone-hot-discrete-stochastic-v1-FlexibleReset'
+        self.base_env_name = 'Eplus-5Zone-mixed-discrete-stochastic-v1-FlexibleReset'
         self.timesteps_per_hour = config.get("timesteps_per_hour", 1)
 
         weather_file = config.get("weather_file", "USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw")
@@ -206,16 +206,19 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             # Reset simulator with specified weather variability
             variability = initial_state[..., -self.num_variability_dims:]
             variability = variability * self.variability_scale + self.variability_offset
+            variability = np.clip(variability, self.variability_low, self.variability_high)
             variability_dict = {}
             for var_name, idxs in self.variability_idxs.items():
                 idxs = [idx - self.original_obs_space_shape[-1] for idx in idxs]
-                variability_dict[var_name] = tuple(variability[idxs])
-            # variability[..., -1] = 0.001
+                variability_params = variability[idxs]
+                variability_dict[var_name] = tuple(variability_params)
+
             print("ACTIVE VARIABILITY", variability_dict)
             #TODO: make variability a dict
             _, obs, _ = self.env.simulator.reset(variability_dict)
             obs = np.array(obs, dtype=np.float32)
         return self.observation(obs)
+    
 
     def step(self, action):
         """Returns modified observations and inputs modified actions"""
@@ -275,6 +278,8 @@ class FlexibleResetConfig(Config):
                 for i in range(n - 1):
                     x[i + 1] = x[i] + dt * (-(x[i] - mu) / tau) + \
                         sigma_bis * sqrtdt * np.random.randn()
+                    if np.any(np.isinf(x[i + 1])):
+                        breakpoint()
 
                 # Add noise
                 df[column] += x
