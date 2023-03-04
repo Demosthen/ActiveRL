@@ -1,6 +1,6 @@
 import os
 
-from core.constants import Environments
+from core.constants import Environments, SG_WEATHER_TYPES
 
 def add_args(parser):
     # GENERAL PARAMS
@@ -232,6 +232,13 @@ def add_args(parser):
         type=int,
         default=1,
         help="How many timesteps to have in each hour",
+    )
+    parser.add_argument(
+        "--base_weather",
+        type=str,
+        default=SG_WEATHER_TYPES.HOT,
+        help = "What kind of base weather to have",
+        choices=[weather.value for weather in SG_WEATHER_TYPES]
     )
 
     # ACTIVE RL PARAMS
