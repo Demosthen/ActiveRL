@@ -218,7 +218,6 @@ dependencies:
     - gviz-api==1.10.0
     - gym==0.24.1
     - gym-notices==0.0.7
-    - gym-simplegrid==1.0.2
     - httplib2==0.21.0
     - imageio==2.21.2
     - imageio-ffmpeg==0.4.7
