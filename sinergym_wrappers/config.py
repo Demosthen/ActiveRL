@@ -18,7 +18,7 @@ def get_config(args):
     else:
         weather_var_names = ['drybulb', 'relhum',
                                 "winddir", "dirnorrad", "difhorrad"]
-        weather_var_rev_names = ["windspd"]
+        weather_var_rev_names = ["windspd", "precip_wtr", "snowdepth"]
 
     epw_data = EPW_Data.load("sinergym_wrappers/epw_scraper/US_epw_OU_data.pkl")
     # We only need to include the default evaluation variability since we'll sample the rest later
@@ -34,15 +34,15 @@ def get_config(args):
         "use_rbc": args.use_rbc,
         "use_random": args.use_random,
         "sample_environments": args.sample_envs,
-        "sinergym_timesteps_per_hour": args.sinergym_timesteps_per_hour,
+        "timesteps_per_hour": args.sinergym_timesteps_per_hour,
         "weather_file": base_weather_file,
         "config": args
     }
 
     eval_env_config = deepcopy(env_config)
     eval_env_config["weather_variability"] = weather_var_config["eval_var"]
-    eval_env_config["sinergym_timesteps_per_hour"] = args.sinergym_timesteps_per_hour * args.eval_fidelity_ratio
-    eval_env_config["act_repeat"] = args.eval_fidelity
+    eval_env_config["timesteps_per_hour"] = args.sinergym_timesteps_per_hour * args.eval_fidelity_ratio
+    eval_env_config["act_repeat"] = args.eval_fidelity_ratio
 
     if args.wandb:
         wandb.config.update({

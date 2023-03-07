@@ -150,7 +150,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         variability = np.zeros(self.num_variability_dims)
         for key, var in self.env.weather_variability.items():
             idxs = [idx - self.original_obs_space_shape[-1] for idx in self.variability_idxs[key]]
-            variability[idxs] = var
+            variability[idxs] = np.array(var)
         
         variability = (variability - self.variability_offset) / self.variability_scale
         return np.concatenate([observation, variability], axis=-1)

@@ -257,7 +257,7 @@ def add_args(parser):
     parser.add_argument(
         "--use_random_reset",
         type=float,
-        help="Whether or not to reset the environment random states",
+        help="Whether or not to reset the environment to random states",
         default=0
     )
     parser.add_argument(
@@ -318,8 +318,8 @@ def add_args(parser):
     parser.add_argument(
         "--sinergym_sweep",
         type=str,
-        help="Sets use_activerl, use_rbc, and use_random, respectively, all at the same time. Pass in the values as a comma delimited string. \
-            For example, \'0.1,0,0\' denotes setting use_activerl to 0.1 and use_rbc and use_random to 0",
+        help="Sets use_activerl, use_rbc, use_random, and use_random_reset, respectively, all at the same time. Pass in the values as a comma delimited string. \
+            For example, \'0.1,0,0,0\' denotes setting use_activerl to 0.1 and use_rbc, use_random, and use_random_reset to 0",
         default=None
     )
 
@@ -334,10 +334,11 @@ def define_constants(args):
 def process_combo_args(args):
     if args.sinergym_sweep is not None:
         arglist = args.sinergym_sweep.split(",")
-        if len(arglist) != 3:
+        if len(arglist) != 4:
             raise ValueError(
-                "sinergym sweep combo arg does not have three elements")
+                "sinergym sweep combo arg does not have four elements")
         args.use_activerl = float(arglist[0])
         args.use_rbc = int(arglist[1])
         args.use_random = int(arglist[2])
+        args.use_random_reset = float(arglist[3])
     return args
