@@ -22,3 +22,8 @@ class Environments(Enum):
     CITYLEARN = "cl"
     DM_MAZE = "dm"
     SINERGYM = "sg"
+
+class SG_WEATHER_TYPES(Enum):
+    HOT = "hot"
+    COOL = "cool"
+    MIXED = "mixed"
