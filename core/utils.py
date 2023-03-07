@@ -145,6 +145,7 @@ def get_variability_configs(names, rev_names=[], only_default_eval = False, epw_
         epw_stds = {name: epw_data.read_OU_param(epw_data.OU_std, name) for name in all_names}
         train_variability_low = {name: tuple(epw_means[name] - 2 * epw_stds[name]) for name in all_names}
         train_variability_high = {name: tuple(epw_means[name] + 2 * epw_stds[name]) for name in all_names}
+        train_variability = [{name: (var[0] * epw_stds[name], var[1] * epw_stds[name], var[2]) for name, var in train_variability[0].items()}]
     else:
         train_variability_low = {name: (0.0, -25., 0.000999) for name in names + rev_names}
         train_variability_high = {name: (15.0, 25., 0.00101) for name in names + rev_names}
