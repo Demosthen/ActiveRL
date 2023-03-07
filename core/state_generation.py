@@ -111,6 +111,7 @@ def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_spac
 
     obs, resettable = sample_obs(env, batch_size, agent.device)
     if uniform_reset:
+        print("UNIFORM RESET!!!!!!!!!!!!!!!!!!!!!!!!!")
         return obs, [0]
 
     if not no_coop:

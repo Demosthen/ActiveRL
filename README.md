@@ -6,7 +6,7 @@ Instructions for getting this working generally:
 6. conda env create -f environment.yml
 7. conda activate ActiveRL
 8. pip install git+https://github.com/cooper-org/cooper.git
-9. pip install -e gym-simplegrid/ --no-deps
+9. pip install -e gridworld/gym-simplegrid/ --no-deps
 10. pip install moviepy==1.0.3
 11. pip uninstall pygame
 12. Install bcvtb and EnergyPlus like in step 2 and 3 of https://github.com/ugr-sail/sinergym

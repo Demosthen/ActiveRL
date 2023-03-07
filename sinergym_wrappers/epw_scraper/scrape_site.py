@@ -64,7 +64,7 @@ def process_download_page(browser, download_link):
     for elem in elements:
         link = elem.get_attribute('href')
         if "epw" in link:
-            filename = os.path.join("data", link.split("/")[-1])
+            filename = os.path.join("data", "sinergym", link.split("/")[-1])
             print(filename)
             if os.path.exists(filename):
                 continue
