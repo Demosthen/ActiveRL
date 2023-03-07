@@ -13,13 +13,11 @@ WORKDIR /home/ActiveRL
 
 RUN ["/bin/bash", "-c", "ls && source /home/miniconda/bin/activate \
     && conda init \
-    && conda env create -f environment.yml \
+    && conda env create -f environment.yml --force\
     && conda activate ActiveRL \ 
     && pip install git+https://github.com/cooper-org/cooper.git\
-    && pip install -e gym-simplegrid/ --no-deps\
+    && pip install -e gridworld/gym-simplegrid/ --no-deps\
     && pip install moviepy==1.0.3\
     && pip uninstall pygame -y \
     && pip install sinergym[extras]\
-    && pip install gym==0.24.1\
-    && pip install -e gym-simplegrid\
-    && pip install dm_control==1.0.9"]
+    && pip install gym==0.24.1"]
