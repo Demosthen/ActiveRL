@@ -233,6 +233,12 @@ def add_args(parser):
         default=1,
         help="How many timesteps to have in each hour",
     )
+    parser.add_argument(
+        "--eval_fidelity_ratio",
+        type=int,
+        default=1,
+        help="Ratio of timesteps for Energy Plus to simulate building during evaluation compared to training for each hour",
+    )
 
     # ACTIVE RL PARAMS
     parser.add_argument(

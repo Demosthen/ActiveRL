@@ -36,6 +36,8 @@ def get_config(args):
 
     eval_env_config = deepcopy(env_config)
     eval_env_config["weather_variability"] = weather_var_config["eval_var"]
+    eval_env_config["sinergym_timesteps_per_hour"] = args.sinergym_timesteps_per_hour * args.eval_fidelity_ratio
+    eval_env_config["act_repeat"] = args.eval_fidelity
 
     if args.wandb:
         wandb.config.update({
