@@ -54,7 +54,7 @@ fi
 #singularity run sinergym.sif sh -c  "ls /home && pwd && ls /usr/bin"
 # singularity exec docker://ubuntu:latest cat /etc/issue
 # singularity exec sinergym_savio.sif cat /etc/issue
-singularity run --nv --workdir ./tmp --bind $(pwd):$HOME --bind "$LDIR:$HOME/.local" --bind "$PYTHON_DIR:/.env" sinergym.sif bash -c ". ./singularity_preamble_new.sh && $PYTHON_PATH $1"
+singularity run --nv --workdir ./tmp --bind $(pwd):$HOME --bind "$LDIR:$HOME/.local" --bind "$PYTHON_DIR:/.env" sinergym.sif bash -c ". sbatch_scripts/singularity_preamble_new.sh && $PYTHON_PATH $1"
 
 # singularity run --nv --workdir ./tmp --bind "$LDIR:$HOME/.local" --bind "$PYTHON_DIR:/.env" sinergym.sif sh -c ". ./singularity_preamble_new.sh && $1"
 
