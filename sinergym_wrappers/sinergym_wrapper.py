@@ -385,7 +385,7 @@ class EPlusFlexibleResetSimulator(EnergyPlus):
         # specified in environment and variables.cfg construction
         self.logger_main.info(
             'Updating idf OutPut:Variable and variables XML tree model for BVCTB connection.')
-        self._config. adapt_variables_to_cfg_and_idf()
+        self._config.adapt_variables_to_cfg_and_idf()
         # Setting up extra configuration if exists
         self.logger_main.info(
             'Setting up extra configuration in building model if exists...')
