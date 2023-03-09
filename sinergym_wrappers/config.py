@@ -57,6 +57,7 @@ def get_config(args):
     rllib_config["horizon"] = args.horizon
     rllib_config["soft_horizon"] = True
     rllib_config["restart_failed_sub_environments"] = True
+    rllib_config["evaluation_sample_timeout_s"] = 3600
     # rllib_config["recreate_failed_workers"] = True
     #rllib_config["batch_mode"] = "complete_episodes"
     rllib_config["evaluation_parallel_to_training"] = True
