@@ -238,6 +238,10 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             return self.replacement_controller.act()
         else:
             return self.replacement_controller.act(obs)
+        
+    def sample_obs(self):
+        """Automatically sample an observation to seed state generation"""
+        return np.zeros(self.observation_space.shape)
 
 class FlexibleResetConfig(Config):
     """ Custom configuration class that extends apply_weather_variability to more flexibly change more weather aspects"""
