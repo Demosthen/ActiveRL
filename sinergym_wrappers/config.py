@@ -18,7 +18,7 @@ def get_config(args):
     else:
         weather_var_names = ['drybulb', 'relhum',
                                 "winddir", "dirnorrad", "difhorrad"]
-        weather_var_rev_names = ["windspd"]
+        weather_var_rev_names = ["windspd", "precip_wtr", "snowdepth"]
 
     epw_data = EPW_Data.load("sinergym_wrappers/epw_scraper/US_epw_OU_data.pkl")
     # We only need to include the default evaluation variability since we'll sample the rest later
@@ -34,13 +34,15 @@ def get_config(args):
         "use_rbc": args.use_rbc,
         "use_random": args.use_random,
         "sample_environments": args.sample_envs,
-        "sinergym_timesteps_per_hour": args.sinergym_timesteps_per_hour,
+        "timesteps_per_hour": args.sinergym_timesteps_per_hour,
         "weather_file": base_weather_file,
         "config": args
     }
 
     eval_env_config = deepcopy(env_config)
     eval_env_config["weather_variability"] = weather_var_config["eval_var"]
+    eval_env_config["timesteps_per_hour"] = args.sinergym_timesteps_per_hour * args.eval_fidelity_ratio
+    eval_env_config["act_repeat"] = args.eval_fidelity_ratio
 
     if args.wandb:
         wandb.config.update({
@@ -55,6 +57,7 @@ def get_config(args):
     rllib_config["horizon"] = args.horizon
     rllib_config["soft_horizon"] = True
     rllib_config["restart_failed_sub_environments"] = True
+    rllib_config["evaluation_sample_timeout_s"] = 3600
     # rllib_config["recreate_failed_workers"] = True
     #rllib_config["batch_mode"] = "complete_episodes"
     rllib_config["evaluation_parallel_to_training"] = True

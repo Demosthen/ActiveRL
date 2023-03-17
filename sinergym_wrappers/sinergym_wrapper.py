@@ -44,6 +44,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             Set to epw_scraper/US_epw_OU_Params.csv by default
         variability_low: Dict of lower bounds for all specified variability parameters (unnecessary unless you're doing ActiveRL)
         variability_high: Dict of upper bounds for all specified variability parameters (unnecessary unless you're doing ActiveRL)
+        act_repeat: the number of times to repeat each action
         """
         # Set up environment
         curr_pid = os.getpid()
@@ -55,6 +56,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         self.sample_environments = config.get("sample_environments", False)
         if self.sample_environments:
             self.OU_param_df = self._load_OU_params(self.environment_variability_file)
+        self.act_repeat = config.get("act_repeat", 1)
         
         # Overrides env_name so initializing multiple Sinergym envs will not result in a race condition
         env = gym.make(self.base_env_name, 
@@ -66,6 +68,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
                             'ppd_variable': 'Zone Thermal Comfort Fanger Model PPD(SPACE1-1 PEOPLE 1)',
                             'occupancy_variable': 'Zone People Occupant Count(SPACE1-1)'
                         },
+                        act_repeat=self.act_repeat,
                         config_params={'timesteps_per_hour' : self.timesteps_per_hour})
         
         # Get controller overrides
@@ -147,7 +150,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         variability = np.zeros(self.num_variability_dims)
         for key, var in self.env.weather_variability.items():
             idxs = [idx - self.original_obs_space_shape[-1] for idx in self.variability_idxs[key]]
-            variability[idxs] = var
+            variability[idxs] = np.array(var)
         
         variability = (variability - self.variability_offset) / self.variability_scale
         return np.concatenate([observation, variability], axis=-1)
@@ -235,6 +238,10 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             return self.replacement_controller.act()
         else:
             return self.replacement_controller.act(obs)
+        
+    def sample_obs(self):
+        """Automatically sample an observation to seed state generation"""
+        return np.zeros(self.observation_space.shape)
 
 class FlexibleResetConfig(Config):
     """ Custom configuration class that extends apply_weather_variability to more flexibly change more weather aspects"""
@@ -382,7 +389,7 @@ class EPlusFlexibleResetSimulator(EnergyPlus):
         # specified in environment and variables.cfg construction
         self.logger_main.info(
             'Updating idf OutPut:Variable and variables XML tree model for BVCTB connection.')
-        self._config. adapt_variables_to_cfg_and_idf()
+        self._config.adapt_variables_to_cfg_and_idf()
         # Setting up extra configuration if exists
         self.logger_main.info(
             'Setting up extra configuration in building model if exists...')
@@ -449,7 +456,6 @@ class EPlusFlexibleResetEnv(EplusEnv):
             env_name (str, optional): Env name used for working directory generation. Defaults to eplus-env-v1.
             config_params (Optional[Dict[str, Any]], optional): Dictionary with all extra configuration for simulator. Defaults to None.
         """
-
         # ---------------------------------------------------------------------------- #
         #                          Energyplus, BCVTB and paths                         #
         # ---------------------------------------------------------------------------- #

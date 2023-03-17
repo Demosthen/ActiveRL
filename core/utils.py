@@ -1,6 +1,7 @@
 from datetime import datetime
 import os
 from typing import Optional
+import numpy as np
 from ray.tune.logger import UnifiedLogger
 from copy import deepcopy
 from collections import defaultdict
@@ -138,25 +139,24 @@ def get_variability_configs(names, rev_names=[], only_default_eval = False, epw_
 
         :return : Outputs a dictionary of variability configurations, composed of the keys "train_var", "train_var_low", "train_var_high", "eval_var"
     """
-    train_variability = [build_variability_dict(names, rev_names, (1., 0., 0.001))]
+    
     all_names =  names + rev_names
     if epw_data:
         epw_means = {name: epw_data.read_OU_param(epw_data.OU_mean, name) for name in all_names}
-        epw_stds = {name: epw_data.read_OU_param(epw_data.OU_std, name) for name in all_names}
-        train_variability_low = {name: tuple(epw_means[name] - 2 * epw_stds[name]) for name in all_names}
-        train_variability_high = {name: tuple(epw_means[name] + 2 * epw_stds[name]) for name in all_names}
-        train_variability = [{name: (var[0] * epw_stds[name], var[1] * epw_stds[name], var[2]) for name, var in train_variability[0].items()}]
+        train_variability_low = {name: epw_data.read_OU_param(epw_data.OU_min, name) for name in all_names}
+        train_variability_high = {name: epw_data.read_OU_param(epw_data.OU_max, name) for name in all_names}
+        # Take the average value of standard deviation and time constant, but set offset to 0
+        train_variability = [{name: np.array([epw_means[name][0], 0, epw_means[name][2]]) for name in all_names}]
     else:
         train_variability_low = {name: (0.0, -25., 0.000999) for name in names + rev_names}
         train_variability_high = {name: (15.0, 25., 0.00101) for name in names + rev_names}
+        train_variability = [build_variability_dict(names, rev_names, (1., 0., 0.001))]
 
-    if only_default_eval:
-        eval_variability = [build_variability_dict(names, rev_names, (1, 0, 0.001))]
-    else:
-        eval_variability = [build_variability_dict(names, rev_names, (1, 0, 0.001)),
-                            build_variability_dict(names, rev_names, (1, -20, 0.001)),
+    eval_variability = deepcopy(train_variability)
+    if not only_default_eval:
+        eval_variability.extend([build_variability_dict(names, rev_names, (1, -20, 0.001)),
                             build_variability_dict(names, rev_names, (1, 20, 0.001)),
-                            build_variability_dict(names, rev_names, (10, 0, 0.001))]
+                            build_variability_dict(names, rev_names, (10, 0, 0.001))])
     
     return {"train_var": train_variability, 
             "train_var_low": train_variability_low, 
