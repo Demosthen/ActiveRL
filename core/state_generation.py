@@ -49,15 +49,18 @@ def get_space_bounds(obs_space: Space):
     else:
         raise NotImplementedError
 
-def sample_obs(env: ResettableEnv, batch_size: int, device):
+def sample_obs(env: ResettableEnv, batch_size: int, device, random: bool=False):
     obs_space = env.observation_space
     if isinstance(obs_space, Dict):
         obs = {}
         with torch.no_grad():
             for _ in range(batch_size):
-                random_obs = env.sample_obs()
-                if isinstance(random_obs, dict):
-                    for key, val in random_obs.items():
+                if random:
+                    sampled_obs = env.observation_space.sample()
+                else:
+                    sampled_obs = env.sample_obs()
+                if isinstance(sampled_obs, dict):
+                    for key, val in sampled_obs.items():
                         if key not in obs:
                             obs[key] = []
                         obs[key].append(torch.tensor(val, device = device, dtype=torch.float32, requires_grad=False))
@@ -66,8 +69,11 @@ def sample_obs(env: ResettableEnv, batch_size: int, device):
         obs = []
         with torch.no_grad():
             for i in range(batch_size):
-                random_obs = env.sample_obs()
-                obs.append(torch.torch.tensor(random_obs, device = device, dtype=torch.float32, requires_grad=False))
+                if random:
+                    sampled_obs = env.observation_space.sample()
+                else:
+                    sampled_obs = env.sample_obs()
+                obs.append(torch.tensor(sampled_obs, device = device, dtype=torch.float32, requires_grad=False))
 
         obs = torch.stack(obs)
     resettable_part, obs = env.separate_resettable_part(obs)
@@ -108,11 +114,13 @@ def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_spac
     lower_bounds, upper_bounds = env.resettable_bounds()#get_space_bounds(obs_space)
     lower_bounded_idxs = np.logical_not(np.isinf(lower_bounds))
     upper_bounded_idxs = np.logical_not(np.isinf(upper_bounds))
+    
+    obs, resettable = sample_obs(env, batch_size, agent.device, random=uniform_reset)
 
-    obs, resettable = sample_obs(env, batch_size, agent.device)
     if uniform_reset:
-        print("UNIFORM RESET!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print("USING UNIFORM RESET")
         return obs, [0]
+    
 
     if not no_coop:
         cmp = BoundedUncertaintyMaximization(
