@@ -143,13 +143,13 @@ def get_variability_configs(names, rev_names=[], only_default_eval = False, epw_
     all_names =  names + rev_names
     if epw_data:
         epw_means = {name: epw_data.read_OU_param(epw_data.OU_mean, name) for name in all_names}
-        train_variability_low = {name: epw_data.read_OU_param(epw_data.OU_min, name) for name in all_names}
-        train_variability_high = {name: epw_data.read_OU_param(epw_data.OU_max, name) for name in all_names}
+        train_variability_low = {name: epw_data.read_OU_param(epw_data.OU_min, name)[0::2] for name in all_names}
+        train_variability_high = {name: epw_data.read_OU_param(epw_data.OU_max, name)[0::2] for name in all_names}
         # Take the average value of standard deviation and time constant, but set offset to 0
         train_variability = [{name: np.array([epw_means[name][0], 0, epw_means[name][2]]) for name in all_names}]
     else:
-        train_variability_low = {name: (0.0, -25., 0.000999) for name in names + rev_names}
-        train_variability_high = {name: (15.0, 25., 0.00101) for name in names + rev_names}
+        train_variability_low = {name: (0.0, 0.000999) for name in names + rev_names}
+        train_variability_high = {name: (15.0, 0.00101) for name in names + rev_names}
         train_variability = [build_variability_dict(names, rev_names, (1., 0., 0.001))]
 
     eval_variability = deepcopy(train_variability)

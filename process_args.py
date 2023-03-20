@@ -296,6 +296,12 @@ def add_args(parser):
         default=0.1
     )
     parser.add_argument(
+        "--activerl_reg_coeff",
+        type=float,
+        help="Weighting coefficient penalizing generated state's distance from original state",
+        default=0.01
+    )
+    parser.add_argument(
         "--num_dropout_evals",
         type=int,
         help="Number of dropout evaluations to run to estimate uncertainty",

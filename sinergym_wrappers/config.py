@@ -18,7 +18,7 @@ def get_config(args):
     else:
         weather_var_names = ['drybulb', 'relhum',
                                 "winddir", "dirnorrad", "difhorrad"]
-        weather_var_rev_names = ["windspd", "precip_wtr", "snowdepth"]
+        weather_var_rev_names = ["windspd"]
 
     epw_data = EPW_Data.load("sinergym_wrappers/epw_scraper/US_epw_OU_data.pkl")
     # We only need to include the default evaluation variability since we'll sample the rest later
@@ -36,6 +36,7 @@ def get_config(args):
         "sample_environments": args.sample_envs,
         "timesteps_per_hour": args.sinergym_timesteps_per_hour,
         "weather_file": base_weather_file,
+        "epw_data": epw_data,
         "config": args
     }
 
