@@ -65,12 +65,12 @@ class SinergymCallback(ActiveRLCallback):
         # Get the single "default policy"
         policy = next(policies.values())
         run_active_rl = np.random.random() < self.run_active_rl
-        if not self.is_evaluating and (run_active_rl or self.uniform_reset):
+        if not self.is_evaluating and any([run_active_rl, self.uniform_reset, self.plr_d > 0]):
             self.reset_env(policy, env, episode)
         elif self.is_evaluating:
             is_default_env_worker = (worker.worker_index == self.eval_worker_ids[0]) and env_index == 0
             if self.sample_environments and not is_default_env_worker:
-                # Set scenario_index to -1 to sample weather variability.
+                # Set scenario_index to -2 to sample weather variability.
                 # We also want to make sure the default environment is represented,
                 # so let one environment reset with the default variability.
                 scenario_index = -2

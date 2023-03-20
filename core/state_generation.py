@@ -1,3 +1,4 @@
+import random
 import torch
 from gym.spaces import Space, Box, Discrete, Dict
 import torch.optim as optim
@@ -90,7 +91,20 @@ def random_state(lower_bounds: np.ndarray, upper_bounds: np.ndarray):
     return ret
 
 
-def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_space: Space, num_descent_steps: int = 10, batch_size: int = 1, no_coop=False, planning_model=None, reward_model=None, planning_uncertainty_weight=1, uniform_reset=False, lr=0.1):
+def plr_sample_state(env_buffer, beta, rho=0.1):
+    assert len(env_buffer) > 0
+    assert beta != 0
+    ranks = np.arange(1, len(env_buffer) + 1)
+    score_prioritized_p = (1 / ranks) ** (1 / beta)
+    score_prioritized_p /= np.sum(score_prioritized_p)
+    
+    _, sampled_env_param = np.random.choice(env_buffer, size=1, p=score_prioritized_p)
+    return sampled_env_param
+
+def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_space: Space, 
+                    num_descent_steps: int = 10, batch_size: int = 1, no_coop=False, 
+                    planning_model=None, reward_model=None, planning_uncertainty_weight=1, 
+                    uniform_reset=False, lr=0.1, plr_d=0.0, plr_beta=0.1, env_buffer=[]):
     """
         Generates states by doing gradient descent to increase an agent's uncertainty
         on states starting from random noise
@@ -109,11 +123,17 @@ def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_spac
         :param planning_uncertainty_weight: relative weight to give to the planning uncertainty compared to agent uncertainty
         :param uniform_reset: whether to just sample uniform random from the resettable_bounds space
         :param lr: learning rate for both primal and dual optimizers
+        :param env_buffer: A list of tuples (|value loss|, env_parameters) sorted in descending order by |value loss|
     """
 #     #TODO: make everything work with batches
     lower_bounds, upper_bounds = env.resettable_bounds()#get_space_bounds(obs_space)
     lower_bounded_idxs = np.logical_not(np.isinf(lower_bounds))
     upper_bounded_idxs = np.logical_not(np.isinf(upper_bounds))
+
+    use_plr = np.random.random() < plr_d
+    if use_plr and len(env_buffer) > 0:
+        print("USING PRIORITIZED LEVEL REPLAY")
+        return plr_sample_state(env_buffer, plr_beta)
     
     obs, resettable = sample_obs(env, batch_size, agent.device, random=uniform_reset)
 
@@ -121,7 +141,6 @@ def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_spac
         print("USING UNIFORM RESET")
         return obs, [0]
     
-
     if not no_coop:
         cmp = BoundedUncertaintyMaximization(
                                                 obs,

@@ -301,7 +301,18 @@ def add_args(parser):
         help="Number of dropout evaluations to run to estimate uncertainty",
         default=5
     )
-
+    parser.add_argument(
+        "--plr_d",
+        type=float,
+        help="Probability of sampling a level from replay buffer or sampling a new one",
+        default=0.0
+    )
+    parser.add_argument(
+        "--plr_beta",
+        type=float,
+        help="Beta parameter for PLR",
+        default=0.1
+    )
     parser.add_argument(
         "--dropout",
         type=float,

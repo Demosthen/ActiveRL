@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Dict, Optional, Union
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
 from ray.rllib.env.base_env import BaseEnv
 from ray.rllib.evaluation.episode import Episode
@@ -16,6 +16,7 @@ import numpy as np
 from core.reward_predictor import RewardPredictor
 from core.constants import *
 from core.utils import states_to_np
+import heapq
 
 class ActiveRLCallback(DefaultCallbacks):
     """
@@ -56,6 +57,13 @@ class ActiveRLCallback(DefaultCallbacks):
         else:
             self.reward_model = None
             self.reward_optim = None
+
+        self.plr_d = args.plr_d
+        self.plr_beta = args.plr_beta
+        if self.plr_d > 0:
+            self.env_buffer = []
+            self.plr_scheduler = DecayScheduler(0.5, 0.9)
+        self.last_reset_state = None
 
     def on_evaluate_start(self, *, algorithm: UncertainPPO, **kwargs)-> None:
         """
@@ -130,10 +138,14 @@ class ActiveRLCallback(DefaultCallbacks):
             reward_model=self.reward_model, 
             planning_uncertainty_weight=self.planning_uncertainty_weight, 
             uniform_reset=self.uniform_reset,
-            lr=self.activerl_lr)
+            lr=self.activerl_lr,
+            plr_d=self.plr_d,
+            plr_beta=self.plr_beta,
+            env_buffer=self.env_buffer)
         new_states = states_to_np(new_states)
         episode.custom_metrics[UNCERTAINTY_LOSS_KEY] = uncertainties[-1]
         env.reset(initial_state=new_states)
+        self.last_reset_state = new_states
         return new_states
 
     def on_learn_on_batch(self, policy: Policy, train_batch: SampleBatch, result: dict, **kwargs):
@@ -158,6 +170,25 @@ class ActiveRLCallback(DefaultCallbacks):
             loss.backward()
             self.reward_optim.step()
 
+    def on_train_result(
+        self,
+        *,
+        algorithm: "Algorithm",
+        result: dict,
+        **kwargs,
+    ) -> None:
+        """Called at the end of Algorithm.train().
+
+        Args:
+            algorithm: Current Algorithm instance.
+            result: Dict of results returned from Algorithm.train() call.
+                You can mutate this object to add additional metrics.
+            kwargs: Forward compatibility placeholder.
+        """
+        if self.plr_d > 0:
+            vf_loss = result["info"]["learner"]["default_policy"]["learner_stats"]["vf_loss"]
+            heapq.heappush(self.env_buffer, (np.abs(vf_loss), self.last_reset_state))
+
     def full_eval(self, algorithm):
         """
             Sets callback into full evaluation mode. Similar to pytorch\'s eval function,
@@ -180,3 +211,12 @@ class ActiveRLCallback(DefaultCallbacks):
                 worker.callbacks.full_eval_mode = False
         algorithm.evaluation_workers.foreach_worker(set_limited_eval)
         
+class DecayScheduler():
+    """Parameter scheduler that anneals the parameter from 0 exponentially to a constant value, then keeps it there."""
+    def __init__(self, p, gamma=0.9) -> None:
+        self.p = p
+        self.gamma = gamma
+        self.current_value = 0
+
+    def step(self):
+        self.current_value = (self.current_value - self.p) * self.gamma + self.p
