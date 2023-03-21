@@ -246,6 +246,11 @@ def add_args(parser):
         help = "What kind of base weather to have",
         choices=[weather.value for weather in SG_WEATHER_TYPES]
     )
+    parser.add_argument(   
+        "--random_week",
+        action="store_true",
+        help = "Whether to sample a random week's weather instead of a whole year",
+    )
 
     # ACTIVE RL PARAMS
     parser.add_argument(
