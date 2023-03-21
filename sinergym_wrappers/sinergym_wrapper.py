@@ -1,6 +1,7 @@
 import gym
 import numpy as np
 from gym.spaces.box import Box
+import torch
 from core.resettable_env import ResettableEnv
 import sinergym
 import os
@@ -18,13 +19,24 @@ from sinergym.utils.controllers import RBC5Zone
 from copy import deepcopy
 import socket
 import threading
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from gym import register
 
 
 LOG_LEVEL_MAIN = 'INFO'
 LOG_LEVEL_EPLS = 'FATAL'
 LOG_FMT = "[%(asctime)s] %(name)s %(levelname)s:%(message)s"
+
+WEATHER_VAR_MAP = {
+    'Site Outdoor Air Drybulb Temperature(Environment)': "drybulb",
+    'Site Outdoor Air Relative Humidity(Environment)': "relhum",
+    'Site Wind Direction(Environment)': "winddir",
+    'Site Direct Solar Radiation Rate per Area(Environment)': "dirnorrad",
+    'Site Diffuse Solar Radiation Rate per Area(Environment)': "difhorrad",
+    'Site Wind Speed(Environment)': "windspd"
+}
+REVERSE_WEATHER_MAP = {v: k for k, v in WEATHER_VAR_MAP.items()}
+
 class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
 
     def __init__(self, config):
@@ -48,7 +60,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         """
         # Set up environment
         curr_pid = os.getpid()
-        self.base_env_name = 'Eplus-5Zone-mixed-discrete-stochastic-v1-FlexibleReset'
+        self.base_env_name = 'Eplus-5Zone-hot-discrete-stochastic-v1-FlexibleReset'
         self.timesteps_per_hour = config.get("timesteps_per_hour", 1)
 
         weather_file = config.get("weather_file", "USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw")
@@ -57,6 +69,9 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         if self.sample_environments:
             self.OU_param_df = self._load_OU_params(self.environment_variability_file)
         self.act_repeat = config.get("act_repeat", 1)
+
+        self.epw_data = config["epw_data"]
+        weather_bounds = {name: (self.epw_data.weather_min[name], self.epw_data.weather_max[name]) for name in self.epw_data.weather_min.index}
         
         # Overrides env_name so initializing multiple Sinergym envs will not result in a race condition
         env = gym.make(self.base_env_name, 
@@ -69,7 +84,8 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
                             'occupancy_variable': 'Zone People Occupant Count(SPACE1-1)'
                         },
                         act_repeat=self.act_repeat,
-                        config_params={'timesteps_per_hour' : self.timesteps_per_hour})
+                        config_params={'timesteps_per_hour' : self.timesteps_per_hour,
+                                        'weather_bounds': weather_bounds})
         
         # Get controller overrides
         self.use_rbc = config.get("use_rbc", False)
@@ -77,6 +93,8 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
 
         if not self.use_rbc and not self.use_random:
            env =  NormalizeObservation(env, ranges=self._get_ranges(self.base_env_name))
+           obs_space_shape = env.observation_space.shape
+           env.observation_space = Box(np.zeros(obs_space_shape), np.ones(obs_space_shape))
 
         # Read current weather variability
         self.weather_variability = config["weather_variability"]
@@ -86,39 +104,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         self.env = env
 
         # Augment observation space with weather variability info
-        self.variability_idxs = {} # Maps weather variable name to indexes in observation
-        obs_space = env.observation_space
-        obs_space_shape_list = list(obs_space.shape)
-        i = obs_space_shape_list[-1]
-        self.original_obs_space_shape = obs_space.shape
-        self.variability_low = []
-        self.variability_high = []
-        for key, variability in self.env.weather_variability.items():
-            self.variability_idxs[key] = list(range(i, i+len(variability)))
-            if "variability_low" in config:
-                self.variability_low.extend(config["variability_low"][key])
-            else:
-                self.variability_low.extend(list(variability))
-            
-            if "variability_high" in config:
-                self.variability_high.extend(config["variability_high"][key])
-            else:
-                self.variability_high.extend(list(variability))
-            i += len(variability)
-        obs_space_shape_list[-1] = i
-        self.variability_low = np.array(self.variability_low)
-        self.variability_high = np.array(self.variability_high)
-        self.num_variability_dims = len(self.variability_low)
-        self.variability_offset = (self.variability_high + self.variability_low) / 2
-        self.variability_scale = (self.variability_high - self.variability_low) / 2
-        low = list(obs_space.low) + [-1. for _ in range(self.num_variability_dims)]
-        high = list(obs_space.high) + [1. for _ in range(self.num_variability_dims)]
-        self.observation_space = Box(
-            low = np.array(low), 
-            high = np.array(high),
-            shape = obs_space_shape_list,
-            dtype=np.float32)
-        self.last_untransformed_obs = None
+        self._augment_obs_space(env, config)
 
         # Initialize baselines if specified.
         if self.use_rbc:
@@ -131,12 +117,60 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         else:
             self.replacement_controller = None
 
+    def _augment_obs_space(self, env, config):
+        obs_space = env.observation_space
+        obs_space_shape_list = list(obs_space.shape)
+        i = obs_space_shape_list[-1]
+        self.original_obs_space_shape = obs_space.shape
+
+        # Maps weather variable name to indexes in observation
+        # Has entries for both the epw format (e.g. 'drybulb') and the sinergym format
+        # (e.g. 'Site Outdoor Air Drybulb Temperature(Environment)')
+        self.variability_idxs = {} 
+        self.variability_low = []
+        self.variability_high = []
+        for key, variability in self.env.weather_variability.items():
+            self.variability_idxs[key] = list(range(i, i+2))
+            if "variability_low" in config:
+                self.variability_low.extend(config["variability_low"][key])
+            else:
+                self.variability_low.extend(list(variability))
+            
+            if "variability_high" in config:
+                self.variability_high.extend(config["variability_high"][key])
+            else:
+                self.variability_high.extend(list(variability))
+            i += 2
+        obs_space_shape_list[-1] = i
+        self.variability_idxs.update({WEATHER_VAR_MAP.get(variable, ""): i for i, variable in enumerate(self.env.variables["observation"])})
+
+        self.variability_low = np.array(self.variability_low)
+        self.variability_high = np.array(self.variability_high)
+        self.num_extra_variability_dims = len(self.variability_low)
+        self.variability_offset = self.variability_low
+        self.variability_scale = (self.variability_high - self.variability_low)
+        low = list(obs_space.low) + [0. for _ in range(self.num_extra_variability_dims)]
+        high = list(obs_space.high) + [1. for _ in range(self.num_extra_variability_dims)]
+        self.observation_space = Box(
+            low = np.array(low), 
+            high = np.array(high),
+            shape = obs_space_shape_list,
+            dtype=np.float32)
+        
+        self.last_untransformed_obs = None
+        self.active_variables = list(self.env.weather_variability.keys())
+
     def _load_OU_params(self, file):
         return pd.read_csv(file)
 
     def _get_ranges(self, env_name: str):
         if "5Zone" in env_name:
-            return RANGES_5ZONE
+            range = RANGES_5ZONE
+            # range['Site Outdoor Air Drybulb Temperature(Environment)'] = [-50., 100.]
+            # range['Site Wind Speed(Environment)'] = [0., 50.]
+            # range['Zone Air Relative Humidity(SPACE1-1)'] = [0., 100.]
+            return range
+
         elif "office" in env_name:
             return RANGES_OFFICE
         elif "warehouse" in env_name:
@@ -147,32 +181,40 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             raise NotImplementedError()
 
     def observation(self, observation: np.ndarray):
-        variability = np.zeros(self.num_variability_dims)
+        variability = np.zeros(self.num_extra_variability_dims)
         for key, var in self.env.weather_variability.items():
             idxs = [idx - self.original_obs_space_shape[-1] for idx in self.variability_idxs[key]]
-            variability[idxs] = np.array(var)
+            variability[idxs] = np.array(var)[0::2]
         
         variability = (variability - self.variability_offset) / self.variability_scale
         return np.concatenate([observation, variability], axis=-1)
 
-    def inverse_observation(self, observation: np.ndarray):
-        return observation[..., :-self.num_variability_dims]
+    # def inverse_observation(self, observation: torch.Tensor):
+    #     return observation[..., :-self.num_extra_variability_dims]
 
-    def separate_resettable_part(self, obs: np.ndarray):
+    def separate_resettable_part(self, obs: torch.Tensor):
         """Separates the observation into the resettable portion and the original. Make sure this operation is differentiable"""
-        return obs[..., -self.num_variability_dims:], obs
+        resettable = []
+        for key in self.active_variables:
+            offset = torch.unsqueeze(obs[..., self.variability_idxs[key]], dim=-1)
+            resettable.append(offset)
+        resettable.append(obs[..., -self.num_extra_variability_dims:])
+        resettable = torch.concat(resettable, dim=-1)
+        return resettable, obs
 
     def combine_resettable_part(self, obs: np.ndarray, resettable: np.ndarray):
         """Combines an observation that has been split like in separate_resettable_part back together. Make sure this operation is differentiable"""
         # Make sure torch doesn't backprop into non-resettable part
         obs = obs.detach()
-        obs[..., -self.num_variability_dims:] = resettable
+        for i, key in enumerate(self.active_variables):
+            obs[..., self.variability_idxs[key]] = resettable[..., i]
+        obs[..., -self.num_extra_variability_dims:] = resettable[..., len(self.active_variables):]
         return obs
 
     def resettable_bounds(self) -> np.ndarray: 
         """Get bounds for resettable part of observation space"""
-        low = np.array([-1. for _ in range(self.num_variability_dims)])
-        high = np.array([1. for _ in range(self.num_variability_dims)])
+        low = np.array([0 for _ in range(len(self.active_variables) + self.num_extra_variability_dims)])
+        high = np.array([1. for _ in range(self.num_extra_variability_dims + len(self.active_variables))])
         return low, high
     
     def _sample_variability(self):
@@ -184,7 +226,20 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
                 OU_param[j] = np.array(row[f"{variable}_{j}"]).squeeze().item()
             ret[variable] = OU_param
         return ret
-
+    
+    def _get_range(self, var_name):
+        """
+        Gets the range of var_name, whether it refers to a weather variable in
+        the epw format (e.g. 'drybulb') or the sinergym format
+        # (e.g. 'Site Outdoor Air Drybulb Temperature(Environment)')
+        """
+        if var_name in self.env.ranges:
+            return self.env.ranges[var_name]
+        elif var_name in REVERSE_WEATHER_MAP:
+            return self.env.ranges[REVERSE_WEATHER_MAP[var_name]]
+        else:
+            raise ValueError(f"Invalid variable {var_name}")
+        
     def reset(self, initial_state: Optional[Union[int, np.ndarray]]=None):
         """
         Resets the environment. Pass a tensor with the same shape as the observation as initial_state
@@ -193,6 +248,8 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         from a file. Pass nothing to use the default weather variability.
         """
         obs = self.env.reset()
+        weather_df = self.env.simulator._config.weather_data.get_weather_series()
+        self.weather_means = weather_df.mean(axis=0)
         self.last_untransformed_obs = obs
         if isinstance(initial_state, int):
             if initial_state < 0 and self.sample_environments:
@@ -207,20 +264,33 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             self.env.simulator.reset(curr_weather_variability)
         elif initial_state is not None:
             # Reset simulator with specified weather variability
-            variability = initial_state[..., -self.num_variability_dims:]
-            variability = variability * self.variability_scale + self.variability_offset
-            variability = np.clip(variability, self.variability_low, self.variability_high)
+            variability = self._get_variability_from_state(initial_state)
             variability_dict = {}
             for var_name, idxs in self.variability_idxs.items():
                 idxs = [idx - self.original_obs_space_shape[-1] for idx in idxs]
                 variability_params = variability[idxs]
-                variability_dict[var_name] = tuple(variability_params)
-
+                offset = self._get_offset_from_state(initial_state, var_name)
+                variability_dict[var_name] = (variability_params[0], offset, variability_params[1])#(variability_params[0], offset, variability_params[1])
             print("ACTIVE VARIABILITY", variability_dict)
-            #TODO: make variability a dict
+            self.last_variability = variability_dict
             _, obs, _ = self.env.simulator.reset(variability_dict)
             obs = np.array(obs, dtype=np.float32)
+
         return self.observation(obs)
+
+    def _get_variability_from_state(self, initial_state):
+        variability = initial_state[..., -self.num_extra_variability_dims:]
+        variability = variability * self.variability_scale + self.variability_offset
+        variability = np.clip(variability, self.variability_low, self.variability_high)
+        return variability
+
+    def _get_offset_from_state(self, initial_state, var_name):
+        offset_idx = self.variability_idxs[var_name]
+        offset = np.clip(initial_state[..., offset_idx], 0, 1)
+        var_range = self._get_range(var_name)
+        offset = offset * (var_range[1] - var_range[0]) + var_range[0]
+        offset -= self.weather_means[var_name]
+        return offset
     
 
     def step(self, action):
@@ -241,8 +311,14 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         
     def sample_obs(self):
         """Automatically sample an observation to seed state generation"""
-        return np.zeros(self.observation_space.shape)
+        obs = np.zeros(self.observation_space.shape) + 0.5
+        for var_name, idxs in self.variability_idxs.items():
 
+            offset_idx = self.variability_idxs[var_name]
+            var_range = self.env.ranges[REVERSE_WEATHER_MAP[var_name]]
+            obs[offset_idx] = (self.weather_means[var_name] - var_range[0]) / (var_range[1] - var_range[0])
+        return obs
+    
 class FlexibleResetConfig(Config):
     """ Custom configuration class that extends apply_weather_variability to more flexibly change more weather aspects"""
     def apply_weather_variability(
@@ -281,15 +357,21 @@ class FlexibleResetConfig(Config):
 
                 x = np.zeros(n)
 
+                if self.config.get("weather_bounds", None) is not None:
+                    lower = self.config["weather_bounds"][column][0]
+                    upper = self.config["weather_bounds"][column][1]
+                else:
+                    lower = -np.inf
+                    upper = np.inf
+
                 # Create noise
                 for i in range(n - 1):
                     x[i + 1] = x[i] + dt * (-(x[i] - mu) / tau) + \
                         sigma_bis * sqrtdt * np.random.randn()
-                    if np.any(np.isinf(x[i + 1])):
-                        breakpoint()
 
                 # Add noise
                 df[column] += x
+                df[column] = np.clip(df[column], lower, upper)
 
             # Save new weather data
             weather_data_mod.set_weather_series(df)
@@ -301,6 +383,48 @@ class FlexibleResetConfig(Config):
             episode_weather_path = self.episode_path + '/' + filename
             weather_data_mod.to_epw(episode_weather_path)
             return episode_weather_path
+        
+    def _check_eplus_config(self) -> None:
+        """Check Eplus Environment config definition is correct.
+        """
+
+        # EXTRA CONFIG
+        if self.config is not None:
+            for config_key in self.config.keys():
+                # Check config parameters values
+                # Timesteps
+                if config_key == 'timesteps_per_hour':
+                    assert self.config[config_key] > 0, 'Extra Config: timestep_per_hour must be a positive int value.'
+                # Runperiod
+                elif config_key == 'runperiod':
+                    assert isinstance(
+                        self.config[config_key], tuple) and len(
+                        self.config[config_key]) == 6, 'Extra Config: Runperiod specified in extra configuration has an incorrect format (tuple with 6 elements).'
+                elif config_key == 'weather_bounds':
+                    assert isinstance(self.config[config_key], dict)
+                else:
+                    raise KeyError(
+                        F'Extra Config: Key name specified in config called [{config_key}] has no support in Sinergym.')
+        # ACTION DEFINITION
+        if self.action_definition is not None:
+            for original_sch_name, new_sch in self.action_definition.items():
+                # Check action definition format
+                assert isinstance(
+                    original_sch_name, str), 'Action definition: Keys must be str.'
+                assert isinstance(
+                    new_sch, dict), 'Action definition: New scheduler definition must be a dict.'
+                assert set(
+                    new_sch.keys()) == set(
+                    ['name', 'initial_value']), 'Action definition: keys in new scheduler definition must be name and initial_value.'
+                assert isinstance(
+                    new_sch['name'], str), 'Action definition: Name field in new scheduler must be a str element.'
+                # Check action definition component is in schedulers available
+                # in building model
+                assert original_sch_name.lower() in self.schedulers.keys(
+                ), 'Action definition: Object called {} is not an existing component in building model.'.format(original_sch_name)
+                # Check new variable is present in action variables
+                assert new_sch['name'] in self.variables['action'], 'Action definition: {} external variable should be in action variables.'.format(
+                    new_sch['name'])
 
 
 class EPlusFlexibleResetSimulator(EnergyPlus):
@@ -563,3 +687,4 @@ for id, env_spec in registered_envs:
             id=env_id, 
             entry_point=env_entry_point, 
             kwargs=env_kwargs)
+        

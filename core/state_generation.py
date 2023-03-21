@@ -1,4 +1,3 @@
-import random
 import torch
 from gym.spaces import Space, Box, Discrete, Dict
 import torch.optim as optim
@@ -10,9 +9,11 @@ from citylearn_wrappers.citylearn_model_training.planning_model import LitPlanni
 from core.resettable_env import ResettableEnv
 
 class BoundedUncertaintyMaximization(cooper.ConstrainedMinimizationProblem):
-    def __init__(self, obs, env: ResettableEnv, lower_bounds, upper_bounds, lower_bounded_idxs, upper_bounded_idxs, agent: UncertainPPOTorchPolicy, planning_model: LitPlanningModel=None, reward_model: RewardPredictor = None, planning_uncertainty_weight=1):
+    def __init__(self, obs, env: ResettableEnv, lower_bounds, upper_bounds, lower_bounded_idxs, upper_bounded_idxs, agent: UncertainPPOTorchPolicy, planning_model: LitPlanningModel=None, reward_model: RewardPredictor = None, planning_uncertainty_weight=1, reg_coeff = 0.01):
         self.env = env
         self.obs = obs
+        self.original_obs = self.obs.detach()
+        self.original_resettable, _ = env.separate_resettable_part(self.original_obs)
         self.lower_bounds = lower_bounds
         self.upper_bounds = upper_bounds
         self.lower_bounded_idxs = lower_bounded_idxs
@@ -21,6 +22,7 @@ class BoundedUncertaintyMaximization(cooper.ConstrainedMinimizationProblem):
         self.planning_model = planning_model
         self.reward_model = reward_model
         self.planning_uncertainty_weight = planning_uncertainty_weight
+        self.reg_coeff = reg_coeff
         super().__init__(is_constrained=True)
 
     def closure(self, resettable):
@@ -39,6 +41,7 @@ class BoundedUncertaintyMaximization(cooper.ConstrainedMinimizationProblem):
 
         # Entries of p >= 0 (equiv. -p <= 0)
         #resettable, obs = self.env.separate_resettable_part(obs)
+        loss += self.reg_coeff * torch.norm(resettable - self.original_resettable.detach())
         ineq_defect = torch.cat([resettable[self.lower_bounded_idxs] - self.lower_bounds, self.upper_bounds - resettable[self.upper_bounded_idxs]])
         return cooper.CMPState(loss=loss, ineq_defect=ineq_defect)
 
@@ -104,7 +107,7 @@ def plr_sample_state(env_buffer, beta, rho=0.1):
 def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_space: Space, 
                     num_descent_steps: int = 10, batch_size: int = 1, no_coop=False, 
                     planning_model=None, reward_model=None, planning_uncertainty_weight=1, 
-                    uniform_reset=False, lr=0.1, plr_d=0.0, plr_beta=0.1, env_buffer=[]):
+                    uniform_reset=False, lr=0.1, plr_d=0.0, plr_beta=0.1, env_buffer=[], reg_coeff=0.01):
     """
         Generates states by doing gradient descent to increase an agent's uncertainty
         on states starting from random noise
@@ -152,7 +155,8 @@ def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_spac
                                                 agent,
                                                 planning_model,
                                                 reward_model,
-                                                planning_uncertainty_weight
+                                                planning_uncertainty_weight,
+                                                reg_coeff
                                                 )
         formulation = cooper.LagrangianFormulation(cmp)
 

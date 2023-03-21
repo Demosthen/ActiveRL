@@ -49,6 +49,7 @@ class ActiveRLCallback(DefaultCallbacks):
         self.uniform_reset = uniform_reset
         self.full_eval_mode = False
         self.activerl_lr = args.activerl_lr
+        self.activerl_reg_coeff = args.activerl_reg_coeff
         self.eval_worker_ids = []
         if self.planning_model is not None:
             device = "cuda:0" if self.use_gpu else "cpu"
@@ -141,7 +142,8 @@ class ActiveRLCallback(DefaultCallbacks):
             lr=self.activerl_lr,
             plr_d=self.plr_d,
             plr_beta=self.plr_beta,
-            env_buffer=self.env_buffer)
+            env_buffer=self.env_buffer,
+            reg_coeff = self.activerl_reg_coeff)
         new_states = states_to_np(new_states)
         episode.custom_metrics[UNCERTAINTY_LOSS_KEY] = uncertainties[-1]
         env.reset(initial_state=new_states)
