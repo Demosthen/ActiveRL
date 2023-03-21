@@ -376,8 +376,9 @@ class FlexibleResetConfig(Config):
                 df[column] += x
                 df[column] = np.clip(df[column], lower, upper)
 
-            if self.config["random_week"]:
-                random_offset = np.random.randint(0, 358) * 24
+            random_offset = np.random.randint(0, 358) * 24
+            if self.config["random_week"] and random_offset > 0:
+                
                 df_copy = df.copy(deep=True)
                 df.iloc[random_offset:] = df.iloc[:-random_offset]
                 df.iloc[:random_offset] = df_copy[-random_offset:]

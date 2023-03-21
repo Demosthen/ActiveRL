@@ -61,8 +61,8 @@ class ActiveRLCallback(DefaultCallbacks):
 
         self.plr_d = args.plr_d
         self.plr_beta = args.plr_beta
+        self.env_buffer = []
         if self.plr_d > 0:
-            self.env_buffer = []
             self.plr_scheduler = DecayScheduler(0.5, 0.9)
         self.last_reset_state = None
 
