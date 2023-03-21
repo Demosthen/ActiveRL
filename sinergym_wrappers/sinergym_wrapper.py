@@ -69,6 +69,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         if self.sample_environments:
             self.OU_param_df = self._load_OU_params(self.environment_variability_file)
         self.act_repeat = config.get("act_repeat", 1)
+        self.random_week = config["config"].random_week
 
         self.epw_data = config["epw_data"]
         weather_bounds = {name: (self.epw_data.weather_min[name], self.epw_data.weather_max[name]) for name in self.epw_data.weather_min.index}
@@ -85,7 +86,8 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
                         },
                         act_repeat=self.act_repeat,
                         config_params={'timesteps_per_hour' : self.timesteps_per_hour,
-                                        'weather_bounds': weather_bounds})
+                                        'weather_bounds': weather_bounds,
+                                        "random_week": self.random_week})
         
         # Get controller overrides
         self.use_rbc = config.get("use_rbc", False)
@@ -374,6 +376,12 @@ class FlexibleResetConfig(Config):
                 df[column] += x
                 df[column] = np.clip(df[column], lower, upper)
 
+            if self.config["random_week"]:
+                random_offset = np.random.randint(0, 358) * 24
+                df_copy = df.copy(deep=True)
+                df.iloc[random_offset:] = df.iloc[:-random_offset]
+                df.iloc[:random_offset] = df_copy[-random_offset:]
+                
             # Save new weather data
             weather_data_mod.set_weather_series(df)
 
@@ -403,6 +411,8 @@ class FlexibleResetConfig(Config):
                         self.config[config_key]) == 6, 'Extra Config: Runperiod specified in extra configuration has an incorrect format (tuple with 6 elements).'
                 elif config_key == 'weather_bounds':
                     assert isinstance(self.config[config_key], dict)
+                elif config_key == "random_week":
+                    assert isinstance(self.config[config_key], bool)
                 else:
                     raise KeyError(
                         F'Extra Config: Key name specified in config called [{config_key}] has no support in Sinergym.')
