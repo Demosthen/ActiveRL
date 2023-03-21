@@ -53,7 +53,7 @@ class UncertainPPOTorchPolicy(PPOTorchPolicy):
         for _ in range(self.num_dropout_evals):
             vals = self.get_value(obs=obs_tensor, training=True)
             values.append(vals)
-        values = th.concat(values)
+        values = th.stack(values)
         uncertainty = th.var(values, dim=0)
         self.model.train(orig_mode)
         return uncertainty
