@@ -1,3 +1,4 @@
+import _thread
 import gym
 import numpy as np
 from gym.spaces.box import Box
@@ -253,7 +254,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         obs = self.env.reset()
         weather_df = self.env.simulator._config.weather_data.get_weather_series()
         self.weather_means = weather_df.mean(axis=0)
-        self.first_day_weather = weather_df.iloc[0]
+        first_day_weather = weather_df.iloc[0]
         self.last_untransformed_obs = obs
         if isinstance(initial_state, int):
             if initial_state < 0 and self.sample_environments:
@@ -333,7 +334,7 @@ class FlexibleResetConfig(Config):
             max_ep_store: int,
             action_definition: Optional[Dict[str, Any]],
             extra_config: Dict[str, Any]):
-        super().__init__(idf_path, weather_variables, env_name, max_ep_store, action_definition, extra_config)
+        super().__init__(idf_path, weather_path, variables, env_name, max_ep_store, action_definition, extra_config)
         if self.config['random_week']:
             self.next_date_offset = np.random.randint(0, 358) * 24
         else:
@@ -363,8 +364,8 @@ class FlexibleResetConfig(Config):
 
             if date_offset > 0:
                 df_copy = df.copy(deep=True)
-                df.iloc[random_offset:] = df.iloc[:-random_offset]
-                df.iloc[:random_offset] = df_copy[-random_offset:]
+                df.iloc[date_offset:] = df.iloc[:-date_offset]
+                df.iloc[:date_offset] = df_copy[-date_offset:]
 
             for column, col_variation in variation.items():
                 sigma = col_variation[0]  # Standard deviation.
