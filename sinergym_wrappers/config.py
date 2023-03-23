@@ -17,7 +17,7 @@ def get_config(args):
         weather_var_rev_names = []
     else:
         weather_var_names = ['drybulb', 'relhum',
-                                "winddir", "dirnorrad", "difhorrad"]
+                                "winddir", "dirnorrad"]
         weather_var_rev_names = ["windspd"]
 
     epw_data = EPW_Data.load("sinergym_wrappers/epw_scraper/US_epw_OU_data.pkl")
@@ -59,7 +59,7 @@ def get_config(args):
     rllib_config["soft_horizon"] = not args.random_week # If we are using random weeks we want a hard horizon to ensure resets
     rllib_config["restart_failed_sub_environments"] = True
     rllib_config["evaluation_sample_timeout_s"] = 3600
-    rllib_config["recreate_failed_workers"] = True
+    # rllib_config["recreate_failed_workers"] = True
     #rllib_config["batch_mode"] = "complete_episodes"
     rllib_config["evaluation_parallel_to_training"] = True
     return ExperimentConfig(SinergymWrapper, SinergymCallback, 

@@ -100,6 +100,8 @@ def plr_sample_state(env_buffer, beta, rho=0.1):
     ranks = np.arange(1, len(env_buffer) + 1)
     score_prioritized_p = (1 / ranks) ** (1 / beta)
     score_prioritized_p /= np.sum(score_prioritized_p)
+    cnts = [env_entry.cnt for env_entry in env_buffer]
+    
     
     _, sampled_env_param = np.random.choice(env_buffer, size=1, p=score_prioritized_p)
     return sampled_env_param

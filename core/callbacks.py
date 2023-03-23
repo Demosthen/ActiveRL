@@ -1,3 +1,5 @@
+from bisect import insort
+from collections import namedtuple
 from typing import Dict, Optional, Union
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
 from ray.rllib.env.base_env import BaseEnv
@@ -189,7 +191,9 @@ class ActiveRLCallback(DefaultCallbacks):
         """
         if self.plr_d > 0:
             vf_loss = result["info"]["learner"]["default_policy"]["learner_stats"]["vf_loss"]
-            heapq.heappush(self.env_buffer, (np.abs(vf_loss), self.last_reset_state))
+            entry = EnvBufferEntry(np.abs(vf_loss), self.last_reset_state, 1)
+            insort(self.env_buffer, entry, key=lambda x: x.value_error)
+            # heapq.heappush(self.env_buffer, (np.abs(vf_loss), self.last_reset_state))
 
     def full_eval(self, algorithm):
         """
@@ -222,3 +226,9 @@ class DecayScheduler():
 
     def step(self):
         self.current_value = (self.current_value - self.p) * self.gamma + self.p
+
+class EnvBufferEntry:
+    def __init__(self, value_loss, env_params, cnt=1) -> None:
+        self.value_error = np.abs(value_loss)
+        self.env_params  = env_params
+        self.cnt = cnt
