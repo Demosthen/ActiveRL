@@ -325,6 +325,24 @@ def add_args(parser):
         default=0.1
     )
     parser.add_argument(
+        "--env_repeat",
+        type=int,
+        help="Number of train steps to repeat the same env parameters",
+        default=1
+    )
+    parser.add_argument(
+        "--start",
+        type=int,
+        help="Number of train steps after which to start using any smart reset methods",
+        default=0
+    )
+    parser.add_argument(
+        "--plr_rho",
+        type=float,
+        help="Staleness mixing parameter for PLR",
+        default=0.1
+    )
+    parser.add_argument(
         "--dropout",
         type=float,
         help="Dropout parameter",

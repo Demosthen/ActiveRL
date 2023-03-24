@@ -77,6 +77,8 @@ def states_to_np(state, inplace=True):
         for k, v in state.items():
             state[k] = v.detach().squeeze().cpu().numpy()
         return state
+    elif isinstance(state, np.ndarray):
+        return state
     else:
         return state.detach().squeeze().cpu().numpy()
 

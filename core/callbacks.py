@@ -63,10 +63,15 @@ class ActiveRLCallback(DefaultCallbacks):
 
         self.plr_d = args.plr_d
         self.plr_beta = args.plr_beta
+        # TODO: sync this across all workers
         self.env_buffer = []
-        if self.plr_d > 0:
-            self.plr_scheduler = DecayScheduler(0.5, 0.9)
+        self.plr_scheduler = LinearDecayScheduler(200)
         self.last_reset_state = None
+        self.next_sampling_used = None
+        self.next_initial_state = None
+        self.env_repeat = args.env_repeat
+        self.num_train_steps = 0 
+        self.start = args.start
 
     def on_evaluate_start(self, *, algorithm: UncertainPPO, **kwargs)-> None:
         """
@@ -85,6 +90,22 @@ class ActiveRLCallback(DefaultCallbacks):
         self.eval_worker_ids = sorted(algorithm.evaluation_workers.foreach_worker(activate_eval_metrics))
         algorithm.evaluation_workers.foreach_worker(set_eval_worker_ids)
         
+
+    # def on_algorithm_init(
+    #     self,
+    #     *,
+    #     algorithm: "Algorithm",
+    #     **kwargs,
+    # ) -> None:
+    #     """Callback run when a new algorithm instance has finished setup.
+    #     This method gets called at the end of Algorithm.setup() after all
+    #     the initialization is done, and before actually training starts.
+    #     Args:
+    #         algorithm: Reference to the trainer instance.
+    #         kwargs: Forward compatibility placeholder.
+    #     """
+    #     pass
+
 
     def on_evaluate_end(self, *, algorithm: UncertainPPO, evaluation_metrics: dict, **kwargs)-> None:
         """
@@ -126,11 +147,16 @@ class ActiveRLCallback(DefaultCallbacks):
         # Get the single "default policy"
         policy = next(policies.values())
         run_active_rl = np.random.random() < self.run_active_rl
-        if not self.is_evaluating and (run_active_rl or self.uniform_reset):
+        if not self.is_evaluating and (run_active_rl or self.uniform_reset) and self.next_initial_state is not None:
             self.reset_env(policy, env, episode)
 
-    def reset_env(self, policy, env, episode):
-        new_states, uncertainties = generate_states(
+    def _get_next_initial_state(self, policy, env, env_buffer=[]):
+        plr_d = self.plr_scheduler.step(env_buffer)
+        print("THIS IS HOW BIG THE ENV BUFFER ISSSSSSSSSSSSSSSSSSSSSSSSSSSSSS", len(env_buffer))
+        if self.num_train_steps < self.env_repeat and self.next_initial_state is not None:
+            self.num_train_steps += 1
+            return self.next_initial_state, self.next_sampling_used
+        new_states, uncertainties, sampling_used = generate_states(
             policy, 
             env=env, 
             obs_space=env.observation_space, 
@@ -142,15 +168,21 @@ class ActiveRLCallback(DefaultCallbacks):
             planning_uncertainty_weight=self.planning_uncertainty_weight, 
             uniform_reset=self.uniform_reset,
             lr=self.activerl_lr,
-            plr_d=self.plr_d,
+            plr_d=plr_d,
             plr_beta=self.plr_beta,
-            env_buffer=self.env_buffer,
+            env_buffer=env_buffer,
             reg_coeff = self.activerl_reg_coeff)
         new_states = states_to_np(new_states)
-        episode.custom_metrics[UNCERTAINTY_LOSS_KEY] = uncertainties[-1]
-        env.reset(initial_state=new_states)
-        self.last_reset_state = new_states
-        return new_states
+        # episode.custom_metrics[UNCERTAINTY_LOSS_KEY] = uncertainties[-1] # TODO: PUT THIS BACK IN SOMEWHERE
+        # self.last_reset_state = new_states
+        self.next_sampling_used = sampling_used
+        return new_states, sampling_used
+
+    def reset_env(self, policy, env, episode):
+        
+        env.reset(initial_state=self.next_initial_state)
+        
+        return self.next_initial_state
 
     def on_learn_on_batch(self, policy: Policy, train_batch: SampleBatch, result: dict, **kwargs):
         """
@@ -189,11 +221,48 @@ class ActiveRLCallback(DefaultCallbacks):
                 You can mutate this object to add additional metrics.
             kwargs: Forward compatibility placeholder.
         """
-        if self.plr_d > 0:
-            vf_loss = result["info"]["learner"]["default_policy"]["learner_stats"]["vf_loss"]
-            entry = EnvBufferEntry(np.abs(vf_loss), self.last_reset_state, 1)
-            insort(self.env_buffer, entry, key=lambda x: x.value_error)
-            # heapq.heappush(self.env_buffer, (np.abs(vf_loss), self.last_reset_state))
+        self.num_train_steps += 1
+        if self.num_train_steps <= self.start:
+            return
+
+
+        def set_next_initial_state(worker: RolloutWorker):
+            if hasattr(worker, 'callbacks'):
+                worker.callbacks.last_reset_state = worker.callbacks.next_initial_state
+                worker.callbacks.next_initial_state = self.next_initial_state
+
+        def get_candidate_initial_states(worker: RolloutWorker):
+            if hasattr(worker, 'callbacks') and worker.env is not None:
+                return worker.callbacks._get_next_initial_state(worker.get_policy(), worker.env, self.env_buffer)
+            return None
+
+        self.next_initial_state, sampling_used = next(filter(lambda x: x!=None, algorithm.workers.foreach_worker(get_candidate_initial_states)))
+
+        algorithm.workers.foreach_worker(set_next_initial_state)
+        #TODO: if sampling_used is PLR, search through existing entries and update last seen
+        # Also, figure out how to mix together env buffers
+        
+
+        if self.plr_d > 0 and self.last_reset_state is not None:
+            # Update staleness parameters in the env buffer for the next training iteration
+            if sampling_used == "PLR":
+                self.update_env_last_seen(self.next_initial_state, self.num_train_steps)
+            else:
+                # Insert the env that was just seen during this iteration into the env_buffer
+                vf_loss = result["info"]["learner"]["default_policy"]["learner_stats"]["vf_loss"]
+                entry = EnvBufferEntry(np.abs(vf_loss), self.last_reset_state, len(self.env_buffer))
+                insort(self.env_buffer, entry, key=lambda x: -x.value_error)
+
+        self.last_reset_state = self.next_initial_state
+
+    def update_env_last_seen(self, env_params, i):
+        """
+        Searches through self.env_buffer for an env with the same parameters as env_entry and
+        updates the entry's last-seen variable to i.
+        """
+        for entry in self.env_buffer:
+            if np.all(entry.env_params == env_params):
+                entry.last_seen = i
 
     def full_eval(self, algorithm):
         """
@@ -224,11 +293,38 @@ class DecayScheduler():
         self.gamma = gamma
         self.current_value = 0
 
-    def step(self):
+    def step(self, env_buffer):
         self.current_value = (self.current_value - self.p) * self.gamma + self.p
 
+class SigmoidDecayScheduler():
+    """Parameter scheduler that uses sigmoid decay to gradually increase p to 1."""
+    def __init__(self, alpha=0.05, beta=50) -> None:
+        self.alpha = alpha
+        self.beta = beta
+        self.current_value = 0
+
+    def step(self, env_buffer):
+        num_seen = len(env_buffer)
+        self.current_value = 1 / (1 + np.exp(-self.alpha * (num_seen - self.beta)))
+        return self.current_value
+    
+class LinearDecayScheduler():
+    """Parameter scheduler that linearly increases p to 1 and stays there."""
+    def __init__(self, envs_to_1=200) -> None:
+        self.envs_to_1 = envs_to_1
+        self.current_value = 0
+
+    def step(self, env_buffer):
+        num_seen = len(env_buffer)
+        self.current_value = num_seen / self.envs_to_1
+        return self.current_value
+
 class EnvBufferEntry:
-    def __init__(self, value_loss, env_params, cnt=1) -> None:
+    def __init__(self, value_loss, env_params, last_seen=1) -> None:
         self.value_error = np.abs(value_loss)
         self.env_params  = env_params
-        self.cnt = cnt
+        self.last_seen = last_seen
+
+    def __repr__(self) -> str:
+        return f"{self.value_error}, {self.env_params}, {self.last_seen}"
+    

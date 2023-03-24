@@ -1,3 +1,4 @@
+import random
 import torch
 from gym.spaces import Space, Box, Discrete, Dict
 import torch.optim as optim
@@ -97,14 +98,17 @@ def random_state(lower_bounds: np.ndarray, upper_bounds: np.ndarray):
 def plr_sample_state(env_buffer, beta, rho=0.1):
     assert len(env_buffer) > 0
     assert beta != 0
+
     ranks = np.arange(1, len(env_buffer) + 1)
     score_prioritized_p = (1 / ranks) ** (1 / beta)
     score_prioritized_p /= np.sum(score_prioritized_p)
-    cnts = [env_entry.cnt for env_entry in env_buffer]
+
+    staleness = np.array([len(env_buffer) - env_entry.last_seen for env_entry in env_buffer])
+    staleness_p = staleness / max(1, np.sum(staleness))
     
-    
-    _, sampled_env_param = np.random.choice(env_buffer, size=1, p=score_prioritized_p)
-    return sampled_env_param
+    p = (1 - rho) * score_prioritized_p + rho * staleness_p
+    sampled_env_entry = random.choices(env_buffer, k=1, weights=p)[0]
+    return sampled_env_entry.env_params
 
 def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_space: Space, 
                     num_descent_steps: int = 10, batch_size: int = 1, no_coop=False, 
@@ -138,13 +142,13 @@ def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_spac
     use_plr = np.random.random() < plr_d
     if use_plr and len(env_buffer) > 0:
         print("USING PRIORITIZED LEVEL REPLAY")
-        return plr_sample_state(env_buffer, plr_beta)
+        return plr_sample_state(env_buffer, plr_beta), [0], "PLR"
     
     obs, resettable = sample_obs(env, batch_size, agent.device, random=uniform_reset)
 
     if uniform_reset:
         print("USING UNIFORM RESET")
-        return obs, [0]
+        return obs, [0], "UNIFORM"
     
     if not no_coop:
         cmp = BoundedUncertaintyMaximization(
@@ -189,4 +193,4 @@ def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_spac
             loss.backward()
             optimizer.step()
             uncertainties.append(uncertainty.detach().cpu().numpy())
-    return obs, uncertainties
+    return obs, uncertainties, "ACTIVERL"
