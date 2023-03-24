@@ -112,6 +112,7 @@ class SinergymCallback(ActiveRLCallback):
             kwargs: Forward compatibility placeholder.
         """
         env = base_env.get_sub_environments()[env_index]
+        obs = episode.last_observation_for()
         info = episode.last_info_for()
         episode.user_data["power"].append(info["total_power"])
         episode.user_data["term_comfort"].append(info["comfort_penalty"])

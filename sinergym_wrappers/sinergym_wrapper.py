@@ -22,7 +22,7 @@ import socket
 import threading
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from gym import register
-
+import datetime
 
 LOG_LEVEL_MAIN = 'INFO'
 LOG_LEVEL_EPLS = 'FATAL'
@@ -597,6 +597,15 @@ class EPlusFlexibleResetSimulator(EnergyPlus):
                 'EnergyPlus episode completed successfully. ')
             self._epi_num += 1
 
+        # Update current week
+        base = datetime.datetime(1991, 1, 1, 0)
+        random_offset = datetime.timedelta(days=self.next_date_offset)
+        week_delta = datetime.timedelta(days=7)
+        start = base + random_offset
+        end = start + week_delta
+        self._config.config["runperiod"] = (start.day, start.month, end.year, end.day, end.month, end.year)
+        self._config.apply_extra_conf()
+
         # Create EnergyPlus simulation process
         self.logger_main.info('Creating new EnergyPlus simulation episode...')
         # Creating episode working dir
@@ -670,6 +679,7 @@ class EPlusFlexibleResetSimulator(EnergyPlus):
         # Check termination
         if is_terminal:
             self._end_episode()
+
 
         return (curSimTim, Dblist, is_terminal)
 
