@@ -269,7 +269,8 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             else:
                 raise ValueError("initial state does not specify a valid weather variability.")
             print("PRESET VARIABILITY", curr_weather_variability)
-            self.env.simulator.reset(curr_weather_variability)
+            _, obs, _ = self.env.simulator.reset(curr_weather_variability)
+
         elif initial_state is not None:
             # Reset simulator with specified weather variability
             variability = self._get_variability_from_state(initial_state)
@@ -278,12 +279,11 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
                 idxs = [idx - self.original_obs_space_shape[-1] for idx in idxs]
                 variability_params = variability[idxs]
                 offset = self._get_offset_from_state(initial_state, var_name, first_day_weather)
-                offset = 50
                 variability_dict[var_name] = (variability_params[0], offset, variability_params[1])#(variability_params[0], offset, variability_params[1])
             print("ACTIVE VARIABILITY", variability_dict)
             self.last_variability = variability_dict
             _, obs, _ = self.env.simulator.reset(variability_dict)
-            obs = np.array(obs, dtype=np.float32)
+        obs = np.array(obs, dtype=np.float32)
 
         return self.observation(obs)
 
