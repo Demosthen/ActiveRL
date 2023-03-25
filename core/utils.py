@@ -155,13 +155,17 @@ def get_variability_configs(names, rev_names=[], only_default_eval = False, epw_
         train_variability = [build_variability_dict(names, rev_names, (1., 0., 0.001))]
 
     if no_noise:
-        train_variability = [{name: np.array([0, 0, 0.01]) for name in all_names}]
+        train_variability = [{name: np.array([0, 0, 0.001]) for name in all_names}]
 
     eval_variability = deepcopy(train_variability)
     if not only_default_eval:
-        eval_variability.extend([build_variability_dict(names, rev_names, (1, -20, 0.001)),
-                            build_variability_dict(names, rev_names, (1, 20, 0.001)),
-                            build_variability_dict(names, rev_names, (10, 0, 0.001))])
+        # eval_variability.extend([build_variability_dict(names, rev_names, (1, -20, 0.001)),
+        #                     build_variability_dict(names, rev_names, (1, 20, 0.001)),
+        #                     build_variability_dict(names, rev_names, (10, 0, 0.001))])
+        eval_variability.extend([build_drought(train_variability[0]),
+                                build_hurricane(train_variability[0]),
+                                build_tropical_heat(train_variability[0]),
+                                build_cold_snap(train_variability[0])])
     
     return {"train_var": train_variability, 
             "train_var_low": train_variability_low, 
@@ -175,3 +179,39 @@ def get_log_path(log_dir):
     path = os.path.join(".", log_dir, date_time)
     os.makedirs(path, exist_ok=True)
     return path
+
+def build_drought(base_variability):
+    # Modeling a hot, dry, drought
+    ret = deepcopy(base_variability)
+    ret["drybulb"][1] = 30 # Corresponds to ~50 C
+    ret["relhum"][1] = -100 # It's a drought
+    ret["windspd"][1] = -3 # This brings avg windspd down to ~ 0
+    ret["dirnorrad"][1] = 1000 # max offset seen in US epw files
+    return ret
+
+def build_hurricane(base_variability):
+    # Modeling a hurricane
+    ret = deepcopy(base_variability)
+    ret["drybulb"][1] = 5 # ~ 25 C
+    ret["relhum"][1] = 100 # It's a hurricane
+    ret["windspd"][1] = 40 # Higher end of Category 2 (~160km/hr)
+    ret["dirnorrad"][1] = -300 # Assume some cloud cover
+    return ret
+
+def build_tropical_heat(base_variability):
+    # Modeling a heat wave in tropical weather
+    ret = deepcopy(base_variability)
+    ret["drybulb"][1] = 30 # Corresponds to ~50 C
+    ret["relhum"][1] = 100 # Tropical, so very wet
+    ret["windspd"][1] = -3 # This brings avg windspd down to ~ 0
+    ret["dirnorrad"][1] = 1000 # max offset seen in US epw files
+    return ret
+
+def build_cold_snap(base_variability):
+    # Modeling a cold snap
+    ret = deepcopy(base_variability)
+    ret["drybulb"][1] = -50 # ~-30 C
+    ret["relhum"][1] = -100
+    ret["windspd"][1] = 15
+    ret["dirnorrad"][1] = 0
+    return ret
