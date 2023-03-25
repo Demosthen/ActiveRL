@@ -61,7 +61,8 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         """
         # Set up environment
         curr_pid = os.getpid()
-        self.base_env_name = 'Eplus-5Zone-hot-discrete-stochastic-v1-FlexibleReset'
+        self.action_type = "continuous" if config.get("continuous", False) else "discrete"
+        self.base_env_name = f'Eplus-5Zone-hot-{self.action_type}-stochastic-v1-FlexibleReset'
         self.timesteps_per_hour = config.get("timesteps_per_hour", 1)
 
         weather_file = config.get("weather_file", "USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw")
@@ -70,7 +71,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         if self.sample_environments:
             self.OU_param_df = self._load_OU_params(self.environment_variability_file)
         self.act_repeat = config.get("act_repeat", 1)
-        self.random_week = config["config"].random_week
+        self.random_month = config["config"].random_month
 
         self.epw_data = config["epw_data"]
         weather_bounds = {name: (self.epw_data.weather_min[name], self.epw_data.weather_max[name]) for name in self.epw_data.weather_min.index}
@@ -88,7 +89,9 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
                         act_repeat=self.act_repeat,
                         config_params={'timesteps_per_hour' : self.timesteps_per_hour,
                                         'weather_bounds': weather_bounds,
-                                        "random_week": self.random_week})
+                                        "random_month": self.random_month})
+        
+        print("ACTION SPACE IS: ", env.action_space)
         
         # Get controller overrides
         self.use_rbc = config.get("use_rbc", False)
@@ -275,6 +278,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
                 idxs = [idx - self.original_obs_space_shape[-1] for idx in idxs]
                 variability_params = variability[idxs]
                 offset = self._get_offset_from_state(initial_state, var_name, first_day_weather)
+                offset = 50
                 variability_dict[var_name] = (variability_params[0], offset, variability_params[1])#(variability_params[0], offset, variability_params[1])
             print("ACTIVE VARIABILITY", variability_dict)
             self.last_variability = variability_dict
@@ -335,7 +339,7 @@ class FlexibleResetConfig(Config):
             action_definition: Optional[Dict[str, Any]],
             extra_config: Dict[str, Any]):
         super().__init__(idf_path, weather_path, variables, env_name, max_ep_store, action_definition, extra_config)
-        if self.config['random_week']:
+        if self.config['random_month']:
             self.next_date_offset = np.random.randint(0, 358) * 24
         else:
             self.next_date_offset = 0
@@ -429,7 +433,7 @@ class FlexibleResetConfig(Config):
                         self.config[config_key]) == 6, 'Extra Config: Runperiod specified in extra configuration has an incorrect format (tuple with 6 elements).'
                 elif config_key == 'weather_bounds':
                     assert isinstance(self.config[config_key], dict)
-                elif config_key == "random_week":
+                elif config_key == "random_month":
                     assert isinstance(self.config[config_key], bool)
                 else:
                     raise KeyError(
@@ -597,14 +601,15 @@ class EPlusFlexibleResetSimulator(EnergyPlus):
                 'EnergyPlus episode completed successfully. ')
             self._epi_num += 1
 
-        # Update current week
-        base = datetime.datetime(1991, 1, 1, 0)
-        random_offset = datetime.timedelta(days=self.next_date_offset)
-        week_delta = datetime.timedelta(days=7)
-        start = base + random_offset
-        end = start + week_delta
-        self._config.config["runperiod"] = (start.day, start.month, end.year, end.day, end.month, end.year)
-        self._config.apply_extra_conf()
+        if self._config.config["random_month"]:
+            # Update current week
+            base = datetime.datetime(1991, 1, 1, 0)
+            random_offset = datetime.timedelta(days=self.next_date_offset)
+            delta = datetime.timedelta(weeks=4)
+            start = base + random_offset
+            end = start + delta
+            self._config.config["runperiod"] = (start.day, start.month, end.year, end.day, end.month, end.year)
+            self._config.apply_extra_conf()
 
         # Create EnergyPlus simulation process
         self.logger_main.info('Creating new EnergyPlus simulation episode...')
@@ -617,7 +622,7 @@ class EPlusFlexibleResetSimulator(EnergyPlus):
         eplus_working_weather_path = self._config.apply_weather_variability(
             variation=weather_variability, date_offset=self.next_date_offset)
 
-        if self._config.config["random_week"]:
+        if self._config.config["random_month"]:
             self.next_date_offset = np.random.randint(0, 358) * 24
 
         self._create_socket_cfg(self._host,

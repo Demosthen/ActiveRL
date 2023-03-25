@@ -128,7 +128,7 @@ def build_variability_dict(names, rev_names, variability):
         ret[name] = rev_variability
     return ret
 
-def get_variability_configs(names, rev_names=[], only_default_eval = False, epw_data: Optional[EPW_Data] = None):
+def get_variability_configs(names, rev_names=[], only_default_eval = False, epw_data: Optional[EPW_Data] = None, no_noise=False):
     """
         Utility function to easily construct config arguments for the weather_variability
         related parameters of sinergym.
@@ -153,6 +153,9 @@ def get_variability_configs(names, rev_names=[], only_default_eval = False, epw_
         train_variability_low = {name: (0.0, 0.000999) for name in names + rev_names}
         train_variability_high = {name: (15.0, 0.00101) for name in names + rev_names}
         train_variability = [build_variability_dict(names, rev_names, (1., 0., 0.001))]
+
+    if no_noise:
+        train_variability = [{name: np.array([0, 0, 0.01]) for name in all_names}]
 
     eval_variability = deepcopy(train_variability)
     if not only_default_eval:

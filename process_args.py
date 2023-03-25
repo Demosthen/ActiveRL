@@ -247,9 +247,19 @@ def add_args(parser):
         choices=[weather.value for weather in SG_WEATHER_TYPES]
     )
     parser.add_argument(   
-        "--random_week",
+        "--random_month",
         action="store_true",
         help = "Whether to sample a random week's weather instead of a whole year",
+    )
+    parser.add_argument(   
+        "--no_noise",
+        action="store_true",
+        help = "Whether to have any noise in the training weather or not",
+    )
+    parser.add_argument(   
+        "--continuous",
+        action="store_true",
+        help = "Whether to use a continuous action space or not",
     )
 
     # ACTIVE RL PARAMS
