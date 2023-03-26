@@ -6,6 +6,7 @@ from core.utils import get_variability_configs
 from sinergym_wrappers.callbacks import SinergymCallback
 from sinergym_wrappers.sinergym_wrapper import SinergymWrapper
 from core.config import ExperimentConfig
+import math
 from core.constants import SG_WEATHER_TYPES
 def get_config(args):
     rllib_config = {}
@@ -54,7 +55,10 @@ def get_config(args):
 
     # rllib_config["evaluation_duration"] = len(
     #     eval_env_config["weather_variability"]) * args.horizon
-    rllib_config["evaluation_duration"] = args.num_eval_workers * args.num_envs_per_worker * args.horizon * 2
+    if args.sample_envs:
+        rllib_config["evaluation_duration"] = args.num_eval_workers * args.num_envs_per_worker * args.horizon * 2
+    else:
+        rllib_config["evaluation_duration"] = args.num_eval_workers * args.num_envs_per_worker * args.horizon * 2 * math.ceil(len(weather_var_config["eval_var"]) / args.num_envs_per_worker)
     rllib_config["evaluation_duration_unit"] = "timesteps"
     rllib_config["horizon"] = args.horizon
     rllib_config["soft_horizon"] = not args.random_month # If we are using random weeks we want a hard horizon to ensure resets

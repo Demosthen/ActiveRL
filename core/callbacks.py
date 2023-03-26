@@ -65,7 +65,7 @@ class ActiveRLCallback(DefaultCallbacks):
         self.plr_beta = args.plr_beta
         # TODO: sync this across all workers
         self.env_buffer = []
-        self.plr_scheduler = LinearDecayScheduler(200)
+        self.plr_scheduler = LinearDecayScheduler(100)
         self.last_reset_state = None
         self.next_sampling_used = None
         self.next_initial_state = None
