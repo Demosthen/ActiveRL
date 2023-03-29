@@ -155,6 +155,7 @@ class ActiveRLCallback(DefaultCallbacks):
         print("THIS IS HOW BIG THE ENV BUFFER ISSSSSSSSSSSSSSSSSSSSSSSSSSSSSS", len(env_buffer))
         if self.num_train_steps < self.env_repeat and self.next_initial_state is not None:
             self.num_train_steps += 1
+            print(f"REPEATING ENVIRONMENT ON STEP {self.num_train_steps}")
             return self.next_initial_state, self.next_sampling_used
         new_states, uncertainties, sampling_used = generate_states(
             policy, 
