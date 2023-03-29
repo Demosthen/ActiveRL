@@ -239,8 +239,6 @@ class ActiveRLCallback(DefaultCallbacks):
         self.next_initial_state, sampling_used = next(filter(lambda x: x!=None, algorithm.workers.foreach_worker(get_candidate_initial_states)))
 
         algorithm.workers.foreach_worker(set_next_initial_state)
-        #TODO: if sampling_used is PLR, search through existing entries and update last seen
-        # Also, figure out how to mix together env buffers
         
 
         if self.plr_d > 0 and self.last_reset_state is not None:

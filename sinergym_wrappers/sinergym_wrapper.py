@@ -254,22 +254,22 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         pre-set weather variabilities in the environment. Pass a negative int to sample weather variabilities
         from a file. Pass nothing to use the default weather variability.
         """
-        obs = self.env.reset()
+        
         weather_df = self.env.simulator._config.weather_data.get_weather_series()
         self.weather_means = weather_df.mean(axis=0)
         first_day_weather = weather_df.iloc[0]
-        self.last_untransformed_obs = obs
         if isinstance(initial_state, int):
             if initial_state < 0 and self.sample_environments:
                 curr_weather_variability = self._sample_variability()
+                print("SAMPLED VARIABILITY", curr_weather_variability)
             elif initial_state >= 0 and initial_state < len(self.weather_variability):
                 # Set to specified weather variability scenario
                 self.scenario_idx = initial_state
                 curr_weather_variability = self.weather_variability[self.scenario_idx]
+                print("PRESET VARIABILITY", curr_weather_variability)
             else:
                 raise ValueError("initial state does not specify a valid weather variability.")
-            print("PRESET VARIABILITY", curr_weather_variability)
-            _, obs, _ = self.env.simulator.reset(curr_weather_variability)
+            obs = self.env.reset(weather_variability=curr_weather_variability)
 
         elif initial_state is not None:
             # Reset simulator with specified weather variability
@@ -282,7 +282,10 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
                 variability_dict[var_name] = (variability_params[0], offset, variability_params[1])#(variability_params[0], offset, variability_params[1])
             print("ACTIVE VARIABILITY", variability_dict)
             self.last_variability = variability_dict
-            _, obs, _ = self.env.simulator.reset(variability_dict)
+            obs = self.env.reset(weather_variability=variability_dict)
+        else:
+            obs = self.env.reset()
+        self.last_untransformed_obs = obs
         obs = np.array(obs, dtype=np.float32)
 
         return self.observation(obs)
@@ -820,6 +823,18 @@ class EPlusFlexibleResetEnv(EplusEnv):
         # ---------------------------------------------------------------------------- #
 
         self._check_eplus_env()
+
+    def reset(self, weather_variability=None) -> np.ndarray:
+        """Reset the environment.
+        Returns:
+            np.ndarray: Current observation.
+        """
+        if weather_variability is None:
+            weather_variability = self.weather_variability
+        # Change to next episode
+        _, obs, _ = self.simulator.reset(weather_variability)
+
+        return np.array(obs, dtype=np.float32)
 
 # Add new variants of all registered sinergym envs
 registered_envs = list(gym.envs.registry.items())
