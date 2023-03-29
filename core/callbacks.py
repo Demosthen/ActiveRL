@@ -36,7 +36,7 @@ class ActiveRLCallback(DefaultCallbacks):
                  planning_uncertainty_weight=1, 
                  device="cpu", 
                  args={}, 
-                 uniform_reset = False):
+                 uniform_reset = 0):
         super().__init__()
         self.run_active_rl = run_active_rl
         self.num_descent_steps = num_descent_steps
@@ -63,7 +63,6 @@ class ActiveRLCallback(DefaultCallbacks):
 
         self.plr_d = args.plr_d
         self.plr_beta = args.plr_beta
-        # TODO: sync this across all workers
         self.env_buffer = []
         self.plr_scheduler = LinearDecayScheduler(100)
         self.last_reset_state = None
@@ -89,22 +88,6 @@ class ActiveRLCallback(DefaultCallbacks):
 
         self.eval_worker_ids = sorted(algorithm.evaluation_workers.foreach_worker(activate_eval_metrics))
         algorithm.evaluation_workers.foreach_worker(set_eval_worker_ids)
-        
-
-    # def on_algorithm_init(
-    #     self,
-    #     *,
-    #     algorithm: "Algorithm",
-    #     **kwargs,
-    # ) -> None:
-    #     """Callback run when a new algorithm instance has finished setup.
-    #     This method gets called at the end of Algorithm.setup() after all
-    #     the initialization is done, and before actually training starts.
-    #     Args:
-    #         algorithm: Reference to the trainer instance.
-    #         kwargs: Forward compatibility placeholder.
-    #     """
-    #     pass
 
 
     def on_evaluate_end(self, *, algorithm: UncertainPPO, evaluation_metrics: dict, **kwargs)-> None:
@@ -153,14 +136,14 @@ class ActiveRLCallback(DefaultCallbacks):
     def _get_next_initial_state(self, policy, env, env_buffer=[]):
         plr_d = self.plr_scheduler.step(env_buffer)
         print("THIS IS HOW BIG THE ENV BUFFER ISSSSSSSSSSSSSSSSSSSSSSSSSSSSSS", len(env_buffer))
-        if self.num_train_steps < self.env_repeat and self.next_initial_state is not None:
-            self.num_train_steps += 1
+        if (self.num_train_steps % self.env_repeat) != 0 and self.next_initial_state is not None:
             print(f"REPEATING ENVIRONMENT ON STEP {self.num_train_steps}")
             return self.next_initial_state, self.next_sampling_used
         new_states, uncertainties, sampling_used = generate_states(
             policy, 
             env=env, 
             obs_space=env.observation_space, 
+            curr_iter=self.num_train_steps,
             num_descent_steps=self.num_descent_steps, 
             batch_size=self.batch_size, 
             no_coop=self.no_coop, 
@@ -175,7 +158,6 @@ class ActiveRLCallback(DefaultCallbacks):
             reg_coeff = self.activerl_reg_coeff)
         new_states = states_to_np(new_states)
         # episode.custom_metrics[UNCERTAINTY_LOSS_KEY] = uncertainties[-1] # TODO: PUT THIS BACK IN SOMEWHERE
-        # self.last_reset_state = new_states
         self.next_sampling_used = sampling_used
         return new_states, sampling_used
 
@@ -234,6 +216,7 @@ class ActiveRLCallback(DefaultCallbacks):
 
         def get_candidate_initial_states(worker: RolloutWorker):
             if hasattr(worker, 'callbacks') and worker.env is not None:
+                worker.callbacks.num_train_steps = self.num_train_steps
                 return worker.callbacks._get_next_initial_state(worker.get_policy(), worker.env, self.env_buffer)
             return None
 

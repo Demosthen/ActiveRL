@@ -95,7 +95,7 @@ def random_state(lower_bounds: np.ndarray, upper_bounds: np.ndarray):
     return ret
 
 
-def plr_sample_state(env_buffer, beta, rho=0.1):
+def plr_sample_state(env_buffer, beta, curr_iter, rho=0.1):
     assert len(env_buffer) > 0
     assert beta != 0
 
@@ -103,14 +103,14 @@ def plr_sample_state(env_buffer, beta, rho=0.1):
     score_prioritized_p = (1 / ranks) ** (1 / beta)
     score_prioritized_p /= np.sum(score_prioritized_p)
 
-    staleness = np.array([len(env_buffer) - env_entry.last_seen for env_entry in env_buffer])
+    staleness = np.array([curr_iter - env_entry.last_seen for env_entry in env_buffer])
     staleness_p = staleness / max(1, np.sum(staleness))
     
     p = (1 - rho) * score_prioritized_p + rho * staleness_p
     sampled_env_entry = random.choices(env_buffer, k=1, weights=p)[0]
     return sampled_env_entry.env_params
 
-def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_space: Space, 
+def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_space: Space, curr_iter: int,
                     num_descent_steps: int = 10, batch_size: int = 1, no_coop=False, 
                     planning_model=None, reward_model=None, planning_uncertainty_weight=1, 
                     uniform_reset=False, lr=0.1, plr_d=0.0, plr_beta=0.1, env_buffer=[], reg_coeff=0.01):
@@ -142,7 +142,7 @@ def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_spac
     use_plr = np.random.random() < plr_d
     if use_plr and len(env_buffer) > 0:
         print("USING PRIORITIZED LEVEL REPLAY")
-        return plr_sample_state(env_buffer, plr_beta), [0], "PLR"
+        return plr_sample_state(env_buffer, plr_beta, curr_iter), [0], "PLR"
     
     obs, resettable = sample_obs(env, batch_size, agent.device, random=uniform_reset)
 

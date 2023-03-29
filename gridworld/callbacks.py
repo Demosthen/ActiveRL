@@ -18,11 +18,11 @@ class SimpleGridCallback(ActiveRLCallback):
                  batch_size: int = 64, 
                  no_coop: bool = False, 
                  planning_model=None, config={}, 
-                 run_active_rl=False, 
+                 run_active_rl=0, 
                  planning_uncertainty_weight=1, 
                  device="cpu", 
                  args={}, 
-                 uniform_reset=False):
+                 uniform_reset=0):
         super().__init__(num_descent_steps, batch_size, no_coop, planning_model, config, run_active_rl, planning_uncertainty_weight, device, args, uniform_reset)
         self.cell_index = -1
         self.num_cells = -1

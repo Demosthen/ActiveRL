@@ -15,11 +15,11 @@ class SinergymCallback(ActiveRLCallback):
                  no_coop: bool=False, 
                  planning_model=None, 
                  config={}, 
-                 run_active_rl=False, 
+                 run_active_rl=0, 
                  planning_uncertainty_weight=1, 
                  device="cpu", 
                  args={}, 
-                 uniform_reset=False):
+                 uniform_reset=0):
         super().__init__(num_descent_steps, batch_size, no_coop, 
                          planning_model, config, run_active_rl, 
                          planning_uncertainty_weight, device, args, 
@@ -64,8 +64,8 @@ class SinergymCallback(ActiveRLCallback):
         env = base_env.get_sub_environments()[env_index]
         # Get the single "default policy"
         policy = next(policies.values())
-        run_active_rl = np.random.random() < self.run_active_rl
-        if not self.is_evaluating and any([run_active_rl, self.uniform_reset, self.plr_d > 0]):
+        train_reset = np.random.random() < max(self.run_active_rl, self.uniform_reset)
+        if not self.is_evaluating and train_reset:
             self.reset_env(policy, env, episode)
         elif self.is_evaluating:
             is_default_env_worker = (worker.worker_index == self.eval_worker_ids[0]) and env_index == 0

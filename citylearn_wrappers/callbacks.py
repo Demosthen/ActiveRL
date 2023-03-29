@@ -12,7 +12,7 @@ from ..core.callbacks import ActiveRLCallback
 
 class CitylearnCallback(ActiveRLCallback):
     """ Note, CitylearnCallback is not yet vectorized, so logging may be inaccurate if num_envs_per_worker is not 1"""
-    def __init__(self, num_descent_steps: int = 10, batch_size: int = 64, no_coop: bool = False, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}, uniform_reset=False):
+    def __init__(self, num_descent_steps: int = 10, batch_size: int = 64, no_coop: bool = False, planning_model=None, config={}, run_active_rl=0, planning_uncertainty_weight=1, device="cpu", args={}, uniform_reset=0):
         super().__init__(num_descent_steps, batch_size, no_coop, planning_model, config, run_active_rl, planning_uncertainty_weight, device, args, uniform_reset)
         
     def on_episode_start(
