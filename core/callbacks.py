@@ -137,6 +137,7 @@ class ActiveRLCallback(DefaultCallbacks):
         plr_d = self.plr_scheduler.step(env_buffer)
         print("THIS IS HOW BIG THE ENV BUFFER ISSSSSSSSSSSSSSSSSSSSSSSSSSSSSS", len(env_buffer))
         if (self.num_train_steps % self.env_repeat) != 0 and self.next_initial_state is not None:
+            print(f"REPEATING ENVIRONMENT ON STEP {self.num_train_steps}")
             return self.next_initial_state, self.next_sampling_used
         new_states, uncertainties, sampling_used = generate_states(
             policy, 
