@@ -9,9 +9,67 @@ import numpy as np
 import pandas as pd
 from itertools import starmap
 from multiprocessing import Pool
+import wandb
+import argparse
+def add_args(parser):
+    parser.add_argument(
+        "--run_id",
+        type=str,
+        help="Run to download model artifact from",
+        default=None
+    )
+    parser.add_argument(
+        "--compare_run_id",
+        type=str,
+        help="Run with model artifact to compare the other run_id against. If this is not provided",
+        default=None
+    )
+    
+    return parser
+def download_latest_model(run_id):
+    """
+    Download the latest 'sinergym_model' artifact from a specified Weights & Biases run.
+
+    This function searches for the latest version of the 'sinergym_model' artifact of type 'model'
+    in a specific W&B run, downloads it, and returns the local directory path where the artifact
+    has been downloaded.
+
+    Args:
+        run_id (str): A string that should be
+            the run_id of the target Weights & Biases run.
+
+    Returns:
+        str: The local directory path where the latest 'sinergym_model' artifact has been downloaded.
+    """
+    entity = "social-game-rl"
+    project = "active-rl"
+    run = wandb.Api().run(f"{entity}/{project}/{run_id}")
+    latest_artifact_id = -1
+    latest_artifact_name = ""
+    for artifact in run.logged_artifacts():
+        if "sinergym_model" in artifact.name and artifact.type == "model":
+            _, artifact_id = artifact.name.split(":v")
+            artifact_id = int(artifact_id)
+            if artifact_id > latest_artifact_id:
+                latest_artifact_name = artifact.name
+                latest_artifact_id = artifact_id
+    artifact = run.use_artifact(f"{latest_artifact_name}:model")
+    artifact_dir = artifact.download(root="checkpoints/wandb/")
+    return artifact_dir
+
+parser = argparse.ArgumentParser()
+add_args(parser)
+args = parser.parse_args()
+if args.run_id is None or args.compare_run_id is None:
+    raise NotImplementedError("Please specify a run id using --run_id")
+
+
+model1_dir = download_latest_model(args.run_id)
+model2_dir = download_latest_model(args.compare_run_id)
+
 
 weather_var_names = ['drybulb', 'relhum',
-                        "winddir", "dirnorrad", "difhorrad"]
+                        "winddir", "dirnorrad"]
 weather_var_rev_names = ["windspd"]
 
 epw_data = EPW_Data.load("sinergym_wrappers/epw_scraper/US_epw_OU_data.pkl")
@@ -84,7 +142,7 @@ if __name__ == "__main__":
     import time
     start = time.perf_counter()
     # agent = UncertainPPO(config={"env_config": env_config, "env": env, "disable_env_checking": True})
-    checkpoints = {"activerl": "checkpoints/activerl", "vanilla": "checkpoints/vanilla"}
+    checkpoints = {args.run_id: model1_dir, args.compare_run_id: model2_dir}#{"activerl": "checkpoints/activerl", "vanilla": "checkpoints/vanilla"}
     agents = {}
     rews = {}
     bad_idxs = {}
@@ -92,11 +150,11 @@ if __name__ == "__main__":
 
     with Pool(8) as workers:
         for name, checkpoint in checkpoints.items():
-            idxs = range(0, len(weather_variabilities))
-            args = [(checkpoint, idx) for idx in idxs]
+            idxs = range(0, len(weather_variabilities, 100))
+            rew_args = [(checkpoint, idx) for idx in idxs]
             rew_df = {"rew": [], "x": [], "y": [], "idx": []}
             bad_idx = []
-            for result in workers.starmap(compute_reward, args):
+            for result in workers.starmap(compute_reward, rew_args):
                 rew_df["rew"].extend(result[0]["rew"])
                 rew_df["x"].extend(result[0]["x"])
                 rew_df["y"].extend(result[0]["y"])
@@ -105,28 +163,29 @@ if __name__ == "__main__":
             rew_df = pd.DataFrame.from_dict(rew_df)
             rews[name] = rew_df
             bad_idxs[name] = bad_idx
-
-    with open("checkpoints/reward_data2.pkl", "wb") as f:
+    save_dir = f"checkpoints/comparisons/{args.run_id}_{args.compare_run_id}.pkl",
+    os.makedirs(save_dir, exist_ok=True)
+    with open(save_dir, "wb") as f:
         pickle.dump((rews, bad_idxs), f)
 
     # %%
     import matplotlib.pyplot as plt
     green = np.array([0,1,0])
     red = np.array([1,0,0])
-    all_bad_idxs = set(bad_idxs["activerl"] + bad_idxs["vanilla"])
+    all_bad_idxs = set(bad_idxs[args.run_id] + bad_idxs[args.compare_run_id])
     print(all_bad_idxs)
     # drop all bad indexes and sort by index
-    activerl_dfs = rews["activerl"]
-    print("ACTIVE: ", activerl_dfs)
-    idxs = ~activerl_dfs["idx"].isin(all_bad_idxs)
-    activerl_dfs = activerl_dfs[idxs].sort_values("idx")
-    vanilla_dfs = rews["vanilla"]
-    vanilla_dfs = vanilla_dfs[idxs].sort_values("idx")
-    print("VANILLA: ", vanilla_dfs)
+    run_dfs = rews[args.run_id]
+    print(f"{args.run_id}: ", run_dfs)
+    idxs = ~run_dfs["idx"].isin(all_bad_idxs)
+    run_dfs = run_dfs[idxs].sort_values("idx")
+    compare_dfs = rews[args.compare_run_id]
+    compare_dfs = compare_dfs[idxs].sort_values("idx")
+    print(f"{args.run_id}: ", compare_dfs)
 
-    rews = (np.array(activerl_dfs["rew"]) > np.array(vanilla_dfs["rew"]))[:, None]
-    xs = vanilla_dfs["x"]
-    ys = vanilla_dfs["y"]
+    rews = (np.array(run_dfs["rew"]) > np.array(compare_dfs["rew"]))[:, None]
+    xs = compare_dfs["x"]
+    ys = compare_dfs["y"]
     end = time.perf_counter()
     print(f"TOOK {end-start} SECONDS")
 
