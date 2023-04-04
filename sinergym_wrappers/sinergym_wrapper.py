@@ -71,7 +71,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         if self.sample_environments:
             self.OU_param_df = self._load_OU_params(self.environment_variability_file)
         self.act_repeat = config.get("act_repeat", 1)
-        self.random_month = config["config"].random_month
+        self.random_month = config.get("random_month", False)
 
         self.epw_data = config["epw_data"]
         weather_bounds = {name: (self.epw_data.weather_min[name], self.epw_data.weather_max[name]) for name in self.epw_data.weather_min.index}
@@ -194,7 +194,8 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             variability[idxs] = np.array(var)[0::2]
         
         variability = (variability - self.variability_offset) / self.variability_scale
-        return np.concatenate([observation, variability], axis=-1)
+        obs = np.concatenate([observation, variability], axis=-1)
+        return obs
 
     # def inverse_observation(self, observation: torch.Tensor):
     #     return observation[..., :-self.num_extra_variability_dims]

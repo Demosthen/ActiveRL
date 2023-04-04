@@ -39,9 +39,8 @@ def get_config(args):
         "weather_file": base_weather_file,
         "epw_data": epw_data,
         "continuous": args.continuous,
-        "config": args
+        "random_month": args.random_month
     }
-
     eval_env_config = deepcopy(env_config)
     eval_env_config["weather_variability"] = weather_var_config["eval_var"]
     eval_env_config["timesteps_per_hour"] = args.sinergym_timesteps_per_hour * args.eval_fidelity_ratio
