@@ -325,7 +325,7 @@ def add_args(parser):
     parser.add_argument(
         "--plr_d",
         type=float,
-        help="Probability of sampling a level from replay buffer or sampling a new one",
+        help="Set to 1 to turn on PLR and 0 to turn it off",
         default=0.0
     )
     parser.add_argument(
@@ -333,6 +333,12 @@ def add_args(parser):
         type=float,
         help="Beta parameter for PLR",
         default=0.1
+    )
+    parser.add_argument(
+        "--plr_envs_to_1",
+        type=int,
+        help="Number of environments to go through until probability of using PLR is 1",
+        default=100
     )
     parser.add_argument(
         "--env_repeat",

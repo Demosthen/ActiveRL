@@ -10,6 +10,7 @@ from citylearn_wrappers.citylearn_model_training.planning_model import LitPlanni
 from core.resettable_env import ResettableEnv
 
 class BoundedUncertaintyMaximization(cooper.ConstrainedMinimizationProblem):
+    """Constrained minimization problem that maximizes the uncertainty of the agent's value function."""
     def __init__(self, obs, env: ResettableEnv, lower_bounds, upper_bounds, lower_bounded_idxs, upper_bounded_idxs, agent: UncertainPPOTorchPolicy, planning_model: LitPlanningModel=None, reward_model: RewardPredictor = None, planning_uncertainty_weight=1, reg_coeff = 0.01):
         self.env = env
         self.obs = obs
@@ -47,6 +48,7 @@ class BoundedUncertaintyMaximization(cooper.ConstrainedMinimizationProblem):
         return cooper.CMPState(loss=loss, ineq_defect=ineq_defect)
 
 def get_space_bounds(obs_space: Space):
+    """Returns the lower and upper bounds of the observation space."""
     if isinstance(obs_space, Box):
         return obs_space.low, obs_space.high
     elif isinstance(obs_space, Discrete):
@@ -55,6 +57,8 @@ def get_space_bounds(obs_space: Space):
         raise NotImplementedError
 
 def sample_obs(env: ResettableEnv, batch_size: int, device, random: bool=False):
+    """Samples an observation from the environment to seed state generation. If random is True, 
+        samples random observations from the observation space. Otherwise, uses environment's sample_obs method."""
     obs_space = env.observation_space
     if isinstance(obs_space, Dict):
         obs = {}
@@ -96,6 +100,7 @@ def random_state(lower_bounds: np.ndarray, upper_bounds: np.ndarray):
 
 
 def plr_sample_state(env_buffer, beta, curr_iter, rho=0.1):
+    """Samples a state from the environment buffer using the PLR algorithm."""
     assert len(env_buffer) > 0
     assert beta != 0
 
@@ -113,7 +118,7 @@ def plr_sample_state(env_buffer, beta, curr_iter, rho=0.1):
 def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_space: Space, curr_iter: int,
                     num_descent_steps: int = 10, batch_size: int = 1, no_coop=False, 
                     planning_model=None, reward_model=None, planning_uncertainty_weight=1, 
-                    uniform_reset=False, lr=0.1, plr_d=0.0, plr_beta=0.1, env_buffer=[], reg_coeff=0.01):
+                    uniform_reset=False, lr=0.1, plr_d=0.0, plr_beta=0.1, env_buffer=[], reg_coeff=0.01, plr_rho=0.1):
     """
         Generates states by doing gradient descent to increase an agent's uncertainty
         on states starting from random noise
@@ -133,6 +138,11 @@ def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_spac
         :param uniform_reset: whether to just sample uniform random from the resettable_bounds space
         :param lr: learning rate for both primal and dual optimizers
         :param env_buffer: A list of tuples (|value loss|, env_parameters) sorted in descending order by |value loss|
+        :param reg_coeff: regularization coefficient for the dual optimizer
+        :param plr_d: Whether or not to use PLR
+        :param plr_beta: PLR beta parameter
+        :param plr_rho: PLR rho parameter
+        :return: a batch of observations
     """
 #     #TODO: make everything work with batches
     lower_bounds, upper_bounds = env.resettable_bounds()#get_space_bounds(obs_space)
@@ -142,7 +152,7 @@ def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_spac
     use_plr = np.random.random() < plr_d
     if use_plr and len(env_buffer) > 0:
         print("USING PRIORITIZED LEVEL REPLAY")
-        return plr_sample_state(env_buffer, plr_beta, curr_iter), [0], "PLR"
+        return plr_sample_state(env_buffer, plr_beta, curr_iter, rho=plr_rho), [0], "PLR"
     
     obs, resettable = sample_obs(env, batch_size, agent.device, random=uniform_reset)
 

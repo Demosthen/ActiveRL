@@ -32,6 +32,18 @@ def add_args(parser):
         help="Name for analysis run",
         default=None
     )
+    parser.add_argument(
+        "--use_extreme_weather",
+        action="store_true",
+        help="Whether or not to use handcrafted extreme weather conditions",
+        default=None
+    )
+    parser.add_argument(
+        "--no_cache",
+        action="store_true",
+        help="Whether or not to overwrite existing cached reward data",
+        default=None
+    )
     
     return parser
 def download_latest_model(run_id):
@@ -87,7 +99,7 @@ weather_var_rev_names = ["windspd"]
 epw_data = EPW_Data.load("sinergym_wrappers/epw_scraper/US_epw_OU_data.pkl")
 # We only need to include the default evaluation variability since we'll sample the rest later
 weather_var_config = get_variability_configs(
-        weather_var_names, weather_var_rev_names, only_default_eval=True, epw_data=epw_data)
+        weather_var_names, weather_var_rev_names, only_default_eval=False, epw_data=epw_data)
 
 weather_variabilities = []#weather_var_config["train_var"] # start with the training config
 min_diff = 100000
@@ -107,9 +119,11 @@ for row, pca in zip(epw_data.epw_df.iterrows(), epw_data.transformed_df.iterrows
 print(min_diff)
 
 base_weather_file = 'USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw'
+eval_weather_variabilities = weather_var_config["eval_var"] if args.use_extreme_weather else weather_variabilities
+print(f"EVAL WEATHER VARIABILITIES LENGTH IS: {len(eval_weather_variabilities)}")
 env_config = {
     # sigma, mean, tau for OU Process
-    "weather_variability": weather_variabilities,
+    "weather_variability": eval_weather_variabilities,
     "variability_low": weather_var_config["train_var_low"],
     "variability_high": weather_var_config["train_var_high"],
     "use_rbc": 0,
@@ -133,7 +147,6 @@ def compute_reward(checkpoint, i):
     rew_df = {"rew": [], "x": [], "y": [], "idx": []}
     bad_idx = []
     try:
-        pca = epw_data.transformed_df.iloc[i]
         obs = env.reset(i)
         done = False
         avg_rew = 0
@@ -145,6 +158,8 @@ def compute_reward(checkpoint, i):
             avg_rew += rew
             cnt += 1
         rew_df["rew"].append(avg_rew / cnt)
+
+        pca = epw_data.transformed_df.iloc[i]
         rew_df["x"].append(pca[0])
         rew_df["y"].append(pca[1])
     except Exception as e:
@@ -168,23 +183,34 @@ if __name__ == "__main__":
 
     # compute_reward(model1_dir, 0)
     ctx = mp.get_context('spawn')
+    save_dir = f"checkpoints/comparisons/"
+    prefix = "extreme_" if args.use_extreme_weather else ""
     with ctx.Pool(8) as workers:
         for name, checkpoint in checkpoints.items():
-            idxs = range(0, len(weather_variabilities), 1)
-            rew_args = [(checkpoint, idx) for idx in idxs]
-            rew_df = {"rew": [], "x": [], "y": [], "idx": []}
-            bad_idx = []
-            for result in workers.starmap(compute_reward, rew_args):
-                rew_df["rew"].extend(result[0]["rew"])
-                rew_df["x"].extend(result[0]["x"])
-                rew_df["y"].extend(result[0]["y"])
-                rew_df["idx"].extend(result[0]["idx"])
-                bad_idx.extend(result[1])
-            rew_df = pd.DataFrame.from_dict(rew_df)
+            ckpt_save_file = os.path.join(save_dir, prefix + name + ".pkl")
+            loaded_file = False
+            if os.path.exists(ckpt_save_file) and not args.no_cache:
+                with open(ckpt_save_file, 'rb') as f:
+                    rew_df, bad_idx = pickle.load(f)
+                loaded_file = True
+            else:
+                idxs = range(0, len(eval_weather_variabilities), 1)
+                rew_args = [(checkpoint, idx) for idx in idxs]
+                rew_df = {"rew": [], "x": [], "y": [], "idx": []}
+                bad_idx = []
+                for result in workers.starmap(compute_reward, rew_args):
+                    rew_df["rew"].extend(result[0]["rew"])
+                    rew_df["x"].extend(result[0]["x"])
+                    rew_df["y"].extend(result[0]["y"])
+                    rew_df["idx"].extend(result[0]["idx"])
+                    bad_idx.extend(result[1])
+                rew_df = pd.DataFrame.from_dict(rew_df)
+                with open(ckpt_save_file, 'wb') as f:
+                    pickle.dump((rew_df, bad_idx), f)
             rews[name] = rew_df
             bad_idxs[name] = bad_idx
-    save_dir = f"checkpoints/comparisons/"
-    save_file = os.path.join(save_dir, "{args.run_id}_{args.compare_run_id}.pkl")
+    
+    save_file = os.path.join(save_dir, f"{prefix}{args.run_id}_{args.compare_run_id}.pkl")
     os.makedirs(save_dir, exist_ok=True)
     with open(save_file, "wb") as f:
         pickle.dump((rews, bad_idxs), f)

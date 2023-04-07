@@ -63,8 +63,10 @@ class ActiveRLCallback(DefaultCallbacks):
 
         self.plr_d = args.plr_d
         self.plr_beta = args.plr_beta
+        self.plr_rho = args.plr_rho
+        self.plr_envs_to_1 = args.plr_envs_to_1
         self.env_buffer = []
-        self.plr_scheduler = LinearDecayScheduler(100)
+        self.plr_scheduler = LinearDecayScheduler(self.plr_envs_to_1)
         self.last_reset_state = None
         self.next_sampling_used = None
         self.next_initial_state = None
@@ -154,6 +156,7 @@ class ActiveRLCallback(DefaultCallbacks):
             lr=self.activerl_lr,
             plr_d=plr_d,
             plr_beta=self.plr_beta,
+            plr_rho=self.plr_rho,
             env_buffer=env_buffer,
             reg_coeff = self.activerl_reg_coeff)
         new_states = states_to_np(new_states)
