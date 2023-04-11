@@ -14,7 +14,7 @@ from dm_maze_wrappers.viz_utils import draw_box
 from core.callbacks import ActiveRLCallback
 class DMMazeCallback(ActiveRLCallback):
 
-    def __init__(self, num_descent_steps: int = 10, batch_size: int = 64, no_coop: bool = False, planning_model=None, config={}, run_active_rl=False, planning_uncertainty_weight=1, device="cpu", args={}, uniform_reset=False):
+    def __init__(self, num_descent_steps: int = 10, batch_size: int = 64, no_coop: bool = False, planning_model=None, config={}, run_active_rl=0, planning_uncertainty_weight=1, device="cpu", args={}, uniform_reset=0):
         super().__init__(num_descent_steps, batch_size, no_coop, planning_model, config, run_active_rl, planning_uncertainty_weight, device, args, uniform_reset)
         self.cell_index = -1
         self.num_cells = -1

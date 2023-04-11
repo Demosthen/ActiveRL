@@ -15,11 +15,11 @@ class SinergymCallback(ActiveRLCallback):
                  no_coop: bool=False, 
                  planning_model=None, 
                  config={}, 
-                 run_active_rl=False, 
+                 run_active_rl=0, 
                  planning_uncertainty_weight=1, 
                  device="cpu", 
                  args={}, 
-                 uniform_reset=False):
+                 uniform_reset=0):
         super().__init__(num_descent_steps, batch_size, no_coop, 
                          planning_model, config, run_active_rl, 
                          planning_uncertainty_weight, device, args, 
@@ -64,13 +64,13 @@ class SinergymCallback(ActiveRLCallback):
         env = base_env.get_sub_environments()[env_index]
         # Get the single "default policy"
         policy = next(policies.values())
-        run_active_rl = np.random.random() < self.run_active_rl
-        if not self.is_evaluating and (run_active_rl or self.uniform_reset):
+        train_reset = np.random.random() < max(self.run_active_rl, self.uniform_reset)
+        if not self.is_evaluating and train_reset:
             self.reset_env(policy, env, episode)
         elif self.is_evaluating:
             is_default_env_worker = (worker.worker_index == self.eval_worker_ids[0]) and env_index == 0
             if self.sample_environments and not is_default_env_worker:
-                # Set scenario_index to -1 to sample weather variability.
+                # Set scenario_index to -2 to sample weather variability.
                 # We also want to make sure the default environment is represented,
                 # so let one environment reset with the default variability.
                 scenario_index = -2
@@ -112,6 +112,7 @@ class SinergymCallback(ActiveRLCallback):
             kwargs: Forward compatibility placeholder.
         """
         env = base_env.get_sub_environments()[env_index]
+        obs = episode.last_observation_for()
         info = episode.last_info_for()
         episode.user_data["power"].append(info["total_power"])
         episode.user_data["term_comfort"].append(info["comfort_penalty"])

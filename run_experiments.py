@@ -97,7 +97,7 @@ def get_agent(config: ExperimentConfig, args, planning_model=None):
     return agent
 
 
-def train_agent(agent: UncertainPPO, timesteps: int, log_path: str, full_eval_interval: int, config: ExperimentConfig, profile: bool=None):
+def train_agent(agent: UncertainPPO, timesteps: int, log_path: str, full_eval_interval: int, config: ExperimentConfig, profile: bool=None, use_wandb=False):
     full_eval_fn = config.full_eval_fn
     training_steps = 0
     i = 0
@@ -110,8 +110,13 @@ def train_agent(agent: UncertainPPO, timesteps: int, log_path: str, full_eval_in
             agent._result_logger.on_result(result)
             agent.callbacks.limited_eval(agent)
         if i % 1 == 0:
-            path = agent.save(f"{log_path}/checkpoint_{i}")
+            ckpt_dir = f"{log_path}/checkpoint_{i}"
+            path = agent.save(ckpt_dir)
             print(f"SAVING CHECKPOINT TO {path}")
+            if use_wandb:
+                model_artifact = wandb.Artifact("sinergym_model", type="model")
+                model_artifact.add_dir(ckpt_dir)
+                wandb.log_artifact(model_artifact)
         if profile is not None:
             print_profile(profile, None)
         training_steps = result["timesteps_total"]
@@ -160,7 +165,7 @@ if __name__ == "__main__":
         profile = None
 
     train_agent(agent, timesteps=args.num_timesteps, log_path=args.log_path,
-                full_eval_interval=args.full_eval_interval, config=config, profile=profile)
+                full_eval_interval=args.full_eval_interval, config=config, profile=profile, use_wandb=args.wandb)
 
     if args.profile:
         profile.disable()

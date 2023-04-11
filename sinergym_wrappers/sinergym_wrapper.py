@@ -1,3 +1,4 @@
+import _thread
 import gym
 import numpy as np
 from gym.spaces.box import Box
@@ -21,7 +22,7 @@ import socket
 import threading
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from gym import register
-
+import datetime
 
 LOG_LEVEL_MAIN = 'INFO'
 LOG_LEVEL_EPLS = 'FATAL'
@@ -60,7 +61,8 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         """
         # Set up environment
         curr_pid = os.getpid()
-        self.base_env_name = 'Eplus-5Zone-hot-discrete-stochastic-v1-FlexibleReset'
+        self.action_type = "continuous" if config.get("continuous", False) else "discrete"
+        self.base_env_name = f'Eplus-5Zone-hot-{self.action_type}-stochastic-v1-FlexibleReset'
         self.timesteps_per_hour = config.get("timesteps_per_hour", 1)
 
         weather_file = config.get("weather_file", "USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw")
@@ -69,6 +71,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         if self.sample_environments:
             self.OU_param_df = self._load_OU_params(self.environment_variability_file)
         self.act_repeat = config.get("act_repeat", 1)
+        self.random_month = config.get("random_month", False)
 
         self.epw_data = config["epw_data"]
         weather_bounds = {name: (self.epw_data.weather_min[name], self.epw_data.weather_max[name]) for name in self.epw_data.weather_min.index}
@@ -85,7 +88,10 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
                         },
                         act_repeat=self.act_repeat,
                         config_params={'timesteps_per_hour' : self.timesteps_per_hour,
-                                        'weather_bounds': weather_bounds})
+                                        'weather_bounds': weather_bounds,
+                                        "random_month": self.random_month})
+        
+        print("ACTION SPACE IS: ", env.action_space)
         
         # Get controller overrides
         self.use_rbc = config.get("use_rbc", False)
@@ -126,11 +132,11 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         # Maps weather variable name to indexes in observation
         # Has entries for both the epw format (e.g. 'drybulb') and the sinergym format
         # (e.g. 'Site Outdoor Air Drybulb Temperature(Environment)')
-        self.variability_idxs = {} 
+        self.variability_noise_idxs = {} 
         self.variability_low = []
         self.variability_high = []
         for key, variability in self.env.weather_variability.items():
-            self.variability_idxs[key] = list(range(i, i+2))
+            self.variability_noise_idxs[key] = list(range(i, i+2))
             if "variability_low" in config:
                 self.variability_low.extend(config["variability_low"][key])
             else:
@@ -142,7 +148,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
                 self.variability_high.extend(list(variability))
             i += 2
         obs_space_shape_list[-1] = i
-        self.variability_idxs.update({WEATHER_VAR_MAP.get(variable, ""): i for i, variable in enumerate(self.env.variables["observation"])})
+        self.variability_offset_idxs = {WEATHER_VAR_MAP.get(variable, ""): i for i, variable in enumerate(self.env.variables["observation"])}
 
         self.variability_low = np.array(self.variability_low)
         self.variability_high = np.array(self.variability_high)
@@ -182,12 +188,14 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
 
     def observation(self, observation: np.ndarray):
         variability = np.zeros(self.num_extra_variability_dims)
+
         for key, var in self.env.weather_variability.items():
-            idxs = [idx - self.original_obs_space_shape[-1] for idx in self.variability_idxs[key]]
+            idxs = [idx - self.original_obs_space_shape[-1] for idx in self.variability_noise_idxs[key]]
             variability[idxs] = np.array(var)[0::2]
         
         variability = (variability - self.variability_offset) / self.variability_scale
-        return np.concatenate([observation, variability], axis=-1)
+        obs = np.concatenate([observation, variability], axis=-1)
+        return obs
 
     # def inverse_observation(self, observation: torch.Tensor):
     #     return observation[..., :-self.num_extra_variability_dims]
@@ -196,7 +204,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         """Separates the observation into the resettable portion and the original. Make sure this operation is differentiable"""
         resettable = []
         for key in self.active_variables:
-            offset = torch.unsqueeze(obs[..., self.variability_idxs[key]], dim=-1)
+            offset = torch.unsqueeze(obs[..., self.variability_offset_idxs[key]], dim=-1)
             resettable.append(offset)
         resettable.append(obs[..., -self.num_extra_variability_dims:])
         resettable = torch.concat(resettable, dim=-1)
@@ -207,7 +215,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         # Make sure torch doesn't backprop into non-resettable part
         obs = obs.detach()
         for i, key in enumerate(self.active_variables):
-            obs[..., self.variability_idxs[key]] = resettable[..., i]
+            obs[..., self.variability_offset_idxs[key]] = resettable[..., i]
         obs[..., -self.num_extra_variability_dims:] = resettable[..., len(self.active_variables):]
         return obs
 
@@ -220,7 +228,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
     def _sample_variability(self):
         row = self.OU_param_df.sample(1)
         ret = {}
-        for variable in self.variability_idxs.keys():
+        for variable in self.variability_noise_idxs.keys():
             OU_param = [0,0,0]
             for j in range(3):
                 OU_param[j] = np.array(row[f"{variable}_{j}"]).squeeze().item()
@@ -247,34 +255,39 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         pre-set weather variabilities in the environment. Pass a negative int to sample weather variabilities
         from a file. Pass nothing to use the default weather variability.
         """
-        obs = self.env.reset()
+        
         weather_df = self.env.simulator._config.weather_data.get_weather_series()
         self.weather_means = weather_df.mean(axis=0)
-        self.last_untransformed_obs = obs
+        first_day_weather = weather_df.iloc[0]
         if isinstance(initial_state, int):
             if initial_state < 0 and self.sample_environments:
                 curr_weather_variability = self._sample_variability()
+                print("SAMPLED VARIABILITY", curr_weather_variability)
             elif initial_state >= 0 and initial_state < len(self.weather_variability):
                 # Set to specified weather variability scenario
                 self.scenario_idx = initial_state
                 curr_weather_variability = self.weather_variability[self.scenario_idx]
+                print("PRESET VARIABILITY", curr_weather_variability)
             else:
                 raise ValueError("initial state does not specify a valid weather variability.")
-            print("PRESET VARIABILITY", curr_weather_variability)
-            self.env.simulator.reset(curr_weather_variability)
+            obs = self.env.reset(weather_variability=curr_weather_variability)
+
         elif initial_state is not None:
             # Reset simulator with specified weather variability
             variability = self._get_variability_from_state(initial_state)
             variability_dict = {}
-            for var_name, idxs in self.variability_idxs.items():
+            for var_name, idxs in self.variability_noise_idxs.items():
                 idxs = [idx - self.original_obs_space_shape[-1] for idx in idxs]
                 variability_params = variability[idxs]
-                offset = self._get_offset_from_state(initial_state, var_name)
+                offset = self._get_offset_from_state(initial_state, var_name, first_day_weather)
                 variability_dict[var_name] = (variability_params[0], offset, variability_params[1])#(variability_params[0], offset, variability_params[1])
             print("ACTIVE VARIABILITY", variability_dict)
             self.last_variability = variability_dict
-            _, obs, _ = self.env.simulator.reset(variability_dict)
-            obs = np.array(obs, dtype=np.float32)
+            obs = self.env.reset(weather_variability=variability_dict)
+        else:
+            obs = self.env.reset()
+        self.last_untransformed_obs = obs
+        obs = np.array(obs, dtype=np.float32)
 
         return self.observation(obs)
 
@@ -284,12 +297,12 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         variability = np.clip(variability, self.variability_low, self.variability_high)
         return variability
 
-    def _get_offset_from_state(self, initial_state, var_name):
-        offset_idx = self.variability_idxs[var_name]
+    def _get_offset_from_state(self, initial_state, var_name, first_day_weather):
+        offset_idx = self.variability_offset_idxs[var_name]
         offset = np.clip(initial_state[..., offset_idx], 0, 1)
         var_range = self._get_range(var_name)
         offset = offset * (var_range[1] - var_range[0]) + var_range[0]
-        offset -= self.weather_means[var_name]
+        offset -= first_day_weather[var_name]
         return offset
     
 
@@ -312,18 +325,34 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
     def sample_obs(self):
         """Automatically sample an observation to seed state generation"""
         obs = np.zeros(self.observation_space.shape) + 0.5
-        for var_name, idxs in self.variability_idxs.items():
+        for var_name, idxs in self.variability_noise_idxs.items():
 
-            offset_idx = self.variability_idxs[var_name]
+            offset_idx = self.variability_noise_idxs[var_name]
             var_range = self.env.ranges[REVERSE_WEATHER_MAP[var_name]]
             obs[offset_idx] = (self.weather_means[var_name] - var_range[0]) / (var_range[1] - var_range[0])
         return obs
     
 class FlexibleResetConfig(Config):
+
+    def __init__(self,
+            idf_path: str,
+            weather_path: str,
+            variables: Dict[str, List[str]],
+            env_name: str,
+            max_ep_store: int,
+            action_definition: Optional[Dict[str, Any]],
+            extra_config: Dict[str, Any]):
+        super().__init__(idf_path, weather_path, variables, env_name, max_ep_store, action_definition, extra_config)
+        if self.config['random_month']:
+            self.next_date_offset = np.random.randint(0, 358) * 24
+        else:
+            self.next_date_offset = 0
+
     """ Custom configuration class that extends apply_weather_variability to more flexibly change more weather aspects"""
     def apply_weather_variability(
             self,
-            variation: Optional[Dict] = None) -> str:
+            variation: Optional[Dict] = None,
+            date_offset: int = 0) -> str:
         """Modify weather data using Ornstein-Uhlenbeck process.
         Args:
             variation (Dict, optional): Maps columns to be affected to the corresponding Ornstein-Uhlenbeck process parameters.
@@ -340,6 +369,12 @@ class FlexibleResetConfig(Config):
             weather_data_mod = deepcopy(self.weather_data)
             # Get dataframe with weather series
             df = weather_data_mod.get_weather_series()
+
+            if date_offset > 0:
+                df_copy = df.copy(deep=True)
+                df.iloc[date_offset:] = df.iloc[:-date_offset]
+                df.iloc[:date_offset] = df_copy[-date_offset:]
+
             for column, col_variation in variation.items():
                 sigma = col_variation[0]  # Standard deviation.
                 mu = col_variation[1]  # Mean.
@@ -372,7 +407,7 @@ class FlexibleResetConfig(Config):
                 # Add noise
                 df[column] += x
                 df[column] = np.clip(df[column], lower, upper)
-
+                
             # Save new weather data
             weather_data_mod.set_weather_series(df)
 
@@ -402,6 +437,8 @@ class FlexibleResetConfig(Config):
                         self.config[config_key]) == 6, 'Extra Config: Runperiod specified in extra configuration has an incorrect format (tuple with 6 elements).'
                 elif config_key == 'weather_bounds':
                     assert isinstance(self.config[config_key], dict)
+                elif config_key == "random_month":
+                    assert isinstance(self.config[config_key], bool)
                 else:
                     raise KeyError(
                         F'Extra Config: Key name specified in config called [{config_key}] has no support in Sinergym.')
@@ -540,6 +577,121 @@ class EPlusFlexibleResetSimulator(EnergyPlus):
         # Stepsize in seconds
         self._eplus_run_stepsize = 3600 / self._eplus_n_steps_per_hour
 
+        self.next_date_offset = 0
+
+    def reset(
+        self, weather_variability: Optional[Tuple[float, float, float]] = None
+    ) -> Tuple[float, List[float], bool]:
+        """Resets the environment.
+        This method does the following:
+        1. Makes a new EnergyPlus working directory.
+        2. Copies .idf and variables.cfg file to the working directory.
+        3. Creates the socket.cfg file in the working directory.
+        4. Creates the EnergyPlus subprocess.
+        5. Establishes the socket connection with EnergyPlus.
+        6. Reads the first sensor data from the EnergyPlus.
+        7. Uses a new weather file if passed.
+        Args:
+            weather_variability (Optional[Tuple[float, float, float]], optional): Tuple with the sigma, mean and tau for OU process. Defaults to None.
+        Returns:
+            Tuple[float, List[float], bool]: The first element is a value with simulation time elapsed;
+            the second element consist on EnergyPlus results in a 1-D list corresponding to the variables in
+            variables.cfg and year, month, day and hour in simulation. The last element is a boolean indicating whether the episode terminates.
+        """
+        # End the last episode if exists
+        if self._episode_existed:
+            self._end_episode()
+            self.logger_main.info(
+                'EnergyPlus episode completed successfully. ')
+            self._epi_num += 1
+
+        if self._config.config["random_month"]:
+            # Update current week
+            base = datetime.datetime(1991, 1, 1, 0)
+            random_offset = datetime.timedelta(days=self.next_date_offset)
+            delta = datetime.timedelta(weeks=4)
+            start = base + random_offset
+            end = start + delta
+            self._config.config["runperiod"] = (start.day, start.month, end.year, end.day, end.month, end.year)
+            self._config.apply_extra_conf()
+
+        # Create EnergyPlus simulation process
+        self.logger_main.info('Creating new EnergyPlus simulation episode...')
+        # Creating episode working dir
+        eplus_working_dir = self._config.set_episode_working_dir()
+        # Getting IDF, WEATHER, VARIABLES and OUTPUT path for current episode
+        eplus_working_idf_path = self._config.save_building_model()
+        eplus_working_var_path = self._config.save_variables_cfg()
+        eplus_working_out_path = (eplus_working_dir + '/' + 'output')
+        eplus_working_weather_path = self._config.apply_weather_variability(
+            variation=weather_variability, date_offset=self.next_date_offset)
+
+        if self._config.config["random_month"]:
+            self.next_date_offset = np.random.randint(0, 358) * 24
+
+        self._create_socket_cfg(self._host,
+                                self._port,
+                                eplus_working_dir)
+        # Create the socket.cfg file in the working dir
+        self.logger_main.info('EnergyPlus working directory is in %s'
+                              % (eplus_working_dir))
+        # Create new random weather file in case variability was specified
+        # noise always from original EPW
+
+        # Select new weather if it is passed into the method
+        eplus_process = self._create_eplus(
+            self._eplus_path,
+            eplus_working_weather_path,
+            eplus_working_idf_path,
+            eplus_working_out_path,
+            eplus_working_dir)
+        self.logger_main.debug(
+            'EnergyPlus process is still running ? %r' %
+            self._get_is_subprocess_running(eplus_process))
+        self._eplus_process = eplus_process
+
+        # Log EnergyPlus output
+        eplus_logger = Logger().getLogger('EPLUS_ENV_%s_%s-EPLUSPROCESS_EPI_%d' %
+                                          (self._env_name, self._thread_name, self._epi_num), LOG_LEVEL_EPLS, LOG_FMT)
+        _thread.start_new_thread(self._log_subprocess_info,
+                                 (eplus_process.stdout,
+                                  eplus_logger))
+        _thread.start_new_thread(self._log_subprocess_err,
+                                 (eplus_process.stderr,
+                                  eplus_logger))
+
+        # Establish connection with EnergyPlus
+        # Establish connection with client
+        conn, addr = self._socket.accept()
+        self.logger_main.debug('Got connection from %s at port %d.' % (addr))
+        # Start the first data exchange
+        rcv_1st = conn.recv(2048).decode(encoding='ISO-8859-1')
+        self.logger_main.debug(
+            'Got the first message successfully: ' + rcv_1st)
+        version, flag, nDb, nIn, nBl, curSimTim, Dblist \
+            = self._disassembleMsg(rcv_1st)
+        # get time info in simulation
+        time_info = get_current_time_info(self._config.building, curSimTim)
+        # Add time_info date in the end of the Energyplus observation
+        Dblist = time_info + Dblist
+        # Remember the message header, useful when send data back to EnergyPlus
+        self._eplus_msg_header = [version, flag]
+        self._curSimTim = curSimTim
+        # Check if episode terminates
+        is_terminal = False
+        if curSimTim >= self._eplus_one_epi_len:
+            is_terminal = True
+        # Change some attributes
+        self._conn = conn
+        self._eplus_working_dir = eplus_working_dir
+        self._episode_existed = True
+        # Check termination
+        if is_terminal:
+            self._end_episode()
+
+
+        return (curSimTim, Dblist, is_terminal)
+
 class EPlusFlexibleResetEnv(EplusEnv):
     """Exactly the same as EplusEnv, except the reset function can reset things other than drybulb temps"""
     def __init__(
@@ -672,6 +824,18 @@ class EPlusFlexibleResetEnv(EplusEnv):
         # ---------------------------------------------------------------------------- #
 
         self._check_eplus_env()
+
+    def reset(self, weather_variability=None) -> np.ndarray:
+        """Reset the environment.
+        Returns:
+            np.ndarray: Current observation.
+        """
+        if weather_variability is None:
+            weather_variability = self.weather_variability
+        # Change to next episode
+        _, obs, _ = self.simulator.reset(weather_variability)
+
+        return np.array(obs, dtype=np.float32)
 
 # Add new variants of all registered sinergym envs
 registered_envs = list(gym.envs.registry.items())

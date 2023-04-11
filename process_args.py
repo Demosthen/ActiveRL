@@ -246,6 +246,21 @@ def add_args(parser):
         help = "What kind of base weather to have",
         choices=[weather.value for weather in SG_WEATHER_TYPES]
     )
+    parser.add_argument(   
+        "--random_month",
+        action="store_true",
+        help = "Whether to sample a random week's weather instead of a whole year",
+    )
+    parser.add_argument(   
+        "--no_noise",
+        action="store_true",
+        help = "Whether to have any noise in the training weather or not",
+    )
+    parser.add_argument(   
+        "--continuous",
+        action="store_true",
+        help = "Whether to use a continuous action space or not",
+    )
 
     # ACTIVE RL PARAMS
     parser.add_argument(
@@ -307,7 +322,42 @@ def add_args(parser):
         help="Number of dropout evaluations to run to estimate uncertainty",
         default=5
     )
-
+    parser.add_argument(
+        "--plr_d",
+        type=float,
+        help="Set to 1 to turn on PLR and 0 to turn it off",
+        default=0.0
+    )
+    parser.add_argument(
+        "--plr_beta",
+        type=float,
+        help="Beta parameter for PLR",
+        default=0.1
+    )
+    parser.add_argument(
+        "--plr_envs_to_1",
+        type=int,
+        help="Number of environments to go through until probability of using PLR is 1",
+        default=100
+    )
+    parser.add_argument(
+        "--env_repeat",
+        type=int,
+        help="Number of train steps to repeat the same env parameters",
+        default=1
+    )
+    parser.add_argument(
+        "--start",
+        type=int,
+        help="Number of train steps after which to start using any smart reset methods",
+        default=0
+    )
+    parser.add_argument(
+        "--plr_rho",
+        type=float,
+        help="Staleness mixing parameter for PLR",
+        default=0.1
+    )
     parser.add_argument(
         "--dropout",
         type=float,

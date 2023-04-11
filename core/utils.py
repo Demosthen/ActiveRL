@@ -77,6 +77,8 @@ def states_to_np(state, inplace=True):
         for k, v in state.items():
             state[k] = v.detach().squeeze().cpu().numpy()
         return state
+    elif isinstance(state, np.ndarray):
+        return state
     else:
         return state.detach().squeeze().cpu().numpy()
 
@@ -126,7 +128,7 @@ def build_variability_dict(names, rev_names, variability):
         ret[name] = rev_variability
     return ret
 
-def get_variability_configs(names, rev_names=[], only_default_eval = False, epw_data: Optional[EPW_Data] = None):
+def get_variability_configs(names, rev_names=[], only_default_eval = False, epw_data: Optional[EPW_Data] = None, no_noise=False):
     """
         Utility function to easily construct config arguments for the weather_variability
         related parameters of sinergym.
@@ -142,21 +144,30 @@ def get_variability_configs(names, rev_names=[], only_default_eval = False, epw_
     
     all_names =  names + rev_names
     if epw_data:
-        epw_means = {name: epw_data.read_OU_param(epw_data.OU_mean, name) for name in all_names}
+        #epw_means = {name: epw_data.read_OU_param(epw_data.OU_mean, name) for name in all_names}
+        base_OU = epw_data.base_OU
         train_variability_low = {name: epw_data.read_OU_param(epw_data.OU_min, name)[0::2] for name in all_names}
         train_variability_high = {name: epw_data.read_OU_param(epw_data.OU_max, name)[0::2] for name in all_names}
         # Take the average value of standard deviation and time constant, but set offset to 0
-        train_variability = [{name: np.array([epw_means[name][0], 0, epw_means[name][2]]) for name in all_names}]
+        train_variability = [{name: np.array([base_OU[name][0], 0, base_OU[name][2]]) for name in all_names}]
     else:
         train_variability_low = {name: (0.0, 0.000999) for name in names + rev_names}
         train_variability_high = {name: (15.0, 0.00101) for name in names + rev_names}
         train_variability = [build_variability_dict(names, rev_names, (1., 0., 0.001))]
 
+    if no_noise:
+        train_variability = [{name: np.array([0, 0, 0.001]) for name in all_names}]
+
     eval_variability = deepcopy(train_variability)
     if not only_default_eval:
-        eval_variability.extend([build_variability_dict(names, rev_names, (1, -20, 0.001)),
-                            build_variability_dict(names, rev_names, (1, 20, 0.001)),
-                            build_variability_dict(names, rev_names, (10, 0, 0.001))])
+        # eval_variability.extend([build_variability_dict(names, rev_names, (1, -20, 0.001)),
+        #                     build_variability_dict(names, rev_names, (1, 20, 0.001)),
+        #                     build_variability_dict(names, rev_names, (10, 0, 0.001))])
+        eval_variability.extend([build_drought(train_variability[0]),
+                                build_hurricane(train_variability[0]),
+                                build_tropical_heat(train_variability[0]),
+                                build_cold_snap(train_variability[0]),
+                                build_noisy(train_variability[0])])
     
     return {"train_var": train_variability, 
             "train_var_low": train_variability_low, 
@@ -170,3 +181,48 @@ def get_log_path(log_dir):
     path = os.path.join(".", log_dir, date_time)
     os.makedirs(path, exist_ok=True)
     return path
+
+def build_drought(base_variability):
+    # Modeling a hot, dry, drought
+    ret = deepcopy(base_variability)
+    ret["drybulb"][1] = 30 # Corresponds to ~50 C
+    ret["relhum"][1] = -100 # It's a drought
+    ret["windspd"][1] = -3 # This brings avg windspd down to ~ 0
+    ret["dirnorrad"][1] = 1000 # max offset seen in US epw files
+    return ret
+
+def build_hurricane(base_variability):
+    # Modeling a hurricane
+    ret = deepcopy(base_variability)
+    ret["drybulb"][1] = 5 # ~ 25 C
+    ret["relhum"][1] = 100 # It's a hurricane
+    ret["windspd"][1] = 40 # Higher end of Category 2 (~160km/hr)
+    ret["dirnorrad"][1] = -300 # Assume some cloud cover
+    return ret
+
+def build_tropical_heat(base_variability):
+    # Modeling a heat wave in tropical weather
+    ret = deepcopy(base_variability)
+    ret["drybulb"][1] = 30 # Corresponds to ~50 C
+    ret["relhum"][1] = 100 # Tropical, so very wet
+    ret["windspd"][1] = -3 # This brings avg windspd down to ~ 0
+    ret["dirnorrad"][1] = 1000 # max offset seen in US epw files
+    return ret
+
+def build_cold_snap(base_variability):
+    # Modeling a cold snap
+    ret = deepcopy(base_variability)
+    ret["drybulb"][1] = -50 # ~-30 C
+    ret["relhum"][1] = 0
+    ret["windspd"][1] = 15
+    ret["dirnorrad"][1] = 0
+    return ret
+
+def build_noisy(base_variability):
+    # Modeling extremely unpredictable weather
+    ret = deepcopy(base_variability)
+    ret["drybulb"][0] *= 10
+    ret["relhum"][0] *= 10
+    ret["windspd"][0] *= 10
+    ret["dirnorrad"][0] *= 10
+    return ret
