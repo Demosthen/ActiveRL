@@ -62,9 +62,9 @@ class ActiveRLCallback(DefaultCallbacks):
             self.reward_optim = None
 
         self.plr_d = args.plr_d
-        self.plr_beta = args.plr_beta
-        self.plr_rho = args.plr_rho
-        self.plr_envs_to_1 = args.plr_envs_to_1
+        self.plr_beta = args.plr_beta if hasattr(args, "plr_beta") else 0.1
+        self.plr_rho = args.plr_rho  if hasattr(args, "plr_rho") else 0.1
+        self.plr_envs_to_1 = args.plr_envs_to_1 if hasattr(args, "plr_envs_to_1") else 1e6
         self.env_buffer = []
         self.plr_scheduler = LinearDecayScheduler(self.plr_envs_to_1)
         self.last_reset_state = None

@@ -13,11 +13,13 @@ from itertools import starmap
 import multiprocessing as mp
 import wandb
 import argparse
+import matplotlib.pyplot as plt
+import torch
 def add_args(parser):
     parser.add_argument(
         "--run_id",
         type=str,
-        help="Run to download model artifact from",
+        help="Run to download model artifact from. Set to RANDOM to use the random controller or RBC to use the rbc controller.",
         default=None
     )
     parser.add_argument(
@@ -44,6 +46,18 @@ def add_args(parser):
         help="Whether or not to overwrite existing cached reward data",
         default=None
     )
+    parser.add_argument(
+        "--num_repeats",
+        type=int,
+        help="Number of times to repeat each evaluation",
+        default=None
+    )
+    parser.add_argument(
+        "--timesteps_per_hour",
+        type=int,
+        help="Number of timesteps for Energyplus to run per simulated hour",
+        default=1
+    )    
     
     return parser
 def download_latest_model(run_id):
@@ -82,7 +96,7 @@ def download_latest_model(run_id):
 parser = argparse.ArgumentParser()
 add_args(parser)
 args = parser.parse_args()
-if args.run_id is None or args.compare_run_id is None:
+if args.run_id is None and args.compare_run_id is None:
     raise NotImplementedError("Please specify a run id using --run_id")
 if __name__ == "__main__":
     #wandb.init(project="active-rl", entity="social-game-rl", config=vars(args))
@@ -126,10 +140,11 @@ env_config = {
     "weather_variability": eval_weather_variabilities,
     "variability_low": weather_var_config["train_var_low"],
     "variability_high": weather_var_config["train_var_high"],
-    "use_rbc": 0,
-    "use_random": 0,
+    "use_rbc": 0, # We set these later in compute_reward
+    "use_random": 0, # We set these later in compute_reward
     "sample_environments": False,
-    "sinergym_timesteps_per_hour": 1,
+    "timesteps_per_hour": args.timesteps_per_hour,
+    "act_repeat": args.timesteps_per_hour,
     "random_month": False,
     "epw_data": epw_data,
     "weather_file": base_weather_file,
@@ -139,11 +154,19 @@ env_config = {
 # env_config = {'weather_variability': [{'drybulb': np.array([5.53173187e+00, 0.00000000e+00, 2.55034944e-03]), 'relhum': np.array([1.73128872e+01, 0.00000000e+00, 2.31712760e-03]), 'winddir': np.array([7.39984654e+01, 0.00000000e+00, 4.02298013e-04]), 'dirnorrad': np.array([3.39506556e+02, 0.00000000e+00, 9.78192172e-04]), 'windspd': np.array([1.64655725e+00, 0.00000000e+00, 3.45045547e-04])}], 'variability_low': {'drybulb': np.array([4.31066896e+00, 1.43882821e-03]), 'relhum': np.array([2.07871802e+01, 1.52442626e-03]), 'winddir': np.array([9.31378444e+01, 1.77923100e-04]), 'dirnorrad': np.array([2.26216882e+02, 3.96634341e-04]), 'windspd': np.array([1.92756975e+00, 2.60994514e-04])}, 'variability_high': {'drybulb': np.array([9.87995071e+00, 8.40623734e-03]), 'relhum': np.array([3.26129158e+01, 5.10374079e-03]), 'winddir': np.array([1.46046002e+02, 5.68863159e-04]), 'dirnorrad': np.array([3.51914077e+02, 8.28838542e-04]), 'windspd': np.array([3.73801488e+00, 8.64436358e-04])}, 'use_rbc': 0, 'use_random': 0, 'sample_environments': False, 'timesteps_per_hour': 1, 'weather_file': 'USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw', 'epw_data': epw_data, 'continuous': True, 'random_month': False}
 # %%
 from core.uncertain_ppo.uncertain_ppo import UncertainPPOTorchPolicy
-def compute_reward(checkpoint, i):
+def compute_reward(checkpoint, i, seed):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    env_config["use_rbc"] = (checkpoint == "RBC")
+    env_config["use_random"] = (checkpoint == "RANDOM")
     env = SinergymWrapper(env_config)
-    agent = UncertainPPOTorchPolicy.from_checkpoint(checkpoint)["default_policy"]
+    if checkpoint in ["RBC", "RANDOM"]:
+        compute_action = lambda obs: 0 # it doesn't matter what we send in because it will get replaced with the appropriate action anyway
+    else:
+        agent = UncertainPPOTorchPolicy.from_checkpoint(checkpoint)["default_policy"]
+        compute_action = lambda obs: np.array(agent.compute_single_action(obs)[0])
 
-    agent.model = agent.model.to("cuda")
+    # agent.model = agent.model.to("cuda")
     rew_df = {"rew": [], "x": [], "y": [], "idx": []}
     bad_idx = []
     try:
@@ -152,8 +175,8 @@ def compute_reward(checkpoint, i):
         avg_rew = 0
         cnt = 0
         while not done:
-            action = np.array(agent.compute_single_action(obs)[0])
-            action = np.clip(action, -1, 1)
+            action = compute_action(obs)
+            action = np.clip(action, -1, 1) # to be consistent with RLLib's automatic action normalization
             obs, rew, done, _ = env.step(action)
             avg_rew += rew
             cnt += 1
@@ -162,6 +185,7 @@ def compute_reward(checkpoint, i):
         pca = epw_data.transformed_df.iloc[i]
         rew_df["x"].append(pca[0])
         rew_df["y"].append(pca[1])
+        print(cnt)
     except Exception as e:
         print(e)
         rew_df["rew"].append(None)
@@ -172,55 +196,7 @@ def compute_reward(checkpoint, i):
     env.close()
     return rew_df, bad_idx
 
-if __name__ == "__main__":
-    import time
-    start = time.perf_counter()
-    # agent = UncertainPPO(config={"env_config": env_config, "env": env, "disable_env_checking": True})
-    checkpoints = {args.run_id: model1_dir, args.compare_run_id: model2_dir}#{"activerl": "checkpoints/activerl", "vanilla": "checkpoints/vanilla"}
-    agents = {}
-    rews = {}
-    bad_idxs = {}
-
-    # compute_reward(model1_dir, 0)
-    ctx = mp.get_context('spawn')
-    save_dir = f"checkpoints/comparisons/"
-    prefix = "extreme_" if args.use_extreme_weather else ""
-    with ctx.Pool(8) as workers:
-        for name, checkpoint in checkpoints.items():
-            ckpt_save_file = os.path.join(save_dir, prefix + name + ".pkl")
-            loaded_file = False
-            if os.path.exists(ckpt_save_file) and not args.no_cache:
-                with open(ckpt_save_file, 'rb') as f:
-                    rew_df, bad_idx = pickle.load(f)
-                loaded_file = True
-            else:
-                idxs = range(0, len(eval_weather_variabilities), 1)
-                rew_args = [(checkpoint, idx) for idx in idxs]
-                rew_df = {"rew": [], "x": [], "y": [], "idx": []}
-                bad_idx = []
-                for result in workers.starmap(compute_reward, rew_args):
-                    rew_df["rew"].extend(result[0]["rew"])
-                    rew_df["x"].extend(result[0]["x"])
-                    rew_df["y"].extend(result[0]["y"])
-                    rew_df["idx"].extend(result[0]["idx"])
-                    bad_idx.extend(result[1])
-                rew_df = pd.DataFrame.from_dict(rew_df)
-                with open(ckpt_save_file, 'wb') as f:
-                    pickle.dump((rew_df, bad_idx), f)
-            rews[name] = rew_df
-            bad_idxs[name] = bad_idx
-    
-    save_file = os.path.join(save_dir, f"{prefix}{args.run_id}_{args.compare_run_id}.pkl")
-    os.makedirs(save_dir, exist_ok=True)
-    with open(save_file, "wb") as f:
-        pickle.dump((rews, bad_idxs), f)
-
-    rew_artifact = wandb.Artifact("reward_data", type="evaluation")
-    rew_artifact.add_file(save_file)
-    wandb.log_artifact(rew_artifact)
-
-    # %%
-    import matplotlib.pyplot as plt
+def plot_scatter(args, start, rews, bad_idxs):
     green = np.array([0,1,0])
     red = np.array([1,0,0])
     all_bad_idxs = set(bad_idxs[args.run_id] + bad_idxs[args.compare_run_id])
@@ -245,5 +221,101 @@ if __name__ == "__main__":
     plt.savefig("test.png")
 
     wandb.log({"viz": wandb.Image("test.png")})
+
+def plot_bars(args, start, rews, bad_idxs):
+    green = np.array([0,1,0])
+    red = np.array([1,0,0])
+    all_bad_idxs = set(bad_idxs[args.run_id] + bad_idxs[args.compare_run_id])
+    print(all_bad_idxs)
+    # drop all bad indexes and sort by index
+    run_dfs = rews[args.run_id]
+    print(f"{args.run_id}: ", run_dfs)
+    idxs = ~run_dfs["idx"].isin(all_bad_idxs)
+    run_dfs = run_dfs[idxs].sort_values("idx")
+    grouped_runs = run_dfs.groupby("idx")
+    run_df_means = grouped_runs.mean()
+    run_df_stes = grouped_runs.std() / np.sqrt(grouped_runs.count())
+    compare_dfs = rews[args.compare_run_id]
+    compare_dfs = compare_dfs[idxs].sort_values("idx")
+    grouped_compares = compare_dfs.groupby("idx")
+    compare_df_means = grouped_compares.mean()
+    compare_df_stes = grouped_compares.std() / np.sqrt(grouped_compares.count())
+    print(f"{args.compare_run_id}: ", compare_dfs)
+
+    # rews = (np.array(run_df_means["rew"]) > np.array(compare_dfs["rew"]))[:, None]
+    xs = compare_df_means.index
+    end = time.perf_counter()
+    print(f"TOOK {end-start} SECONDS")
+
+    # Plots a bar chart with error bars with xs as the x-axis, comparing run_df_means and compare_df_means
+    # with run_df_stes and compare_df_stes as the error bars
+    plt.bar(xs-0.2, run_df_means["rew"], yerr=run_df_stes["rew"], width=0.4, align='center', alpha=0.5, ecolor='black', capsize=10)
+    plt.bar(xs+0.2, compare_df_means["rew"], yerr=compare_df_stes["rew"], width=0.4, align='center', alpha=0.5, ecolor='black', capsize=10)
+    
+    
+    plt.savefig("test.png")
+
+    wandb.log({"viz": wandb.Image("test.png")})
+
+
+if __name__ == "__main__":
+    import time
+    start = time.perf_counter()
+    # agent = UncertainPPO(config={"env_config": env_config, "env": env, "disable_env_checking": True})
+    checkpoints = {args.run_id: model1_dir, args.compare_run_id: model2_dir}#{"activerl": "checkpoints/activerl", "vanilla": "checkpoints/vanilla"}
+    agents = {}
+    rews = {}
+    bad_idxs = {}
+    names = {}
+
+    # compute_reward(model1_dir, 0)
+    ctx = mp.get_context('spawn')
+    save_dir = f"checkpoints/comparisons/"
+    prefix = "extreme_" if args.use_extreme_weather else ""
+    prefix += f"{args.timesteps_per_hour}_"
+    with ctx.Pool(8) as workers:
+        for name, checkpoint in checkpoints.items():
+            for k in range(args.num_repeats):
+                ckpt_save_file = os.path.join(save_dir, prefix + name + ".pkl")
+                loaded_file = False
+                if os.path.exists(ckpt_save_file) and not args.no_cache:
+                    with open(ckpt_save_file, 'rb') as f:
+                        rew_df, bad_idx = pickle.load(f)
+                    loaded_file = True
+                else:
+                    idxs = range(0, len(eval_weather_variabilities), 1)
+                    rew_args = [(checkpoint, idx, k) for idx in idxs]
+                    rew_df = {"rew": [], "x": [], "y": [], "idx": []}
+                    bad_idx = []
+                    for result in workers.starmap(compute_reward, rew_args):
+                        rew_df["rew"].extend(result[0]["rew"])
+                        rew_df["x"].extend(result[0]["x"])
+                        rew_df["y"].extend(result[0]["y"])
+                        rew_df["idx"].extend(result[0]["idx"])
+                        bad_idx.extend(result[1])
+                    rew_df = pd.DataFrame.from_dict(rew_df)
+                    with open(ckpt_save_file, 'wb') as f:
+                        pickle.dump((rew_df, bad_idx), f)
+                if name not in rews:
+                    rews[name] = rew_df
+                    bad_idxs[name] = bad_idx
+                else:
+                    rews[name] = rews[name].append(rew_df)
+                    bad_idxs[name].extend(bad_idx)
+    
+    save_file = os.path.join(save_dir, f"{prefix}{args.run_id}_{args.compare_run_id}.pkl")
+    os.makedirs(save_dir, exist_ok=True)
+    with open(save_file, "wb") as f:
+        pickle.dump((rews, bad_idxs), f)
+
+    rew_artifact = wandb.Artifact("reward_data", type="evaluation")
+    rew_artifact.add_file(save_file)
+    wandb.log_artifact(rew_artifact)
+
+    # %%
+    if args.use_extreme_weather:
+        plot_bars(args, start, rews, bad_idxs)
+    else:
+        plot_scatter(args, start, rews, bad_idxs)
 
 
