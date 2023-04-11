@@ -93,6 +93,12 @@ class ActiveRLCallback(DefaultCallbacks):
             rewards = np.array(algorithm.evaluation_workers.foreach_worker(access_eval_metrics))
             rewards = np.mean(rewards, axis=0)
             per_cell_rewards = {f"{cell}": rew for cell, rew in enumerate(rewards)}
+            """
+            For testing color displays
+            rs = [va for _, va in enumerate(rewards)]
+            print("\n\n\n\nMAX:\t\t" + str(max(rs)) + "\n\nMIN:\t\t" + str(min(rs)) + "\n\nCOUNT:\t\t" + str(len(rs)) + "\n\n")
+            per_cell_rewards = {f"{cell}": (15*cell/len(rs))-5 for cell, rew in enumerate(rewards)}
+            """
             evaluation_metrics["evaluation"]["per_cell_rewards"] = per_cell_rewards
             img_arr = self.visualization_env.render(mode="rgb_array", reward_dict=per_cell_rewards)
             img_arr = np.transpose(img_arr, [2, 0, 1])

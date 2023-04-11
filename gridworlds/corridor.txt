@@ -1,13 +1,11 @@
 [
-        "WWWWWWWWWWW",
-        "WWWWWWWWWWW",
-        "WEEEEEEEEEW",
-        "WEEEEEEEEEW",
-        "WSEEGEEEEEW",
-        "WEEEEEEEEEW",
-        "WEEEEEEEEEW",
-        "WWWWWWWWWWW",
-        "WWWWWWWWWWW"
+        "WWWWWWWWW",
+        "EEEEEEEEE",
+        "EEEEEEEEE",
+        "SEEGEEEEE",
+        "EEEEEEEEE",
+        "EEEEEEEEE",
+        "WWWWWWWWW"
 ]
 ---
 {
