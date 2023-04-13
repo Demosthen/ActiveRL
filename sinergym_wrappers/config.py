@@ -39,7 +39,8 @@ def get_config(args):
         "weather_file": base_weather_file,
         "epw_data": epw_data,
         "continuous": args.continuous,
-        "random_month": args.random_month
+        "random_month": args.random_month,
+        "only_vary_offset": args.only_vary_offset,
     }
     eval_env_config = deepcopy(env_config)
     eval_env_config["weather_variability"] = weather_var_config["eval_var"]
