@@ -338,7 +338,8 @@ class SimpleGridEnv(Env):
                 for a in range(nA):
                     li = P[s][a]
                     letter = self.desc[row, col]
-                    if letter in b"GWB":
+                    if letter in b"GB":
+                    # if letter in b"GWB":
                         li.append((1.0, s, 0, True)) #@NOTE: is reward=0 correct? Probably the value doesn't matter.
                     elif letter in DIRS and a != DIRS[letter]:
                         li.append((self.wind_p, *self.__transition(row, col, DIRS[letter])))
