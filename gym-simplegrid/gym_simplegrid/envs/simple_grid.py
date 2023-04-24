@@ -363,7 +363,6 @@ class SimpleGridEnv(Env):
         transitions = self.P[self.s][a]
         i = categorical_sample([t[0] for t in transitions], self.np_random)
         p, s, r, d = transitions[i]
-        breakpoint()
         self.s = s
         self.lastaction = a
         return (int(s), r, d, {"prob": p})
