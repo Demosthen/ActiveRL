@@ -312,7 +312,7 @@ class SimpleGridEnv(Env):
         newrow, newcol = self.__to_next_xy(row, col, a)
         newstate = self.__to_s(newrow, newcol)
         newletter = self.desc[newrow, newcol]
-        done = bytes(newletter) in b"GW"
+        done = bytes(newletter) in b"GB"
         reward = self.reward_map[newletter]
         return newstate, reward, done
 
@@ -338,9 +338,13 @@ class SimpleGridEnv(Env):
                 for a in range(nA):
                     li = P[s][a]
                     letter = self.desc[row, col]
+                    next_row, next_col = self.__to_next_xy(row, col, a)
+                    next_letter = self.desc[next_row, next_col]
                     if letter in b"GB":
                     # if letter in b"GWB":
                         li.append((1.0, s, 0, True)) #@NOTE: is reward=0 correct? Probably the value doesn't matter.
+                    elif next_letter in b"W":
+                        li.append((1.0, s, 0, False))
                     elif letter in DIRS and a != DIRS[letter]:
                         li.append((self.wind_p, *self.__transition(row, col, DIRS[letter])))
                         li.append( (1-self.wind_p, *self.__transition(row, col, a)) )
@@ -359,6 +363,7 @@ class SimpleGridEnv(Env):
         transitions = self.P[self.s][a]
         i = categorical_sample([t[0] for t in transitions], self.np_random)
         p, s, r, d = transitions[i]
+        breakpoint()
         self.s = s
         self.lastaction = a
         return (int(s), r, d, {"prob": p})
