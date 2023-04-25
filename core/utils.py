@@ -212,7 +212,7 @@ def build_tropical_heat(base_variability):
 def build_cold_snap(base_variability):
     # Modeling a cold snap
     ret = deepcopy(base_variability)
-    ret["drybulb"][1] = -20 # ~-30 C
+    ret["drybulb"][1] = -20 # ~5 C
     ret["relhum"][1] = 0
     ret["windspd"][1] = 15
     ret["dirnorrad"][1] = 0
