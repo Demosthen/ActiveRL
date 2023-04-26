@@ -46,7 +46,7 @@ for tag, val in vals.items():
         curr_df.update({
                 tag + ' - ' + Y_KEY : curr_vals.mean(axis=0), 
                 tag + ' - ' + Y_KEY + '__std': curr_vals.std(axis=0), 
-                tag + ' - ' + Y_KEY + '__ste': curr_vals.std(axis=0) / np.sqrt(len(idxs))})
+                tag + ' - ' + Y_KEY + '__ste': curr_vals.std(axis=0) / np.sqrt(len(curr_vals))})
     curr_df = pd.DataFrame.from_dict(curr_df)
     if all_df is None:
         all_df = curr_df
