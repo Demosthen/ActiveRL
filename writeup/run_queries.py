@@ -9,3 +9,27 @@ GROUP_BY ={
 BASELINE = {
             "results": "results_random",
 }
+
+COLORS = {
+    "results": {
+        "results_random": "red",
+        "results_rbc": "blue",
+        "results_activeplr": "green",
+        "results_activerl": "orange",
+        "results_plr": "purple",
+        "results_random_reset": "pink",
+        "results_vanilla": "black",
+    }
+}
+
+NAMES = {
+    "results": {
+        "results_random": "Random",
+        "results_rbc": "RBC",
+        "results_activeplr": "Active-PLR",
+        "results_activerl": "Active-RL",
+        "results_plr": "PLR",
+        "results_random_reset": "Domain Randomization",
+        "results_vanilla": "RL",
+    }
+}

@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 from graph_logs import *
 import os
+from run_queries import *
 
 def graph(file, 
           TAG="ray/tune/evaluation/custom_metrics/reward_mean_mean", 
@@ -23,37 +24,14 @@ def graph(file,
     linewidth=3
     axis_width=3
     def name_func(name):
-        if name == "results_random":
-            name = "Random"
-        elif name == "results_rbc":
-            name = "RBC"
-        elif name == "results_activeplr":
-            name = "Active-PLR"
-        elif name == "results_activerl":
-            name = "Active-RL"
-        elif name == "results_plr":
-            name = "PLR"
-        elif name == "results_random_reset":
-            name = "Domain Randomization"
-        elif name == "results_vanilla":
-            name = "RL"
+        name = NAMES["results"][name]
         return name
     
     def color_func(name):
-        if name == "Random":
-            return "red"
-        elif name == "RBC":
-            return "blue"
-        elif name == "Active-PLR":
-            return "green"
-        elif name == "Active-RL":
-            return "orange"
-        elif name == "PLR":
-            return "purple"
-        elif name == "Domain Randomization":
-            return "pink"
-        elif name == "RL":
-            return "black"
+        colors = COLORS["results"]
+        name_reverse_map = {v:k for k,v in NAMES["results"].items()}
+        name = name_reverse_map[name]
+        return colors[name]
         
     yticks = None#[-1.1 + 0.05 * i for i in range(1, 4)]
     offset = get_random_offset(f"{file}.csv", TAG, random_name="results_random", data_func=data_func) if normalize else 0
