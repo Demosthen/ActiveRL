@@ -14,7 +14,7 @@ def graph(file,
           y_label="Reward",
           x_label="Timesteps",
           normalize=True):
-    plt.locator_params(axis='both', nbins=6)
+    plt.locator_params(axis='both', nbins=5)
     #xticks = [1000000 * i for i in range(5)]
     
     if out_file is None:
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     comfort_violation_tags = [f"ray/tune/evaluation/custom_metrics/env_{i}_comfort_violation_time____mean" for i in range(0, 6)]
     rew_tags = [f"ray/tune/evaluation/custom_metrics/env_{i}_reward_mean_mean" for i in range(0, 6)]
     comfort_penalty_tags = [f"ray/tune/evaluation/custom_metrics/env_{i}_mean_comfort_penalty_mean" for i in range(0, 6)]
-    window_width = 3
+    window_width = 5
 
     for tag in avg_rew_tags + rew_tags:
         out_file = tag.split("/")[-1]
