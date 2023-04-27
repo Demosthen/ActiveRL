@@ -70,9 +70,15 @@ def add_args(parser):
         action="store_true",
         help="Whether or not to run in debug mode"
     )    
+    parser.add_argument(
+        "--step",
+        type=int,
+        help="Which step to download the model from. If not provided, will download the latest model.",
+        default=117 # ~3000000 timesteps
+    )
     
     return parser
-def download_latest_model(run_id):
+def download_model(run_id, step=None):
     """
     Download the latest 'sinergym_model' artifact from a specified Weights & Biases run.
 
@@ -92,14 +98,28 @@ def download_latest_model(run_id):
     run = wandb.Api().run(f"{entity}/{project}/{run_id}")
     latest_artifact_id = -1
     latest_artifact_name = ""
+    min_artifact_id = np.inf
+    artifact_names = {}
     for artifact in run.logged_artifacts():
         if "sinergym_model" in artifact.name and artifact.type == "model":
             _, artifact_id = artifact.name.split(":v")
             artifact_id = int(artifact_id)
+            artifact_names[artifact_id] = artifact.name
+            min_artifact_id = min(min_artifact_id, artifact_id)
             if artifact_id > latest_artifact_id:
                 latest_artifact_name = artifact.name
                 latest_artifact_id = artifact_id
-    artifact = wandb.use_artifact(f"{entity}/{project}/{latest_artifact_name}", type="model")
+    
+    # Subtract min_artifact_id from all keys to get a 0-indexed dict
+    artifact_names = {k-min_artifact_id: v for k, v in artifact_names.items()}
+    if step is None or step not in artifact_names:
+        print(f"Step {step} not provided or not found, using latest model")
+        artifact_name = latest_artifact_name
+        step = latest_artifact_id - min_artifact_id
+    else:
+        artifact_name = artifact_names[step]
+    print("Downloading artifact: ", artifact_name, " at step ", step)
+    artifact = wandb.use_artifact(f"{entity}/{project}/{artifact_name}", type="model")
     artifact_dir = artifact.download(root=f"checkpoints/wandb/{run_id}")
     artifact_dir = os.path.join(artifact_dir, os.listdir(artifact_dir)[0])
 
@@ -190,7 +210,7 @@ def compute_reward(checkpoint, i, seed, tag):
         while not done and (cnt < 10 or not DEBUG_MODE):
             action = compute_action(obs)
             action = np.clip(action, -1, 1) # to be consistent with RLLib's automatic action normalization
-            obs, rew, done, _ = env.step(action)
+            obs, rew, done, info = env.step(action)
             avg_rew += rew
             cnt += 1
         rew_df["rew"].append(avg_rew / cnt)
@@ -236,10 +256,10 @@ def plot_scatter(args, start, rews, bad_idxs):
 
     wandb.log({"viz": wandb.Image("test.png")})
 
-def extract_rew_stats(run_dfs, all_bad_idxs):
+def extract_rew_stats(run_dfs, all_bad_idxs, group=True):
     idxs = ~run_dfs["idx"].isin(all_bad_idxs)
     run_dfs = run_dfs[idxs].sort_values("idx")
-    grouped_runs = run_dfs.groupby(["idx"])
+    grouped_runs = run_dfs.groupby(["idx"]) if group else run_dfs
     run_df_means = grouped_runs.mean()
     run_df_stes = grouped_runs.std() / np.sqrt(grouped_runs.count()) if np.all(grouped_runs.count() > 1) else pd.DataFrame(np.zeros_like(run_df_means), index=run_df_means.index, columns=run_df_means.columns)
 
@@ -247,17 +267,21 @@ def extract_rew_stats(run_dfs, all_bad_idxs):
 
 def plot_bars(start, rews, bad_idxs, graph_name):
     plt.figure(figsize=(40, 10))
+    plt.locator_params(axis='y', nbins=5)
+    fontsize=26
     all_bad_idxs = set(sum(bad_idxs.values(), []))
     print(all_bad_idxs)
     # drop all bad indexes and sort by index
-    width = 0.2
-    num_tags = len(rews)
+    width = 0.15
+    num_tags = len(rews) + 1
     colors = run_queries.COLORS[graph_name]
     labels = run_queries.NAMES[graph_name]
+    
     for i, tag in enumerate(rews.keys()):
         run_dfs = rews[tag]
         print(f"{tag}: ", run_dfs)
         run_df_means, run_df_stes = extract_rew_stats(run_dfs, all_bad_idxs)
+        all_run_df_means, all_run_df_stes = extract_rew_stats(run_dfs, all_bad_idxs, group=False)
 
         # rews = (np.array(run_df_means["rew"]) > np.array(compare_dfs["rew"]))[:, None]
         xs = run_df_means.index
@@ -267,13 +291,26 @@ def plot_bars(start, rews, bad_idxs, graph_name):
         color = colors[tag]
         label = labels[tag]
 
+        rew_means = pd.concat([run_df_means["rew"] + all_run_df_means["rew"]])
+        rew_stes = pd.concat([run_df_stes["rew"] + all_run_df_stes["rew"]])
+
         # Plots a bar chart with error bars with xs as the x-axis, comparing run_df_means and compare_df_means
         # with run_df_stes and compare_df_stes as the error bars
         try:
-            plt.bar(xs - width * num_tags / 2 + width * i, run_df_means["rew"], yerr=run_df_stes["rew"], width=width, align='center', alpha=0.5, ecolor='black', capsize=10, label=label, color=color)
+            rects = plt.bar(xs - width * num_tags / 2 + width * i, rew_means, yerr=rew_stes, width=width, align='center', alpha=0.5, ecolor='black', capsize=10, label=label, color=color)
+            plt.bar_label(rects, padding=3, fmt="%.3f", fontsize=fontsize)
         except Exception as e:
             breakpoint()
+
     
+    rects = plt.bar(num_tags - width * num_tags / 2 + width * i, all_run_df_means["rew"], yerr=all_run_df_stes["rew"], width=width, align='center', alpha=0.5, ecolor='black', capsize=10, label="Average", color=color)
+    plt.bar_label(rects, padding=3, fmt="%.3f", fontsize=fontsize)
+    
+    plt.legend(fontsize=fontsize+4)
+    plt.ylabel("Average Reward")
+    extreme_env_labels = ["Base", "Dry+Hot", "Wet+Windy", "Wet+Hot", "Dry+Cold", "Erratic", "Average"]
+    plt.xticks(np.arange(num_tags), labels=extreme_env_labels, fontsize=fontsize)
+    plt.tick_params(axis='y', labelsize=fontsize)
     plt.savefig("test.png")
 
     wandb.log({"viz": wandb.Image("test.png")})
@@ -296,7 +333,7 @@ def get_checkpoints(graph_name):
             
             run_id = run.id
             print(f"Downloading checkpoint for run {run_id} with tag {tag}")
-            model_dir = download_latest_model(run_id)
+            model_dir = download_model(run_id, args.step)
             if tag not in checkpoints:
                 checkpoints[tag] = [(run_id, model_dir)]
             else:
@@ -321,6 +358,7 @@ if __name__ == "__main__":
     save_dir = f"checkpoints/comparisons/"
     prefix = "extreme_" if args.use_extreme_weather else ""
     prefix += f"{args.timesteps_per_hour}_"
+    prefix += f"{args.step}_" if args.step else ""
     with ctx.Pool(8) as workers:
         for tag, checkpoint_list in checkpoints.items():
             for name, checkpoint in checkpoint_list:
