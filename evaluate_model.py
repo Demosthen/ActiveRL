@@ -241,15 +241,16 @@ def extract_rew_stats(run_dfs, all_bad_idxs):
     run_dfs = run_dfs[idxs].sort_values("idx")
     grouped_runs = run_dfs.groupby(["idx"])
     run_df_means = grouped_runs.mean()
-    run_df_stes = grouped_runs.std() / np.sqrt(grouped_runs.count())
+    run_df_stes = grouped_runs.std() / np.sqrt(grouped_runs.count()) if np.all(grouped_runs.count() > 1) else pd.DataFrame(np.zeros_like(run_df_means), index=run_df_means.index, columns=run_df_means.columns)
+
     return run_df_means, run_df_stes
 
 def plot_bars(start, rews, bad_idxs, graph_name):
-    plt.figure(figsize=(10, 10))
+    plt.figure(figsize=(40, 10))
     all_bad_idxs = set(sum(bad_idxs.values(), []))
     print(all_bad_idxs)
     # drop all bad indexes and sort by index
-    width = 0.4
+    width = 0.2
     num_tags = len(rews)
     colors = run_queries.COLORS[graph_name]
     labels = run_queries.NAMES[graph_name]
@@ -268,8 +269,10 @@ def plot_bars(start, rews, bad_idxs, graph_name):
 
         # Plots a bar chart with error bars with xs as the x-axis, comparing run_df_means and compare_df_means
         # with run_df_stes and compare_df_stes as the error bars
-        plt.bar(xs - width * num_tags / 2 + width * i, run_df_means["rew"], yerr=run_df_stes["rew"], width=width, align='center', alpha=0.5, ecolor='black', capsize=10, label=label, color=color)
-    
+        try:
+            plt.bar(xs - width * num_tags / 2 + width * i, run_df_means["rew"], yerr=run_df_stes["rew"], width=width, align='center', alpha=0.5, ecolor='black', capsize=10, label=label, color=color)
+        except Exception as e:
+            breakpoint()
     
     plt.savefig("test.png")
 
