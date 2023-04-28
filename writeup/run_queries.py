@@ -5,10 +5,18 @@ QUERIES = {
             "sim2real": {"$or": [
                         {"tags": {"$in": ["median_random", "median_activeplr", "median_activerl", "median_plr", "median_random_reset", "median_vanilla", "median_rbc"]}},
             ]},
+            "vary_reg": {"$or": [
+                        {"tags": {"$in": ["vary_reg"]}},
+            ]},
+            "vary_lr": {"$or": [
+                        {"tags": {"$in": ["vary_lr"]}},
+            ]},
 }
 GROUP_BY ={
-            "results": ["results_random",  "results_activeplr", "results_activerl", "results_plr", "results_random_reset", "results_vanilla"],
+            "results": ["results_random",  "results_activeplr", "results_activerl", "results_plr", "results_random_reset", "results_vanilla", "results_rbc"],
             "sim2real": ["median_random", "median_activeplr", "median_activerl", "median_plr", "median_random_reset", "median_vanilla", "median_rbc"],
+            "vary_reg": ["reg_0", "reg_0.5", "reg_0.05", "reg_0.005"],
+            "vary_lr": ["lr_1", "lr_0.1", "lr_0.01", "lr_0.001", "lr_0.0001"],
 }
 BASELINE = {
             "results": "results_random",
@@ -33,6 +41,19 @@ COLORS = {
         "median_plr": "purple",
         "median_random_reset": "pink",
         "median_vanilla": "black",
+    },
+    "vary_reg": {
+        "reg_0": "red",
+        "reg_0.5": "blue",
+        "reg_0.05": "green",
+        "reg_0.005": "orange",
+    },
+    "vary_lr": {
+        "lr_1": "red",
+        "lr_0.1": "blue",
+        "lr_0.01": "green",
+        "lr_0.001": "orange",
+        "lr_0.0001": "purple",
     }
 }
 
@@ -54,5 +75,18 @@ NAMES = {
         "median_plr": "PLR",
         "median_random_reset": "Domain Randomization",
         "median_vanilla": "RL",
+    },
+    "vary_reg": {
+        "reg_0": "γ=0",
+        "reg_0.5": "0.5",
+        "reg_0.05": "0.05",
+        "reg_0.005": "0.005",
+    },
+    "vary_lr": {
+        "lr_1": "1",
+        "lr_0.1": "0.1",
+        "lr_0.01": "0.01",
+        "lr_0.001": "0.001",
+        "lr_0.0001": "η=0.0001",
     }
 }

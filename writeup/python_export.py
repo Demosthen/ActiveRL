@@ -5,6 +5,9 @@ import sys
 import run_queries
 X_KEY = "ray/tune/counters/num_env_steps_sampled"
 Y_KEYS = ["ray/tune/evaluation/custom_metrics/reward_mean_mean"] + \
+        ["ray/tune/evaluation/custom_metrics/mean_power_penalty_mean"] + \
+        ["ray/tune/evaluation/custom_metrics/mean_comfort_penalty_mean"] + \
+        ["ray/tune/evaluation/custom_metrics/comfort_violation_time____mean"] + \
         [f"ray/tune/evaluation/custom_metrics/env_{i}_mean_power_penalty_mean" for i in range(0, 6)] + \
         [f"ray/tune/evaluation/custom_metrics/env_{i}_comfort_violation_time____mean" for i in range(0, 6)] + \
         [f"ray/tune/evaluation/custom_metrics/env_{i}_reward_mean_mean" for i in range(0, 6)] + \
