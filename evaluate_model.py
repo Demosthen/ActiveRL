@@ -135,6 +135,7 @@ def download_model(run_id, step=None):
 parser = argparse.ArgumentParser()
 add_args(parser)
 args = parser.parse_args()
+DEBUG_MODE = args.debug
 if (args.run_id is None and args.compare_run_id is None) and args.graph_name is None:
     raise NotImplementedError("Please specify a run id using --run_id or a graph name using --graph_name")
 if __name__ == "__main__":
@@ -171,6 +172,8 @@ for row, pca in zip(epw_data.epw_df.iterrows(), epw_data.transformed_df.iterrows
     min_diff = min(diff, min_diff)
 print(min_diff)
 
+if DEBUG_MODE:
+    weather_variabilities = weather_variabilities[:2]
 base_weather_file = 'USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw'
 eval_weather_variabilities = weather_var_config["eval_var"] if args.use_extreme_weather else weather_variabilities
 print(f"EVAL WEATHER VARIABILITIES LENGTH IS: {len(eval_weather_variabilities)}")
@@ -240,16 +243,22 @@ def compute_reward(checkpoint, i, seed, tag):
 def plot_scatter(args, start, rews, bad_idxs):
     green = np.array([0,1,0])
     red = np.array([1,0,0])
-    all_bad_idxs = set(bad_idxs[args.run_id] + bad_idxs[args.compare_run_id])
+    all_bad_idxs = set(sum(bad_idxs.values(), []))
     print(all_bad_idxs)
     # drop all bad indexes and sort by index
-    run_dfs = rews[args.run_id]
-    print(f"{args.run_id}: ", run_dfs)
+    assert len(rews) == 2
+    tags = list(rews.keys())
+    tag1 = tags[0]
+    tag2 = tags[1]
+    run_dfs = rews[tag1]
+    print(f"{tag1}: ", run_dfs)
     idxs = ~run_dfs["idx"].isin(all_bad_idxs)
     run_dfs = run_dfs[idxs].sort_values("idx")
-    compare_dfs = rews[args.compare_run_id]
+    compare_dfs = rews[tag2]
     compare_dfs = compare_dfs[idxs].sort_values("idx")
-    print(f"{args.compare_run_id}: ", compare_dfs)
+    print(f"{tag2}: ", compare_dfs)
+
+    
 
     rews = (np.array(run_dfs["rew"]) > np.array(compare_dfs["rew"]))[:, None]
     xs = compare_dfs["x"]
@@ -347,7 +356,7 @@ def get_checkpoints(graph_name):
                 checkpoints[tag].append((run_id, model_dir))
     return checkpoints
 
-DEBUG_MODE = args.debug
+
 if __name__ == "__main__":
     
     import time

@@ -14,6 +14,18 @@ QUERIES = {
             "vary_lr": {"$or": [
                         {"tags": {"$in": ["vary_lr"]}},
             ]},
+            "active_vs_random": {"$or": [
+                        {"tags": {"$in": ["median_activerl", "median_random"]}},
+            ]},
+            "active_vs_rbc": {"$or": [
+                        {"tags": {"$in": ["median_activerl", "median_rbc"]}},
+            ]},
+            "active_vs_plr": {"$or": [
+                        {"tags": {"$in": ["median_activerl", "median_plr"]}},
+            ]},
+            "active_vs_vanilla": {"$or": [
+                        {"tags": {"$in": ["median_activerl", "median_vanilla"]}},
+            ]},
 }
 GROUP_BY ={
             "debug": ["results_random", "results_activerl"],
@@ -21,6 +33,11 @@ GROUP_BY ={
             "sim2real": ["median_random", "median_activeplr", "median_activerl", "median_plr", "median_random_reset", "median_vanilla", "median_rbc"],
             "vary_reg": ["reg_0", "reg_0.5", "reg_0.05", "reg_0.005"],
             "vary_lr": ["lr_1", "lr_0.1", "lr_0.01", "lr_0.001", "lr_0.0001"],
+            "active_vs_random": ["median_activerl", "median_random"],
+            "active_vs_rbc": ["median_activerl", "median_rbc"],
+            "active_vs_plr": ["median_activerl", "median_plr"],
+            "active_vs_vanilla": ["median_activerl", "median_vanilla"],
+
 }
 BASELINE = {
             "results": "results_random",
@@ -63,7 +80,24 @@ COLORS = {
     "debug": {
         "results_random": "red",
         "results_activerl": "blue",
-    }
+    },
+    "active_vs_random": {
+        "median_activerl": "blue",
+        "median_random": "red",
+    },
+    "active_vs_rbc": {
+        "median_activerl": "blue",
+        "median_rbc": "red",
+    },
+    "active_vs_plr": {
+        "median_activerl": "blue",
+        "median_plr": "red",
+    },
+    "active_vs_vanilla": {
+        "median_activerl": "blue",
+        "median_vanilla": "red",
+    },
+
 }
 
 NAMES = {
@@ -101,5 +135,22 @@ NAMES = {
     "debug": {
         "results_random": "Random",
         "results_activerl": "Active-RL",
-    }
+    },
+    "active_vs_random": {
+        "median_activerl": "Active-RL",
+        "median_random": "Random",
+    },
+    "active_vs_rbc": {
+        "median_activerl": "Active-RL",
+        "median_rbc": "RBC",
+    },
+    "active_vs_plr": {
+        "median_activerl": "Active-RL",
+        "median_plr": "PLR",
+    },
+    "active_vs_vanilla": {
+        "median_activerl": "Active-RL",
+        "median_vanilla": "RL",
+    },
+    
 }
