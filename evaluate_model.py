@@ -99,19 +99,26 @@ def download_model(run_id, step=None):
     latest_artifact_id = -1
     latest_artifact_name = ""
     min_artifact_id = np.inf
-    artifact_names = {}
+    artifact_id_names = {}
+    artifact_ids = []
     for artifact in run.logged_artifacts():
         if "sinergym_model" in artifact.name and artifact.type == "model":
             _, artifact_id = artifact.name.split(":v")
             artifact_id = int(artifact_id)
-            artifact_names[artifact_id] = artifact.name
+            artifact_ids.append(artifact_id)
+            artifact_id_names[artifact_id] = artifact.name
             min_artifact_id = min(min_artifact_id, artifact_id)
             if artifact_id > latest_artifact_id:
                 latest_artifact_name = artifact.name
                 latest_artifact_id = artifact_id
     
-    # Subtract min_artifact_id from all keys to get a 0-indexed dict
-    artifact_names = {k-min_artifact_id: v for k, v in artifact_names.items()}
+    order = np.argsort(artifact_ids)
+    artifact_names = {}
+
+    for i, artifact_id in enumerate(artifact_ids):
+        artifact_names[i] = artifact_id_names[artifact_ids[order[i]]]
+    # # Subtract min_artifact_id from all keys to get a 0-indexed dict
+    # artifact_names = {k-min_artifact_id: v for k, v in artifact_names.items()}
     if step is None or step not in artifact_names:
         print(f"Step {step} not provided or not found, using latest model")
         artifact_name = latest_artifact_name
@@ -309,7 +316,7 @@ def plot_bars(start, rews, bad_idxs, graph_name):
     plt.legend(fontsize=fontsize+4)
     plt.ylabel("Average Reward")
     extreme_env_labels = ["Base", "Dry+Hot", "Wet+Windy", "Wet+Hot", "Dry+Cold", "Erratic", "Average"]
-    plt.xticks(np.arange(num_tags), labels=extreme_env_labels, fontsize=fontsize)
+    plt.xticks(np.arange(num_tags), labels=extreme_env_labels[:num_tags], fontsize=fontsize)
     plt.tick_params(axis='y', labelsize=fontsize)
     plt.savefig("test.png")
 

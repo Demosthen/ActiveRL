@@ -2,6 +2,9 @@ QUERIES = {
             "results": {"$or": [
                         {"tags": {"$in": ["results"]}},
             ]},
+            "debug": {"$or": [
+                        {"tags": {"$in": ["results"]}},
+            ]},
             "sim2real": {"$or": [
                         {"tags": {"$in": ["median_random", "median_activeplr", "median_activerl", "median_plr", "median_random_reset", "median_vanilla", "median_rbc"]}},
             ]},
@@ -13,6 +16,7 @@ QUERIES = {
             ]},
 }
 GROUP_BY ={
+            "debug": ["results_random", "results_activerl"],
             "results": ["results_random",  "results_activeplr", "results_activerl", "results_plr", "results_random_reset", "results_vanilla", "results_rbc"],
             "sim2real": ["median_random", "median_activeplr", "median_activerl", "median_plr", "median_random_reset", "median_vanilla", "median_rbc"],
             "vary_reg": ["reg_0", "reg_0.5", "reg_0.05", "reg_0.005"],
@@ -21,6 +25,7 @@ GROUP_BY ={
 BASELINE = {
             "results": "results_random",
             "sim2real": "median_random",
+            "debug": "results_random",
 }
 
 COLORS = {
@@ -54,6 +59,10 @@ COLORS = {
         "lr_0.01": "green",
         "lr_0.001": "orange",
         "lr_0.0001": "purple",
+    },
+    "debug": {
+        "results_random": "red",
+        "results_activerl": "blue",
     }
 }
 
@@ -88,5 +97,9 @@ NAMES = {
         "lr_0.01": "0.01",
         "lr_0.001": "0.001",
         "lr_0.0001": "η=0.0001",
+    },
+    "debug": {
+        "results_random": "Random",
+        "results_activerl": "Active-RL",
     }
 }
