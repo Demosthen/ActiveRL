@@ -38,6 +38,34 @@ WEATHER_VAR_MAP = {
 }
 REVERSE_WEATHER_MAP = {v: k for k, v in WEATHER_VAR_MAP.items()}
 
+class RBCController:
+    def __init__(self, env, type) -> None:
+        self.type = type
+        if type == "5Zone":
+            self.controller = RBC5Zone(env)
+        elif type == "Datacenter":
+            self.controller = RBCDatacenter(env)
+        else:
+            raise NotImplementedError
+
+    def act(self, observation: List[Any]) -> Sequence[Any]:
+        obs_dict = dict(zip(self.controller.variables['observation'], observation))
+        if self.type == "5Zone":
+            occupancy = obs_dict['Zone People Occupant Count(SPACE1-1)']
+            mean_temp = obs_dict['Zone Air Temperature(SPACE1-1)']
+        elif self.type == "Datacenter":
+            occupancy = obs_dict['Zone People Occupant Count(West Zone)'] + obs_dict['Zone People Occupant Count(East Zone)']
+            mean_temp = np.mean([obs_dict['Zone Air Temperature(West Zone)'],
+                             obs_dict['Zone Air Temperature(East Zone)']])
+        else:
+            raise NotImplementedError
+        if occupancy > 0:
+            action = self.controller.act(observation)
+        else:
+            action = (0, 50)
+        return action
+        
+
 class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
 
     def __init__(self, config):
@@ -115,10 +143,12 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
 
         # Initialize baselines if specified.
         if self.use_rbc:
-            if "5Zone" in self.base_env_name:
-                self.replacement_controller = RBC5Zone(self.env)
-            else:
-                self.replacement_controller = RBCDatacenter(self.env)
+            rbc_type = "5Zone" if "5Zone" in self.base_env_name else "Datacenter"
+            self.replacement_controller = RBCController(self.env, rbc_type)
+            # if "5Zone" in self.base_env_name:
+            #     self.replacement_controller = RBC5Zone(self.env)
+            # else:
+            #     self.replacement_controller = RBCDatacenter(self.env)
         elif self.use_random:
             self.replacement_controller = RandomController(self.env)
         else:
