@@ -175,6 +175,10 @@ print(min_diff)
 if DEBUG_MODE:
     weather_variabilities = weather_variabilities[:2]
 base_weather_file = 'USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw'
+SAMPLE_SIZE=240
+idxs = list(range(len(weather_variabilities)))
+idxs = np.concatenate([idxs[:1], np.random.choice(idxs[1:], (SAMPLE_SIZE,), replace=False)])
+weather_variabilities = [weather_variabilities[i] for i in idxs]#weather_variabilities[idxs]
 eval_weather_variabilities = weather_var_config["eval_var"] if args.use_extreme_weather else weather_variabilities
 print(f"EVAL WEATHER VARIABILITIES LENGTH IS: {len(eval_weather_variabilities)}")
 env_config = {
@@ -255,6 +259,7 @@ def plot_scatter(args, start, rews, bad_idxs):
     idxs = ~run_dfs["idx"].isin(all_bad_idxs)
     run_dfs = run_dfs[idxs].sort_values("idx")
     compare_dfs = rews[tag2]
+    idxs = ~compare_dfs["idx"].isin(all_bad_idxs)
     compare_dfs = compare_dfs[idxs].sort_values("idx")
     print(f"{tag2}: ", compare_dfs)
 
@@ -268,9 +273,10 @@ def plot_scatter(args, start, rews, bad_idxs):
 
     plt.scatter(xs[1:], ys[1:], c = rews[1:] * green + (1-rews)[1:] * red, s=10)
     plt.scatter(xs[:1], ys[:1], c = rews[:1] * green + (1-rews)[:1] * red, marker="*", s=60, edgecolors="black")
-    plt.savefig("test.png")
+    rand = np.random.random()
+    plt.savefig(f"logs/temp{rand}.png")
 
-    wandb.log({"viz": wandb.Image("test.png")})
+    wandb.log({"viz": wandb.Image(f"logs/temp{rand}.png")})
 
 def extract_rew_stats(run_dfs, all_bad_idxs, group=True):
     idxs = ~run_dfs["idx"].isin(all_bad_idxs)
@@ -314,7 +320,7 @@ def plot_bars(start, rews, bad_idxs, graph_name):
         # with run_df_stes and compare_df_stes as the error bars
         try:
             rects = plt.bar(xs - width * num_tags / 2 + width * i, rew_means, yerr=rew_stes, width=width, align='center', alpha=0.5, ecolor='black', capsize=10, label=label, color=color)
-            plt.bar_label(rects, padding=3, fmt="%.3f", fontsize=fontsize)
+            plt.bar_label(rects, padding=3, fmt="%.3f", fontsize=fontsize-6)
         except Exception as e:
             breakpoint()
 
@@ -375,7 +381,10 @@ if __name__ == "__main__":
     prefix = "extreme_" if args.use_extreme_weather else ""
     prefix += f"{args.timesteps_per_hour}_"
     prefix += f"{args.step}_" if args.step else ""
-    with ctx.Pool(8) as workers:
+    idxs = list(range(0, len(eval_weather_variabilities), 1))
+    
+
+    with ctx.Pool(24) as workers:
         for tag, checkpoint_list in checkpoints.items():
             for name, checkpoint in checkpoint_list:
                 for k in range(args.num_repeats):
@@ -386,7 +395,7 @@ if __name__ == "__main__":
                             rew_df, bad_idx = pickle.load(f)
                         loaded_file = True
                     else:
-                        idxs = range(0, len(eval_weather_variabilities), 1)
+                        
                         rew_args = [(checkpoint, idx, k, tag) for idx in idxs]
                         rew_df = {"rew": [], "x": [], "y": [], "idx": []}
                         bad_idx = []
@@ -397,6 +406,7 @@ if __name__ == "__main__":
                             rew_df["idx"].extend(result[0]["idx"])
                             bad_idx.extend(result[1])
                         rew_df = pd.DataFrame.from_dict(rew_df)
+                        
                         if not DEBUG_MODE:
                             with open(ckpt_save_file, 'wb') as f:
                                 pickle.dump((rew_df, bad_idx), f)

@@ -69,8 +69,12 @@ def get_agent(config: ExperimentConfig, args, planning_model=None):
     config["disable_env_checking"] = True
     # 1 driver, N training workers, 1 evaluation workers
     total_workers = args.num_training_workers + 1 + args.num_eval_workers
-    config["num_gpus"] = args.num_gpus / total_workers
-    config["num_gpus_per_worker"] = args.num_gpus / total_workers
+    cuda_available = torch.cuda.is_available()
+    if args.num_gpus > 0 and not cuda_available:
+        print("CUDA NOT AVAILABLE, USING CPU INSTEAD")
+    num_gpus = args.num_gpus if cuda_available else 0
+    config["num_gpus"] = num_gpus / total_workers
+    config["num_gpus_per_worker"] = num_gpus / total_workers
     config["num_workers"] = args.num_training_workers
     config["num_envs_per_worker"] = args.num_envs_per_worker
 
