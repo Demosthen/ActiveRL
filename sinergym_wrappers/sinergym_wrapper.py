@@ -52,16 +52,14 @@ class RBCController:
         obs_dict = dict(zip(self.controller.variables['observation'], observation))
         if self.type == "5Zone":
             occupancy = obs_dict['Zone People Occupant Count(SPACE1-1)']
-            mean_temp = obs_dict['Zone Air Temperature(SPACE1-1)']
         elif self.type == "Datacenter":
             occupancy = obs_dict['Zone People Occupant Count(West Zone)'] + obs_dict['Zone People Occupant Count(East Zone)']
-            mean_temp = np.mean([obs_dict['Zone Air Temperature(West Zone)'],
-                             obs_dict['Zone Air Temperature(East Zone)']])
         else:
             raise NotImplementedError
         if occupancy > 0:
             action = self.controller.act(observation)
         else:
+            # essentially turn off if no one is in the space
             action = (0, 50)
         return action
         
