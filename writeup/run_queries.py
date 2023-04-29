@@ -26,6 +26,12 @@ QUERIES = {
             "active_vs_vanilla": {"$or": [
                         {"tags": {"$in": ["median_activerl", "median_vanilla"]}},
             ]},
+            "active_vs_random_reset": {"$or": [
+                        {"tags": {"$in": ["median_activerl", "median_random_reset"]}},
+            ]},
+            "active_vs_activeplr": {"$or": [
+                        {"tags": {"$in": ["median_activerl", "median_activeplr"]}},
+            ]},
 }
 GROUP_BY ={
             "debug": ["results_random", "results_activerl"],
@@ -37,6 +43,8 @@ GROUP_BY ={
             "active_vs_rbc": ["median_activerl", "median_rbc"],
             "active_vs_plr": ["median_activerl", "median_plr"],
             "active_vs_vanilla": ["median_activerl", "median_vanilla"],
+            "active_vs_random_reset": ["median_activerl", "median_random_reset"],
+            "active_vs_activeplr": ["median_activerl", "median_activeplr"],
 
 }
 BASELINE = {
@@ -97,6 +105,14 @@ COLORS = {
         "median_activerl": "blue",
         "median_vanilla": "red",
     },
+    "active_vs_random_reset": {
+        "median_activerl": "blue",
+        "median_random_reset": "red",
+    },
+    "active_vs_activeplr": {
+        "median_activerl": "blue",
+        "median_activeplr": "red",
+    },
 
 }
 
@@ -152,5 +168,5 @@ NAMES = {
         "median_activerl": "Active-RL",
         "median_vanilla": "RL",
     },
-    
+
 }
