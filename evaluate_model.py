@@ -99,19 +99,26 @@ def download_model(run_id, step=None):
     latest_artifact_id = -1
     latest_artifact_name = ""
     min_artifact_id = np.inf
-    artifact_names = {}
+    artifact_id_names = {}
+    artifact_ids = []
     for artifact in run.logged_artifacts():
         if "sinergym_model" in artifact.name and artifact.type == "model":
             _, artifact_id = artifact.name.split(":v")
             artifact_id = int(artifact_id)
-            artifact_names[artifact_id] = artifact.name
+            artifact_ids.append(artifact_id)
+            artifact_id_names[artifact_id] = artifact.name
             min_artifact_id = min(min_artifact_id, artifact_id)
             if artifact_id > latest_artifact_id:
                 latest_artifact_name = artifact.name
                 latest_artifact_id = artifact_id
     
-    # Subtract min_artifact_id from all keys to get a 0-indexed dict
-    artifact_names = {k-min_artifact_id: v for k, v in artifact_names.items()}
+    order = np.argsort(artifact_ids)
+    artifact_names = {}
+
+    for i, artifact_id in enumerate(artifact_ids):
+        artifact_names[i] = artifact_id_names[artifact_ids[order[i]]]
+    # # Subtract min_artifact_id from all keys to get a 0-indexed dict
+    # artifact_names = {k-min_artifact_id: v for k, v in artifact_names.items()}
     if step is None or step not in artifact_names:
         print(f"Step {step} not provided or not found, using latest model")
         artifact_name = latest_artifact_name
@@ -128,6 +135,7 @@ def download_model(run_id, step=None):
 parser = argparse.ArgumentParser()
 add_args(parser)
 args = parser.parse_args()
+DEBUG_MODE = args.debug
 if (args.run_id is None and args.compare_run_id is None) and args.graph_name is None:
     raise NotImplementedError("Please specify a run id using --run_id or a graph name using --graph_name")
 if __name__ == "__main__":
@@ -164,7 +172,13 @@ for row, pca in zip(epw_data.epw_df.iterrows(), epw_data.transformed_df.iterrows
     min_diff = min(diff, min_diff)
 print(min_diff)
 
+if DEBUG_MODE:
+    weather_variabilities = weather_variabilities[:2]
 base_weather_file = 'USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw'
+SAMPLE_SIZE=240
+idxs = list(range(len(weather_variabilities)))
+idxs = np.concatenate([idxs[:1], np.random.choice(idxs[1:], (SAMPLE_SIZE,), replace=False)])
+weather_variabilities = [weather_variabilities[i] for i in idxs]#weather_variabilities[idxs]
 eval_weather_variabilities = weather_var_config["eval_var"] if args.use_extreme_weather else weather_variabilities
 print(f"EVAL WEATHER VARIABILITIES LENGTH IS: {len(eval_weather_variabilities)}")
 env_config = {
@@ -233,16 +247,23 @@ def compute_reward(checkpoint, i, seed, tag):
 def plot_scatter(args, start, rews, bad_idxs):
     green = np.array([0,1,0])
     red = np.array([1,0,0])
-    all_bad_idxs = set(bad_idxs[args.run_id] + bad_idxs[args.compare_run_id])
+    all_bad_idxs = set(sum(bad_idxs.values(), []))
     print(all_bad_idxs)
     # drop all bad indexes and sort by index
-    run_dfs = rews[args.run_id]
-    print(f"{args.run_id}: ", run_dfs)
+    assert len(rews) == 2
+    tags = list(rews.keys())
+    tag1 = tags[0]
+    tag2 = tags[1]
+    run_dfs = rews[tag1]
+    print(f"{tag1}: ", run_dfs)
     idxs = ~run_dfs["idx"].isin(all_bad_idxs)
     run_dfs = run_dfs[idxs].sort_values("idx")
-    compare_dfs = rews[args.compare_run_id]
+    compare_dfs = rews[tag2]
+    idxs = ~compare_dfs["idx"].isin(all_bad_idxs)
     compare_dfs = compare_dfs[idxs].sort_values("idx")
-    print(f"{args.compare_run_id}: ", compare_dfs)
+    print(f"{tag2}: ", compare_dfs)
+
+    
 
     rews = (np.array(run_dfs["rew"]) > np.array(compare_dfs["rew"]))[:, None]
     xs = compare_dfs["x"]
@@ -252,9 +273,10 @@ def plot_scatter(args, start, rews, bad_idxs):
 
     plt.scatter(xs[1:], ys[1:], c = rews[1:] * green + (1-rews)[1:] * red, s=10)
     plt.scatter(xs[:1], ys[:1], c = rews[:1] * green + (1-rews)[:1] * red, marker="*", s=60, edgecolors="black")
-    plt.savefig("test.png")
+    rand = np.random.random()
+    plt.savefig(f"logs/temp{rand}.png")
 
-    wandb.log({"viz": wandb.Image("test.png")})
+    wandb.log({"viz": wandb.Image(f"logs/temp{rand}.png")})
 
 def extract_rew_stats(run_dfs, all_bad_idxs, group=True):
     idxs = ~run_dfs["idx"].isin(all_bad_idxs)
@@ -298,7 +320,7 @@ def plot_bars(start, rews, bad_idxs, graph_name):
         # with run_df_stes and compare_df_stes as the error bars
         try:
             rects = plt.bar(xs - width * num_tags / 2 + width * i, rew_means, yerr=rew_stes, width=width, align='center', alpha=0.5, ecolor='black', capsize=10, label=label, color=color)
-            plt.bar_label(rects, padding=3, fmt="%.3f", fontsize=fontsize)
+            plt.bar_label(rects, padding=3, fmt="%.3f", fontsize=fontsize-6)
         except Exception as e:
             breakpoint()
 
@@ -309,7 +331,7 @@ def plot_bars(start, rews, bad_idxs, graph_name):
     plt.legend(fontsize=fontsize+4)
     plt.ylabel("Average Reward")
     extreme_env_labels = ["Base", "Dry+Hot", "Wet+Windy", "Wet+Hot", "Dry+Cold", "Erratic", "Average"]
-    plt.xticks(np.arange(num_tags), labels=extreme_env_labels, fontsize=fontsize)
+    plt.xticks(np.arange(num_tags), labels=extreme_env_labels[:num_tags], fontsize=fontsize)
     plt.tick_params(axis='y', labelsize=fontsize)
     plt.savefig("test.png")
 
@@ -340,7 +362,7 @@ def get_checkpoints(graph_name):
                 checkpoints[tag].append((run_id, model_dir))
     return checkpoints
 
-DEBUG_MODE = args.debug
+
 if __name__ == "__main__":
     
     import time
@@ -359,7 +381,10 @@ if __name__ == "__main__":
     prefix = "extreme_" if args.use_extreme_weather else ""
     prefix += f"{args.timesteps_per_hour}_"
     prefix += f"{args.step}_" if args.step else ""
-    with ctx.Pool(8) as workers:
+    idxs = list(range(0, len(eval_weather_variabilities), 1))
+    
+
+    with ctx.Pool(24) as workers:
         for tag, checkpoint_list in checkpoints.items():
             for name, checkpoint in checkpoint_list:
                 for k in range(args.num_repeats):
@@ -370,7 +395,7 @@ if __name__ == "__main__":
                             rew_df, bad_idx = pickle.load(f)
                         loaded_file = True
                     else:
-                        idxs = range(0, len(eval_weather_variabilities), 1)
+                        
                         rew_args = [(checkpoint, idx, k, tag) for idx in idxs]
                         rew_df = {"rew": [], "x": [], "y": [], "idx": []}
                         bad_idx = []
@@ -381,6 +406,7 @@ if __name__ == "__main__":
                             rew_df["idx"].extend(result[0]["idx"])
                             bad_idx.extend(result[1])
                         rew_df = pd.DataFrame.from_dict(rew_df)
+                        
                         if not DEBUG_MODE:
                             with open(ckpt_save_file, 'wb') as f:
                                 pickle.dump((rew_df, bad_idx), f)
