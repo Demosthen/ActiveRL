@@ -138,6 +138,8 @@ args = parser.parse_args()
 DEBUG_MODE = args.debug
 if (args.run_id is None and args.compare_run_id is None) and args.graph_name is None:
     raise NotImplementedError("Please specify a run id using --run_id or a graph name using --graph_name")
+
+np.random.seed(123456)
 if __name__ == "__main__":
     #wandb.init(project="active-rl", entity="social-game-rl", config=vars(args))
     wandb.init(config=vars(args), name=args.name)
@@ -175,9 +177,9 @@ print(min_diff)
 if DEBUG_MODE:
     weather_variabilities = weather_variabilities[:2]
 base_weather_file = 'USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw'
-SAMPLE_SIZE=240
+SAMPLE_SIZE=120
 idxs = list(range(len(weather_variabilities)))
-idxs = np.concatenate([idxs[:1], np.random.choice(idxs[1:], (SAMPLE_SIZE,), replace=False)])
+idxs = np.concatenate([idxs[:1], np.random.choice(idxs[1:], (SAMPLE_SIZE-1,), replace=False)])
 weather_variabilities = [weather_variabilities[i] for i in idxs]#weather_variabilities[idxs]
 eval_weather_variabilities = weather_var_config["eval_var"] if args.use_extreme_weather else weather_variabilities
 print(f"EVAL WEATHER VARIABILITIES LENGTH IS: {len(eval_weather_variabilities)}")
@@ -419,7 +421,7 @@ if __name__ == "__main__":
         
     for tag in checkpoints.keys():
         rews[tag] = pd.concat(rews[tag])
-    save_file = os.path.join(save_dir, f"{prefix}{args.graph_name}.pkl")
+    save_file = os.path.join(save_dir, f"{prefix}{args.graph_name}_experiment.pkl")
     os.makedirs(save_dir, exist_ok=True)
     with open(save_file, "wb") as f:
         pickle.dump((rews, bad_idxs), f)
