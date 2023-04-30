@@ -16,6 +16,7 @@ import argparse
 import matplotlib.pyplot as plt
 import torch
 from writeup import run_queries
+from writeup.utils import *
 def add_args(parser):
     parser.add_argument(
         "--run_id",
@@ -175,9 +176,10 @@ print(min_diff)
 if DEBUG_MODE:
     weather_variabilities = weather_variabilities[:2]
 base_weather_file = 'USA_AZ_Davis-Monthan.AFB.722745_TMY3.epw'
-SAMPLE_SIZE=240
+CPU_COUNT = 24
+SAMPLE_SIZE = CPU_COUNT * 5
 idxs = list(range(len(weather_variabilities)))
-idxs = np.concatenate([idxs[:1], np.random.choice(idxs[1:], (SAMPLE_SIZE,), replace=False)])
+idxs = np.concatenate([idxs[:1], np.random.choice(idxs[1:], (SAMPLE_SIZE-1,), replace=False)])
 weather_variabilities = [weather_variabilities[i] for i in idxs]#weather_variabilities[idxs]
 eval_weather_variabilities = weather_var_config["eval_var"] if args.use_extreme_weather else weather_variabilities
 print(f"EVAL WEATHER VARIABILITIES LENGTH IS: {len(eval_weather_variabilities)}")
@@ -210,7 +212,16 @@ def compute_reward(checkpoint, i, seed, tag):
     if checkpoint in ["RBC", "RANDOM"]:
         compute_action = lambda obs: 0 # it doesn't matter what we send in because it will get replaced with the appropriate action anyway
     else:
-        agent = UncertainPPOTorchPolicy.from_checkpoint(checkpoint)["default_policy"]
+        loaded_agent = False
+        fail_cnt = 0
+        while not loaded_agent:
+            try:
+                agent = UncertainPPOTorchPolicy.from_checkpoint(checkpoint)["default_policy"]
+                loaded_agent = True
+            except:
+                fail_cnt += 1
+                print(f"Failed to load agent {fail_cnt}, trying again...")
+        #agent = UncertainPPOTorchPolicy.from_checkpoint(checkpoint)["default_policy"]
         compute_action = lambda obs: np.array(agent.compute_single_action(obs)[0])
 
     # agent.model = agent.model.to("cuda")
@@ -244,98 +255,8 @@ def compute_reward(checkpoint, i, seed, tag):
     env.close()
     return rew_df, bad_idx
 
-def plot_scatter(args, start, rews, bad_idxs):
-    green = np.array([0,1,0])
-    red = np.array([1,0,0])
-    all_bad_idxs = set(sum(bad_idxs.values(), []))
-    print(all_bad_idxs)
-    # drop all bad indexes and sort by index
-    assert len(rews) == 2
-    tags = list(rews.keys())
-    tag1 = tags[0]
-    tag2 = tags[1]
-    run_dfs = rews[tag1]
-    print(f"{tag1}: ", run_dfs)
-    idxs = ~run_dfs["idx"].isin(all_bad_idxs)
-    run_dfs = run_dfs[idxs].sort_values("idx")
-    compare_dfs = rews[tag2]
-    idxs = ~compare_dfs["idx"].isin(all_bad_idxs)
-    compare_dfs = compare_dfs[idxs].sort_values("idx")
-    print(f"{tag2}: ", compare_dfs)
 
-    
 
-    rews = (np.array(run_dfs["rew"]) > np.array(compare_dfs["rew"]))[:, None]
-    xs = compare_dfs["x"]
-    ys = compare_dfs["y"]
-    end = time.perf_counter()
-    print(f"TOOK {end-start} SECONDS")
-
-    plt.scatter(xs[1:], ys[1:], c = rews[1:] * green + (1-rews)[1:] * red, s=10)
-    plt.scatter(xs[:1], ys[:1], c = rews[:1] * green + (1-rews)[:1] * red, marker="*", s=60, edgecolors="black")
-    rand = np.random.random()
-    plt.savefig(f"logs/temp{rand}.png")
-
-    wandb.log({"viz": wandb.Image(f"logs/temp{rand}.png")})
-
-def extract_rew_stats(run_dfs, all_bad_idxs, group=True):
-    idxs = ~run_dfs["idx"].isin(all_bad_idxs)
-    run_dfs = run_dfs[idxs].sort_values("idx")
-    grouped_runs = run_dfs.groupby(["idx"]) if group else run_dfs
-    run_df_means = grouped_runs.mean()
-    run_df_stes = grouped_runs.std() / np.sqrt(grouped_runs.count()) if np.all(grouped_runs.count() > 1) else pd.DataFrame(np.zeros_like(run_df_means), index=run_df_means.index, columns=run_df_means.columns)
-
-    return run_df_means, run_df_stes
-
-def plot_bars(start, rews, bad_idxs, graph_name):
-    plt.figure(figsize=(40, 10))
-    plt.locator_params(axis='y', nbins=5)
-    fontsize=26
-    all_bad_idxs = set(sum(bad_idxs.values(), []))
-    print(all_bad_idxs)
-    # drop all bad indexes and sort by index
-    width = 0.15
-    num_tags = len(rews) + 1
-    colors = run_queries.COLORS[graph_name]
-    labels = run_queries.NAMES[graph_name]
-    
-    for i, tag in enumerate(rews.keys()):
-        run_dfs = rews[tag]
-        print(f"{tag}: ", run_dfs)
-        run_df_means, run_df_stes = extract_rew_stats(run_dfs, all_bad_idxs)
-        all_run_df_means, all_run_df_stes = extract_rew_stats(run_dfs, all_bad_idxs, group=False)
-
-        # rews = (np.array(run_df_means["rew"]) > np.array(compare_dfs["rew"]))[:, None]
-        xs = run_df_means.index
-        end = time.perf_counter()
-        print(f"TOOK {end-start} SECONDS")
-
-        color = colors[tag]
-        label = labels[tag]
-
-        rew_means = pd.concat([run_df_means["rew"] + all_run_df_means["rew"]])
-        rew_stes = pd.concat([run_df_stes["rew"] + all_run_df_stes["rew"]])
-
-        # Plots a bar chart with error bars with xs as the x-axis, comparing run_df_means and compare_df_means
-        # with run_df_stes and compare_df_stes as the error bars
-        try:
-            rects = plt.bar(xs - width * num_tags / 2 + width * i, rew_means, yerr=rew_stes, width=width, align='center', alpha=0.5, ecolor='black', capsize=10, label=label, color=color)
-            plt.bar_label(rects, padding=3, fmt="%.3f", fontsize=fontsize-6)
-        except Exception as e:
-            breakpoint()
-
-    
-    rects = plt.bar(num_tags - width * num_tags / 2 + width * i, all_run_df_means["rew"], yerr=all_run_df_stes["rew"], width=width, align='center', alpha=0.5, ecolor='black', capsize=10, label="Average", color=color)
-    plt.bar_label(rects, padding=3, fmt="%.3f", fontsize=fontsize)
-    
-    plt.legend(fontsize=fontsize+4)
-    plt.ylabel("Average Reward")
-    extreme_env_labels = ["Base", "Dry+Hot", "Wet+Windy", "Wet+Hot", "Dry+Cold", "Erratic", "Average"]
-    plt.xticks(np.arange(num_tags), labels=extreme_env_labels[:num_tags], fontsize=fontsize)
-    plt.tick_params(axis='y', labelsize=fontsize)
-    plt.savefig("test.png")
-
-    wandb.log({"viz": wandb.Image("test.png")})
 
 def get_checkpoints(graph_name):
     print("Downloading checkpoints")
@@ -384,7 +305,7 @@ if __name__ == "__main__":
     idxs = list(range(0, len(eval_weather_variabilities), 1))
     
 
-    with ctx.Pool(24) as workers:
+    with ctx.Pool(CPU_COUNT) as workers:
         for tag, checkpoint_list in checkpoints.items():
             for name, checkpoint in checkpoint_list:
                 for k in range(args.num_repeats):
@@ -432,6 +353,6 @@ if __name__ == "__main__":
     if args.use_extreme_weather:
         plot_bars(start, rews, bad_idxs, graph_name=args.graph_name)
     else:
-        plot_scatter(args, start, rews, bad_idxs)
+        plot_scatter(start, rews, bad_idxs)
 
 
