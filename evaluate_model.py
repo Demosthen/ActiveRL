@@ -139,6 +139,8 @@ args = parser.parse_args()
 DEBUG_MODE = args.debug
 if (args.run_id is None and args.compare_run_id is None) and args.graph_name is None:
     raise NotImplementedError("Please specify a run id using --run_id or a graph name using --graph_name")
+
+np.random.seed(123456)
 if __name__ == "__main__":
     #wandb.init(project="active-rl", entity="social-game-rl", config=vars(args))
     wandb.init(config=vars(args), name=args.name)
@@ -340,7 +342,7 @@ if __name__ == "__main__":
         
     for tag in checkpoints.keys():
         rews[tag] = pd.concat(rews[tag])
-    save_file = os.path.join(save_dir, f"{prefix}{args.graph_name}.pkl")
+    save_file = os.path.join(save_dir, f"{prefix}{args.graph_name}_experiment.pkl")
     os.makedirs(save_dir, exist_ok=True)
     with open(save_file, "wb") as f:
         pickle.dump((rews, bad_idxs), f)
