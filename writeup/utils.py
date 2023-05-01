@@ -1,6 +1,6 @@
 import os
 import time
-from matplotlib import pyplot as plt
+from matplotlib import lines, patches, pyplot as plt
 import numpy as np
 import pandas as pd
 import wandb
@@ -17,6 +17,9 @@ def plot_scatter(start, rews, bad_idxs, base_key=None):
     tags = list(rews.keys())
     tag1 = tags[0] if base_key is None else base_key
     tag2 = tags[1] if tags[0] == tag1 else tags[0]
+
+    name1 = run_queries.NAMES["sim2real"][tag1]
+    name2 = run_queries.NAMES["sim2real"][tag2]
     run_dfs = rews[tag1]
     print(f"{tag1}: ", run_dfs)
     idxs = ~run_dfs["idx"].isin(all_bad_idxs)
@@ -36,6 +39,16 @@ def plot_scatter(start, rews, bad_idxs, base_key=None):
 
     plt.scatter(xs[1:], ys[1:], c = rews[1:] * green + (1-rews)[1:] * red, s=10)
     plt.scatter(xs[:1], ys[:1], c = rews[:1] * green + (1-rews)[:1] * red, marker="*", s=60, edgecolors="black")
+
+    red_patch = patches.Patch(color='red', label=f'{name1} underperforms {name2}')
+    green_patch = patches.Patch(color='green', label=f'{name1} outperforms {name2}')
+    star = lines.Line2D([], [], markeredgecolor='black', color='white', marker='*', linestyle='None',
+                          markersize=10, label='Base environment')
+    plt.legend(handles=[green_patch, red_patch, star])
+    plt.xlabel("PCA Dimension 1")
+    plt.ylabel("PCA Dimension 2")
+
+
     folder = "writeup/figs/comparisons/" 
     os.makedirs(folder, exist_ok=True)
     filename = folder + f"{tag1}_vs_{tag2}.png"
