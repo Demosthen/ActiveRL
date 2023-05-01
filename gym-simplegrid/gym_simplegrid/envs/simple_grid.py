@@ -164,6 +164,7 @@ class SimpleGridEnv(Env):
         self.initial_state = None
         self.initial_state_distrib = self.__get_initial_state_distribution(self.desc)
         self.P = self.__get_env_dynamics()
+        self.steps_since_reset = 0
 
         # Rendering
         self.window = None
@@ -365,6 +366,10 @@ class SimpleGridEnv(Env):
         p, s, r, d = transitions[i]
         self.s = s
         self.lastaction = a
+        if self.steps_since_reset > 2 * self.nrow * self.ncol:
+            d = True
+        else:
+            self.steps_since_reset += 1
         return (int(s), r, d, {"prob": p})
 
     def reset(
@@ -391,6 +396,7 @@ class SimpleGridEnv(Env):
         
         self.initial_state = self.s
         self.lastaction = None
+        self.steps_since_reset = 0
 
         if not return_info:
             return int(self.s)

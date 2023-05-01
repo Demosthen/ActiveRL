@@ -76,6 +76,8 @@ def get_agent(env, env_config, eval_env_config, args, planning_model=None):
     config["env_config"] = env_config
     if args.env == "cl":
         config["horizon"] = 8760
+    # if args.env == "gw":
+    #     config["horizon"] = 2 * dummy_env.nrow * dummy_env.ncol
     config["model"] = MODEL_DEFAULTS
     config["model"]["fcnet_activation"] = lambda: nn.Sequential(nn.Tanh(), nn.Dropout(p=args.dropout))#Custom_Activation
     config["model"]["num_dropout_evals"] = args.num_dropout_evals
