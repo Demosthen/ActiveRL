@@ -15,16 +15,16 @@
 #SBATCH --ntasks=1
 #
 # Processors per task (please always specify the total number of processors twice the number of GPUs):
-#SBATCH --cpus-per-task=2
+#SBATCH --cpus-per-task=4
 #
 ##SBATCH --qos=savio_lowprio
-##SBATCH --qos=v100_gpu3_normal
+## SBATCH --qos=v100_gpu3_normal
 #Number of GPUs, this can be in the format of "gpu:[1-4]", or "gpu:K80:[1-4] with the type included
-#SBATCH --gres=gpu:GTX2080TI:1
+#SBATCH --gres=gpu:GTX2080TI:2
 ##SBATCH --gpus-per-task=1
 #
 # Wall clock limit (8hrs):
-#SBATCH --time=2:59:59
+#SBATCH --time=15:59:59
 #
 # Run 48 examples concurrently
 #SBATCH --array=0
@@ -34,7 +34,10 @@ export PYTHON_PATH=/global/home/users/$USER/.conda/envs/ActiveRL/bin/python
 export WANDB_CACHE_DIR=/global/scratch/users/$USER/.cache/wandb
 # export LD_LIBRARY_PATH=/global/home/users/lucas_spangher/.conda/pkgs:$LD_LIBRARY_PATH
 module load gcc/8.3.0
-
+export MUJOCO_GL=egl
 export PATH=$PYTHON_PATH:$PATH
+export BCVTB_PATH=/global/scratch/users/$USER/ActiveRL/bcvtb
+export EPLUS_PATH=/global/scratch/users/$USER/ActiveRL/EnergyPlus-9-5-0
+
 
 $PYTHON_PATH $1
