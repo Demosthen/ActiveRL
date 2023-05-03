@@ -16,7 +16,7 @@ env = SimpleGridEnvWrapper(env_config)
 
 # env = gym.make('SimpleGrid-8x8-v0')
 observation = env.reset()
-T = 10
+T = 10000
 for i in range(T):
     action = 1
     # action = env.action_space.sample()

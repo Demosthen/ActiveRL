@@ -366,7 +366,7 @@ class SimpleGridEnv(Env):
         p, s, r, d = transitions[i]
         self.s = s
         self.lastaction = a
-        if self.steps_since_reset > 2 * self.nrow * self.ncol:
+        if self.steps_since_reset > 2 * (self.nrow + self.ncol):
             d = True
         else:
             self.steps_since_reset += 1
