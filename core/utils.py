@@ -185,7 +185,7 @@ def get_log_path(log_dir):
 def build_drought(base_variability):
     # Modeling a hot, dry, drought
     ret = deepcopy(base_variability)
-    ret["drybulb"][1] = 20 # Corresponds to ~50 C
+    ret["drybulb"][1] = 20 # Corresponds to ~40 C
     ret["relhum"][1] = -50 # It's a drought
     ret["windspd"][1] = -3 # This brings avg windspd down to ~ 0
     ret["dirnorrad"][1] = 1000 # max offset seen in US epw files

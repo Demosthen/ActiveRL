@@ -6,11 +6,11 @@ import time
 import writeup.utils as utils
 from importlib import reload
 run = wandb.init()
-runs = [64, 65, 67, 66, 68, 72]# [59, 56, 60, 57, 58, 61]
+runs = [74]#[64, 65, 67, 66, 68, 72]# [59, 56, 60, 57, 58, 61]
 for run_id in runs:
     artifact = run.use_artifact(f'doseok/ActiveRL/reward_data:v{run_id}', type='evaluation')
     artifact_dir = artifact.download()
-    ARTIFACT_TYPE = "scatter"
+    ARTIFACT_TYPE = "bar"
 
     # %%
     
@@ -29,7 +29,7 @@ for run_id in runs:
     if ARTIFACT_TYPE == "scatter":
         utils.plot_scatter(time.perf_counter(), rews, bad_idxs, "median_activerl")
     else:
-        utils.plot_bars(time.perf_counter(), rews, bad_idxs, "results", only_avg=True)
+        utils.plot_bars(time.perf_counter(), rews, bad_idxs, "results", only_avg=False, relative=False)
 
 # %%
 
