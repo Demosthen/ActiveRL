@@ -261,6 +261,11 @@ def add_args(parser):
         action="store_true",
         help = "Whether to use a continuous action space or not",
     )
+    parser.add_argument(   
+        "--only_vary_offset",
+        action="store_true",
+        help = "Whether to only vary the offset of the weather or also the scale and time constant",
+    )
 
     # ACTIVE RL PARAMS
     parser.add_argument(

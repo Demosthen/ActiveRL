@@ -38,6 +38,32 @@ WEATHER_VAR_MAP = {
 }
 REVERSE_WEATHER_MAP = {v: k for k, v in WEATHER_VAR_MAP.items()}
 
+class RBCController:
+    def __init__(self, env, type) -> None:
+        self.type = type
+        if type == "5Zone":
+            self.controller = RBC5Zone(env)
+        elif type == "Datacenter":
+            self.controller = RBCDatacenter(env)
+        else:
+            raise NotImplementedError
+
+    def act(self, observation: List[Any]) -> Sequence[Any]:
+        obs_dict = dict(zip(self.controller.variables['observation'], observation))
+        if self.type == "5Zone":
+            occupancy = obs_dict['Zone People Occupant Count(SPACE1-1)']
+        elif self.type == "Datacenter":
+            occupancy = obs_dict['Zone People Occupant Count(West Zone)'] + obs_dict['Zone People Occupant Count(East Zone)']
+        else:
+            raise NotImplementedError
+        if occupancy > 0:
+            action = self.controller.act(observation)
+        else:
+            # essentially turn off if no one is in the space
+            action = (0, 50)
+        return action
+        
+
 class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
 
     def __init__(self, config):
@@ -72,6 +98,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             self.OU_param_df = self._load_OU_params(self.environment_variability_file)
         self.act_repeat = config.get("act_repeat", 1)
         self.random_month = config.get("random_month", False)
+        self.only_vary_offset = config.get("only_vary_offset", False)
 
         self.epw_data = config["epw_data"]
         weather_bounds = {name: (self.epw_data.weather_min[name], self.epw_data.weather_max[name]) for name in self.epw_data.weather_min.index}
@@ -114,20 +141,29 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
 
         # Initialize baselines if specified.
         if self.use_rbc:
-            if "5Zone" in self.base_env_name:
-                self.replacement_controller = RBC5Zone(self.env)
-            else:
-                self.replacement_controller = RBCDatacenter(self.env)
+            rbc_type = "5Zone" if "5Zone" in self.base_env_name else "Datacenter"
+            self.replacement_controller = RBCController(self.env, rbc_type)
+            # if "5Zone" in self.base_env_name:
+            #     self.replacement_controller = RBC5Zone(self.env)
+            # else:
+            #     self.replacement_controller = RBCDatacenter(self.env)
         elif self.use_random:
             self.replacement_controller = RandomController(self.env)
         else:
             self.replacement_controller = None
+        
+        # The first observation from the default weather variability environment
+        self.start_obs = self.reset()
 
     def _augment_obs_space(self, env, config):
         obs_space = env.observation_space
+        self.original_obs_space_shape = obs_space.shape
+        self.active_variables = list(self.env.weather_variability.keys()) 
+        self.variability_offset_idxs = {WEATHER_VAR_MAP.get(variable, ""): i for i, variable in enumerate(self.env.variables["observation"])}
+        self.last_untransformed_obs = None
+        
         obs_space_shape_list = list(obs_space.shape)
         i = obs_space_shape_list[-1]
-        self.original_obs_space_shape = obs_space.shape
 
         # Maps weather variable name to indexes in observation
         # Has entries for both the epw format (e.g. 'drybulb') and the sinergym format
@@ -148,23 +184,26 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
                 self.variability_high.extend(list(variability))
             i += 2
         obs_space_shape_list[-1] = i
-        self.variability_offset_idxs = {WEATHER_VAR_MAP.get(variable, ""): i for i, variable in enumerate(self.env.variables["observation"])}
 
         self.variability_low = np.array(self.variability_low)
         self.variability_high = np.array(self.variability_high)
         self.num_extra_variability_dims = len(self.variability_low)
         self.variability_offset = self.variability_low
         self.variability_scale = (self.variability_high - self.variability_low)
-        low = list(obs_space.low) + [0. for _ in range(self.num_extra_variability_dims)]
-        high = list(obs_space.high) + [1. for _ in range(self.num_extra_variability_dims)]
-        self.observation_space = Box(
-            low = np.array(low), 
-            high = np.array(high),
-            shape = obs_space_shape_list,
-            dtype=np.float32)
         
-        self.last_untransformed_obs = None
-        self.active_variables = list(self.env.weather_variability.keys())
+        if self.only_vary_offset:
+            self.observation_space = obs_space
+            self.last_untransformed_obs = None
+            self.num_extra_variability_dims = 0
+        else:
+            low = list(obs_space.low) + [0. for _ in range(self.num_extra_variability_dims)]
+            high = list(obs_space.high) + [1. for _ in range(self.num_extra_variability_dims)]
+            self.observation_space = Box(
+                low = np.array(low), 
+                high = np.array(high),
+                shape = obs_space_shape_list,
+                dtype=np.float32)
+        
 
     def _load_OU_params(self, file):
         return pd.read_csv(file)
@@ -187,6 +226,8 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             raise NotImplementedError()
 
     def observation(self, observation: np.ndarray):
+        if self.only_vary_offset:
+            return observation
         variability = np.zeros(self.num_extra_variability_dims)
 
         for key, var in self.env.weather_variability.items():
@@ -206,7 +247,8 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         for key in self.active_variables:
             offset = torch.unsqueeze(obs[..., self.variability_offset_idxs[key]], dim=-1)
             resettable.append(offset)
-        resettable.append(obs[..., -self.num_extra_variability_dims:])
+        if not self.only_vary_offset:
+            resettable.append(obs[..., -self.num_extra_variability_dims:])
         resettable = torch.concat(resettable, dim=-1)
         return resettable, obs
 
@@ -214,15 +256,21 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         """Combines an observation that has been split like in separate_resettable_part back together. Make sure this operation is differentiable"""
         # Make sure torch doesn't backprop into non-resettable part
         obs = obs.detach()
+        
         for i, key in enumerate(self.active_variables):
             obs[..., self.variability_offset_idxs[key]] = resettable[..., i]
-        obs[..., -self.num_extra_variability_dims:] = resettable[..., len(self.active_variables):]
+
+        if not self.only_vary_offset:
+            obs[..., -self.num_extra_variability_dims:] = resettable[..., len(self.active_variables):]
         return obs
 
     def resettable_bounds(self) -> np.ndarray: 
         """Get bounds for resettable part of observation space"""
-        low = np.array([0 for _ in range(len(self.active_variables) + self.num_extra_variability_dims)])
-        high = np.array([1. for _ in range(self.num_extra_variability_dims + len(self.active_variables))])
+        reset_dims = len(self.active_variables)
+        if not self.only_vary_offset:
+            reset_dims += self.num_extra_variability_dims
+        low = np.zeros([reset_dims])
+        high = np.ones([reset_dims])
         return low, high
     
     def _sample_variability(self):
@@ -276,7 +324,8 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             # Reset simulator with specified weather variability
             variability = self._get_variability_from_state(initial_state)
             variability_dict = {}
-            for var_name, idxs in self.variability_noise_idxs.items():
+            for var_name in self.active_variables:#self.variability_noise_idxs.items():
+                idxs = self.variability_noise_idxs[var_name]
                 idxs = [idx - self.original_obs_space_shape[-1] for idx in idxs]
                 variability_params = variability[idxs]
                 offset = self._get_offset_from_state(initial_state, var_name, first_day_weather)
@@ -292,10 +341,17 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         return self.observation(obs)
 
     def _get_variability_from_state(self, initial_state):
-        variability = initial_state[..., -self.num_extra_variability_dims:]
-        variability = variability * self.variability_scale + self.variability_offset
-        variability = np.clip(variability, self.variability_low, self.variability_high)
-        return variability
+        if self.only_vary_offset:
+            variability_vec = np.zeros([len(self.active_variables) * 2])
+            for i, (key, variability) in enumerate(self.env.weather_variability.items()):
+                variability_vec[2 * i] = variability[0]
+                variability_vec[2 * i + 1] = variability[2]
+                
+        else:
+            variability_vec = initial_state[..., -self.num_extra_variability_dims:]
+            variability_vec = variability_vec * self.variability_scale + self.variability_offset
+            variability_vec = np.clip(variability_vec, self.variability_low, self.variability_high)
+        return variability_vec
 
     def _get_offset_from_state(self, initial_state, var_name, first_day_weather):
         offset_idx = self.variability_offset_idxs[var_name]
@@ -324,12 +380,14 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         
     def sample_obs(self):
         """Automatically sample an observation to seed state generation"""
-        obs = np.zeros(self.observation_space.shape) + 0.5
-        for var_name, idxs in self.variability_noise_idxs.items():
+        # obs = np.zeros(self.observation_space.shape) + 0.5
 
-            offset_idx = self.variability_noise_idxs[var_name]
-            var_range = self.env.ranges[REVERSE_WEATHER_MAP[var_name]]
-            obs[offset_idx] = (self.weather_means[var_name] - var_range[0]) / (var_range[1] - var_range[0])
+        # for var_name in self.active_variables:
+        #     offset_idx = self.variability_offset_idxs[var_name]
+        #     breakpoint()
+        #     var_range = self.env.ranges[REVERSE_WEATHER_MAP[var_name]]
+        #     obs[offset_idx] = (self.weather_means[var_name] - var_range[0]) / (var_range[1] - var_range[0])
+        obs = self.start_obs
         return obs
     
 class FlexibleResetConfig(Config):
