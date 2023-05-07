@@ -65,6 +65,8 @@ class ActiveRLCallback(DefaultCallbacks):
         self.plr_beta = args.plr_beta if hasattr(args, "plr_beta") else 0.1
         self.plr_rho = args.plr_rho  if hasattr(args, "plr_rho") else 0.1
         self.plr_envs_to_1 = args.plr_envs_to_1 if hasattr(args, "plr_envs_to_1") else 1e6
+        self.plr_robust = args.plr_robust if hasattr(args, "plr_robust") else False
+        print("THIS IS THE VALUE OF PLR ROBUST!!!!!!!!!!!", self.plr_robust)
         self.env_buffer = []
         self.plr_scheduler = LinearDecayScheduler(self.plr_envs_to_1)
         self.last_reset_state = None
@@ -216,6 +218,9 @@ class ActiveRLCallback(DefaultCallbacks):
             if hasattr(worker, 'callbacks'):
                 worker.callbacks.last_reset_state = worker.callbacks.next_initial_state
                 worker.callbacks.next_initial_state = self.next_initial_state
+                worker.callbacks.next_sampling_used = self.next_sampling_used
+
+        
 
         def get_candidate_initial_states(worker: RolloutWorker):
             if hasattr(worker, 'callbacks') and worker.env is not None:
@@ -223,22 +228,33 @@ class ActiveRLCallback(DefaultCallbacks):
                 return worker.callbacks._get_next_initial_state(worker.get_policy(), worker.env, self.env_buffer)
             return None
 
-        self.next_initial_state, sampling_used = next(filter(lambda x: x!=None, algorithm.workers.foreach_worker(get_candidate_initial_states)))
+        self.next_initial_state, self.next_sampling_used = next(filter(lambda x: x!=None, algorithm.workers.foreach_worker(get_candidate_initial_states)))
 
         algorithm.workers.foreach_worker(set_next_initial_state)
+        
         
 
         if self.plr_d > 0 and self.last_reset_state is not None:
             # Update staleness parameters in the env buffer for the next training iteration
-            if sampling_used == "PLR":
+            if self.next_sampling_used == "PLR":
                 self.update_env_last_seen(self.next_initial_state, self.num_train_steps)
+                stop_gradient = False
+                print(f"NOT Setting learning rate to 0 on step {self.num_train_steps}")
+                
             else:
                 # Insert the env that was just seen during this iteration into the env_buffer
                 vf_loss = result["info"]["learner"]["default_policy"]["learner_stats"]["vf_loss"]
                 entry = EnvBufferEntry(np.abs(vf_loss), self.last_reset_state, len(self.env_buffer))
                 insort(self.env_buffer, entry, key=lambda x: -x.value_error)
+                # Set the algorithm's learning rate to 0 if next_sampling_used != "PLR"
+                stop_gradient = True
+                print(f"Setting learning rate to 0 on step {self.num_train_steps}")
+            def set_stop_gradient(policy, policy_id):
+                policy.stop_gradient = stop_gradient
+            algorithm.workers.foreach_policy(set_stop_gradient)
 
         self.last_reset_state = self.next_initial_state
+        
 
     def update_env_last_seen(self, env_params, i):
         """

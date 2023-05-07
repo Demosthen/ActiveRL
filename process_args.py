@@ -346,6 +346,11 @@ def add_args(parser):
         default=100
     )
     parser.add_argument(
+        "--plr_robust",
+        action="store_true",
+        help="Whether or not to use robust PLR",
+    )
+    parser.add_argument(
         "--env_repeat",
         type=int,
         help="Number of train steps to repeat the same env parameters",
