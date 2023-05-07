@@ -351,6 +351,13 @@ def add_args(parser):
         help="Whether or not to use robust PLR",
     )
     parser.add_argument(
+        "--naive_grounding",
+        action="store_true",
+        help="Whether or not to use naive grounding (sample env parameters randomly from US weather distribution \
+        instead of at random)"
+        ,
+    )
+    parser.add_argument(
         "--env_repeat",
         type=int,
         help="Number of train steps to repeat the same env parameters",

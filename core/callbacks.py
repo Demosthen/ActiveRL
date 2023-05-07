@@ -66,7 +66,8 @@ class ActiveRLCallback(DefaultCallbacks):
         self.plr_rho = args.plr_rho  if hasattr(args, "plr_rho") else 0.1
         self.plr_envs_to_1 = args.plr_envs_to_1 if hasattr(args, "plr_envs_to_1") else 1e6
         self.plr_robust = args.plr_robust if hasattr(args, "plr_robust") else False
-        print("THIS IS THE VALUE OF PLR ROBUST!!!!!!!!!!!", self.plr_robust)
+        self.naive_grounding = args.naive_grounding if hasattr(args, "naive_grounding") else False
+        print("THIS IS NAIVE GROUNDING", self.naive_grounding)
         self.env_buffer = []
         self.plr_scheduler = LinearDecayScheduler(self.plr_envs_to_1)
         self.last_reset_state = None
@@ -140,9 +141,12 @@ class ActiveRLCallback(DefaultCallbacks):
     def _get_next_initial_state(self, policy, env, env_buffer=[]):
         plr_d = self.plr_scheduler.step(env_buffer)
         print("THIS IS HOW BIG THE ENV BUFFER ISSSSSSSSSSSSSSSSSSSSSSSSSSSSSS", len(env_buffer))
+
+        # Repeat the environment self.env_repeat times
         if (self.num_train_steps % self.env_repeat) != 0 and self.next_initial_state is not None:
             print(f"REPEATING ENVIRONMENT ON STEP {self.num_train_steps}")
             return self.next_initial_state, self.next_sampling_used
+        
         new_states, uncertainties, sampling_used = generate_states(
             policy, 
             env=env, 
@@ -160,7 +164,8 @@ class ActiveRLCallback(DefaultCallbacks):
             plr_beta=self.plr_beta,
             plr_rho=self.plr_rho,
             env_buffer=env_buffer,
-            reg_coeff = self.activerl_reg_coeff)
+            reg_coeff = self.activerl_reg_coeff, 
+            naive_grounding=self.naive_grounding)
         new_states = states_to_np(new_states)
         # episode.custom_metrics[UNCERTAINTY_LOSS_KEY] = uncertainties[-1] # TODO: PUT THIS BACK IN SOMEWHERE
         self.next_sampling_used = sampling_used

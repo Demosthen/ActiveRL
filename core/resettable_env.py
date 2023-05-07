@@ -16,7 +16,7 @@ class ResettableEnv(Env):
         """Combines an observation that has been split like in separate_resettable_part back together. Make sure this operation is differentiable"""
         return resettable
 
-    def sample_obs(self):
+    def sample_obs(self, **kwargs):
         """Automatically sample an observation to seed state generation"""
         return self.observation_space.sample()
 
