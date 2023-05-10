@@ -11,7 +11,7 @@ from importlib import reload
 from writeup.run_queries import NAMES
 run = wandb.init()
 
-runs = [64, 65, 67, 66, 68, 72]# [59, 56, 60, 57, 58, 61]
+runs = [64, 65, 67, 66, 68, 72, 79]# [59, 56, 60, 57, 58, 61]
 all_rews = {}
 for run_id in runs:
     artifact = run.use_artifact(f'doseok/ActiveRL/reward_data:v{run_id}', type='evaluation')
@@ -46,13 +46,17 @@ plt.figure(figsize=(6, 4))
 fontsize=14
 rew_diffs = []
 labels = []
-for i, key in enumerate(all_rews.keys()):
-    if key == 'median_activerl':
+i = 1
+for key in all_rews.keys():
+    if key == 'median_activerl' or key == "median_plr":
         continue
     rew_diff = 100*(all_rews['median_activerl'] - all_rews[key]) / np.abs(all_rews[key])
+    print("How many are greater than 0? ", np.mean(rew_diff > 0))
     name = NAMES["sim2real"][key]
     if name == "Domain Randomization":
         name = "Domain\nRandomization"
+    elif name == "Grounded RPLR":
+        name = "Grounded\nRPLR"
     print(f"{key}: {rew_diff.mean()}")
     median = rew_diff.median()["rew"].item()
     
@@ -60,6 +64,7 @@ for i, key in enumerate(all_rews.keys()):
 
     rew_diffs.append(rew_diff["rew"])
     labels.append(name)
+    i+=1
 
 
 
