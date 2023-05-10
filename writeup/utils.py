@@ -117,13 +117,13 @@ def extract_rew_stats(run_dfs, all_bad_idxs, group=True):
 
 
 def plot_bars(start, rews, bad_idxs, graph_name, only_avg = False, relative=False):
-    plt.figure(figsize=(20, 10))
+    plt.figure(figsize=(25, 10))
     plt.locator_params(axis='y', nbins=5)
     fontsize=26
     all_bad_idxs = set(sum(bad_idxs.values(), []))
     print(all_bad_idxs)
     # drop all bad indexes and sort by index
-    width = 0.125 if not relative else 2
+    width = 0.1 if not relative else 2
     num_tags = len(rews)
     colors = run_queries.COLORS[graph_name]
     labels = run_queries.NAMES[graph_name]
@@ -137,7 +137,9 @@ def plot_bars(start, rews, bad_idxs, graph_name, only_avg = False, relative=Fals
         "results_random": -1.078,
         "results_activeplr": -0.9591,
         "results_activerl": -0.9868,
-        "results_vanilla": -1.036
+        "results_vanilla": -1.036,
+        "results_robust_plr": -1.034,
+        "results_robust_grounded_plr": -0.988
     }
     
     for i, tag in enumerate(rews.keys()):
@@ -214,7 +216,7 @@ def plot_bars(start, rews, bad_idxs, graph_name, only_avg = False, relative=Fals
             xlabels.append(label)
         plt.xticks(xticks, labels=xlabels, fontsize=fontsize)
     else:
-        num_xticks = num_tags if not only_avg else 2
+        num_xticks = len(extreme_env_labels) if not only_avg else 2
         plt.xticks(np.arange(num_xticks), labels=extreme_env_labels[:num_xticks], fontsize=fontsize)
     plt.tick_params(axis='y', labelsize=fontsize)
 
