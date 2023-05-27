@@ -143,7 +143,7 @@ NAMES = {
         "results_robust_plr": "RPLR",
         "results_random_reset": "Domain Randomization",
         "results_vanilla": "RL",
-        "results_robust_grounded_plr": "Grounded RPLR"
+        "results_robust_grounded_plr": "Grounded DR"
     },
     "sim2real": {
         "median_random": "Random",
@@ -153,7 +153,7 @@ NAMES = {
         "median_robust_plr": "RPLR",
         "median_random_reset": "Domain Randomization",
         "median_vanilla": "RL",
-        "median_robust_grounded_plr": "Grounded RPLR"
+        "median_robust_grounded_plr": "Grounded DR"
     },
     "vary_reg": {
         "reg_0": "γ=0",
@@ -194,7 +194,7 @@ NAMES = {
     },
     "active_vs_grounded_robustplr": {
         "median_activerl": "Active-RL",
-        "median_robust_grounded_plr": "Grounded RPLR",
+        "median_robust_grounded_plr": "Grounded DR",
     },
     
 

@@ -139,7 +139,7 @@ def plot_bars(start, rews, bad_idxs, graph_name, only_avg = False, relative=Fals
         "results_activerl": -0.9868,
         "results_vanilla": -1.036,
         "results_robust_plr": -1.034,
-        "results_robust_grounded_plr": -0.988
+        "results_robust_grounded_plr": -1.072
     }
     
     for i, tag in enumerate(rews.keys()):

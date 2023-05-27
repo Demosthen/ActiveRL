@@ -158,11 +158,22 @@ def draw(PATH, TAG, x_label, y_label, data_dir="data/", yticks=None, xticks=None
     plt.tick_params(axis='y', labelsize=tick_font)
 
     # plt.ylim(150, 700)
-    if plot_legend:
-        plt.legend(fontsize=legend_font)
+
     plt.tight_layout()
     save_fig_name = os.path.join(figs_dir, "{}.{}".format(fig_name, format))
     print(save_fig_name)
     plt.savefig(save_fig_name, format=format, dpi=180)
+
+    if plot_legend:
+        # save legend separately to a different file
+        curr_ax = plt.gca()
+        figlegend = plt.figure(figsize=(3,2))
+        figlegend.legend(curr_ax.get_legend_handles_labels()[0], curr_ax.get_legend_handles_labels()[1])       
+        legend_fig_name = os.path.join(figs_dir, "{}_legend.{}".format(fig_name, format))
+        plt.tight_layout()
+        plt.savefig(legend_fig_name, format=format, dpi=180)
+        # plt.legend(fontsize=legend_font)
+
     if reset:
         plt.clf()
+        plt.figure()

@@ -251,9 +251,10 @@ class ActiveRLCallback(DefaultCallbacks):
                 vf_loss = result["info"]["learner"]["default_policy"]["learner_stats"]["vf_loss"]
                 entry = EnvBufferEntry(np.abs(vf_loss), self.last_reset_state, len(self.env_buffer))
                 insort(self.env_buffer, entry, key=lambda x: -x.value_error)
-                # Set the algorithm's learning rate to 0 if next_sampling_used != "PLR"
-                stop_gradient = True
-                print(f"Setting learning rate to 0 on step {self.num_train_steps}")
+                if self.plr_robust:
+                    # Set the algorithm's learning rate to 0 if next_sampling_used != "PLR"
+                    stop_gradient = True
+                    print(f"Setting learning rate to 0 on step {self.num_train_steps}")
             def set_stop_gradient(policy, policy_id):
                 policy.stop_gradient = stop_gradient
             algorithm.workers.foreach_policy(set_stop_gradient)
