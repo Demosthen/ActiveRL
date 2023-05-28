@@ -240,12 +240,11 @@ class ActiveRLCallback(DefaultCallbacks):
         
 
         if self.plr_d > 0 and self.last_reset_state is not None:
+            stop_gradient = False
             # Update staleness parameters in the env buffer for the next training iteration
             if self.next_sampling_used == "PLR":
                 self.update_env_last_seen(self.next_initial_state, self.num_train_steps)
-                stop_gradient = False
                 print(f"NOT Setting learning rate to 0 on step {self.num_train_steps}")
-                
             else:
                 # Insert the env that was just seen during this iteration into the env_buffer
                 vf_loss = result["info"]["learner"]["default_policy"]["learner_stats"]["vf_loss"]
