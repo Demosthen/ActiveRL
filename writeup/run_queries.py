@@ -6,7 +6,7 @@ QUERIES = {
                         {"tags": {"$in": ["results"]}},
             ]},
             "sim2real": {"$or": [
-                        {"tags": {"$in": ["median_random", "median_activeplr", "median_activerl", "median_robust_plr", "median_random_reset", "median_vanilla", "median_rbc", "median_robust_grounded_plr"]}},
+                        {"tags": {"$in": ["median_random", "median_activeplr", "median_activerl", "median_robust_plr", "median_random_reset", "median_vanilla", "median_rbc"]}},
             ]},
             "vary_reg": {"$or": [
                         {"tags": {"$in": ["vary_reg"]}},
@@ -41,8 +41,8 @@ QUERIES = {
 }
 GROUP_BY ={
             "debug": ["results_random", "results_activerl"],
-            "results": ["results_random",  "results_activeplr", "results_activerl", "results_random_reset", "results_vanilla", "results_rbc", "results_robust_plr", "results_robust_grounded_plr"],
-            "sim2real": ["median_random", "median_activeplr", "median_activerl", "median_robust_plr", "median_random_reset", "median_vanilla", "median_rbc", "median_robust_grounded_plr"],
+            "results": ["results_random",  "results_activeplr", "results_activerl", "results_random_reset", "results_vanilla", "results_rbc", "results_robust_plr"],
+            "sim2real": ["median_random", "median_activeplr", "median_activerl", "median_robust_plr", "median_random_reset", "median_vanilla", "median_rbc"],
             "vary_reg": ["reg_0", "reg_0.5", "reg_0.05", "reg_0.005"],
             "vary_lr": ["lr_1", "lr_0.1", "lr_0.01", "lr_0.001", "lr_0.0001"],
             "active_vs_random": ["median_activerl", "median_random"],
@@ -69,8 +69,7 @@ COLORS = {
         "results_activerl": "orange",
         "results_robust_plr": "purple",
         "results_random_reset": "pink",
-        "results_vanilla": "black",
-        "results_robust_grounded_plr": "brown"
+        "results_vanilla": "black"
     },
     "sim2real": {
         "median_random": "red",
@@ -79,8 +78,7 @@ COLORS = {
         "median_activerl": "orange",
         "median_robust_plr": "purple",
         "median_random_reset": "pink",
-        "median_vanilla": "black",
-        "median_robust_grounded_plr": "brown"
+        "median_vanilla": "black"
     },
     "vary_reg": {
         "reg_0": "red",
@@ -143,7 +141,6 @@ NAMES = {
         "results_robust_plr": "RPLR",
         "results_random_reset": "Domain Randomization",
         "results_vanilla": "RL",
-        "results_robust_grounded_plr": "Grounded DR"
     },
     "sim2real": {
         "median_random": "Random",
@@ -153,7 +150,6 @@ NAMES = {
         "median_robust_plr": "RPLR",
         "median_random_reset": "Domain Randomization",
         "median_vanilla": "RL",
-        "median_robust_grounded_plr": "Grounded DR"
     },
     "vary_reg": {
         "reg_0": "γ=0",
