@@ -51,7 +51,7 @@ GROUP_BY ={
             "active_vs_vanilla": ["median_activerl", "median_vanilla"],
             "active_vs_random_reset": ["median_activerl", "median_random_reset"],
             "active_vs_activeplr": ["median_activerl", "median_activeplr"],
-            "active_vs_robustplr": ["median_activerl", "median_robustplr"],
+            "active_vs_robustplr": ["median_activerl", "median_robust_plr"],
             "active_vs_grounded_robustplr": ["median_activerl", "median_robust_grounded_plr"]
 
 }

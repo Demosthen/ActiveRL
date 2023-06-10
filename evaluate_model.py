@@ -357,6 +357,7 @@ if __name__ == "__main__":
     if args.use_extreme_weather:
         plot_bars(start, rews, bad_idxs, graph_name=args.graph_name)
     else:
-        plot_scatter(start, rews, bad_idxs)
+        pass
+        #plot_scatter(start, rews, bad_idxs)
 
 

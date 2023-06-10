@@ -11,7 +11,7 @@ from importlib import reload
 from writeup.run_queries import NAMES
 run = wandb.init()
 
-runs = [ 84, 64, 65, 67, 66, 68, 72]#[64, 65, 67, 66, 68, 72, 79]# [59, 56, 60, 57, 58, 61]
+runs = [ 87, 64, 65, 67, 66, 68, 72]#[ 84, 64, 65, 67, 66, 68, 72]#[64, 65, 67, 66, 68, 72, 79]# [59, 56, 60, 57, 58, 61]
 all_rews = {}
 for run_id in runs:
     artifact = run.use_artifact(f'doseok/ActiveRL/reward_data:v{run_id}', type='evaluation')
