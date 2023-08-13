@@ -33,7 +33,6 @@ export WANDB_API_KEY=87928bf7ce62528545fe624701ab2f3aa25a7547
 export BAD_ROBOTS_PYTHON=/global/home/users/$USER/.conda/envs/ActiveRL/bin/python
 export WANDB_CACHE_DIR=/global/scratch/users/$USER/.cache/wandb
 export PYTHON_PATH=/global/home/users/$USER/.conda/envs/ActiveRL/bin/python
-# export LD_LIBRARY_PATH=/global/home/users/lucas_spangher/.conda/pkgs:$LD_LIBRARY_PATH
 module load gcc/8.3.0
 export PATH=$PYTHON_PATH:$PATH
 export MUJOCO_GL=egl
