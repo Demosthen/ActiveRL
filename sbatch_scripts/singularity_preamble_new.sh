@@ -3,5 +3,5 @@ export PATH=/home/miniconda/envs/ActiveRL/bin/:/global/home/users/$USER/.conda/e
 
 PYTHON_PATH=/home/miniconda/envs/ActiveRL/bin/python
 alias python=$PYTHON_PATH
-flock -x /global/scratch/users/djang/ActiveRL/singularity_package_lock -c "$PYTHON_PATH -m pip install -e gridworld/gym_simplegrid --no-deps"
+flock -x /global/scratch/users/$USER/ActiveRL/singularity_package_lock -c "$PYTHON_PATH -m pip install -e gridworld/gym_simplegrid --no-deps"
 

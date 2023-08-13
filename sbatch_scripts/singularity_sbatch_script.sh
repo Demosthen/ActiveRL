@@ -48,6 +48,6 @@ WANDB_PATH=/home/miniconda/envs/ActiveRL/bin/wandb
 if test -f sinergym.sif; then
   echo “docker image exists”
 else
-  singularity pull --tmpdir=/global/scratch/users/$USER/tmp sinergym.sif docker://doseokjang/sinergym:savio
+  singularity pull --tmpdir=/global/scratch/users/$USER/tmp sinergym.sif [REDACTED FOR ANONYMITY]
 fi
 singularity run --nv --workdir ./tmp --bind $(pwd):$HOME --bind "$LDIR:$HOME/.local" --bind "$PYTHON_DIR:/.env" sinergym.sif bash -c ". sbatch_scripts/singularity_preamble_new.sh && $PYTHON_PATH -m wandb agent social-game-rl/active-rl/$1 --count 1"
