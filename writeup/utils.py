@@ -117,16 +117,17 @@ def extract_rew_stats(run_dfs, all_bad_idxs, group=True):
 
 
 def plot_bars(start, rews, bad_idxs, graph_name, only_avg = False, relative=False):
-    plt.figure(figsize=(20, 10))
+    plt.figure(figsize=(25, 10))
     plt.locator_params(axis='y', nbins=5)
     fontsize=26
     all_bad_idxs = set(sum(bad_idxs.values(), []))
     print(all_bad_idxs)
     # drop all bad indexes and sort by index
-    width = 0.125 if not relative else 2
-    num_tags = len(rews)
+    width = 0.1 if not relative else 2
+    
     colors = run_queries.COLORS[graph_name]
     labels = run_queries.NAMES[graph_name]
+    valid_keys = run_queries.GROUP_BY[graph_name]
     all_avg_rew_means = []
     all_avg_rew_stes = []
 
@@ -137,10 +138,14 @@ def plot_bars(start, rews, bad_idxs, graph_name, only_avg = False, relative=Fals
         "results_random": -1.078,
         "results_activeplr": -0.9591,
         "results_activerl": -0.9868,
-        "results_vanilla": -1.036
+        "results_vanilla": -1.036,
+        "results_robust_plr": -1.034,
+        "results_robust_grounded_plr": -1.072
     }
     
-    for i, tag in enumerate(rews.keys()):
+    valid_rew_keys = [key for key in rews.keys() if key in valid_keys]
+    num_tags = len(valid_rew_keys)
+    for i, tag in enumerate(valid_rew_keys):
         run_dfs = rews[tag]
         # print(f"{tag}: ", run_dfs)
         run_df_means, run_df_stes = extract_rew_stats(run_dfs, all_bad_idxs)
@@ -207,14 +212,14 @@ def plot_bars(start, rews, bad_idxs, graph_name, only_avg = False, relative=Fals
         xticks = xs - total_width * num_tags / 2 + total_width * np.arange(num_tags)
         print(xticks, xs)
         xlabels = []
-        for tag in rews.keys():
+        for tag in valid_rew_keys:
             label = labels[tag]
             if label =="Domain Randomization":
                 label = "Domain\nRandomization"
             xlabels.append(label)
         plt.xticks(xticks, labels=xlabels, fontsize=fontsize)
     else:
-        num_xticks = num_tags if not only_avg else 2
+        num_xticks = len(extreme_env_labels) if not only_avg else 2
         plt.xticks(np.arange(num_xticks), labels=extreme_env_labels[:num_xticks], fontsize=fontsize)
     plt.tick_params(axis='y', labelsize=fontsize)
 

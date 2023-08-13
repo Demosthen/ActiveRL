@@ -56,18 +56,19 @@ def get_space_bounds(obs_space: Space):
     else:
         raise NotImplementedError
 
-def sample_obs(env: ResettableEnv, batch_size: int, device, random: bool=False):
+def sample_obs(env: ResettableEnv, batch_size: int, device, random: bool=False, naive_grounding=False):
     """Samples an observation from the environment to seed state generation. If random is True, 
-        samples random observations from the observation space. Otherwise, uses environment's sample_obs method."""
+        samples random observations from the observation space. Otherwise, uses environment's sample_obs method.
+        Specifying that you are using naive grounding will override the random flag."""
     obs_space = env.observation_space
     if isinstance(obs_space, Dict):
         obs = {}
         with torch.no_grad():
             for _ in range(batch_size):
-                if random:
+                if random and not naive_grounding:
                     sampled_obs = env.observation_space.sample()
                 else:
-                    sampled_obs = env.sample_obs()
+                    sampled_obs = env.sample_obs(naive_grounding=naive_grounding)
                 if isinstance(sampled_obs, dict):
                     for key, val in sampled_obs.items():
                         if key not in obs:
@@ -78,10 +79,10 @@ def sample_obs(env: ResettableEnv, batch_size: int, device, random: bool=False):
         obs = []
         with torch.no_grad():
             for i in range(batch_size):
-                if random:
+                if random and not naive_grounding:
                     sampled_obs = env.observation_space.sample()
                 else:
-                    sampled_obs = env.sample_obs()
+                    sampled_obs = env.sample_obs(naive_grounding=naive_grounding)
                 obs.append(torch.tensor(sampled_obs, device = device, dtype=torch.float32, requires_grad=False))
 
         obs = torch.stack(obs)
@@ -118,7 +119,7 @@ def plr_sample_state(env_buffer, beta, curr_iter, rho=0.1):
 def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_space: Space, curr_iter: int,
                     num_descent_steps: int = 10, batch_size: int = 1, no_coop=False, 
                     planning_model=None, reward_model=None, planning_uncertainty_weight=1, 
-                    uniform_reset=False, lr=0.1, plr_d=0.0, plr_beta=0.1, env_buffer=[], reg_coeff=0.01, plr_rho=0.1):
+                    uniform_reset=False, lr=0.1, plr_d=0.0, plr_beta=0.1, env_buffer=[], reg_coeff=0.01, plr_rho=0.1, naive_grounding=False):
     """
         Generates states by doing gradient descent to increase an agent's uncertainty
         on states starting from random noise
@@ -154,7 +155,7 @@ def generate_states(agent: UncertainPPOTorchPolicy, env: ResettableEnv, obs_spac
         print("USING PRIORITIZED LEVEL REPLAY")
         return plr_sample_state(env_buffer, plr_beta, curr_iter, rho=plr_rho), [0], "PLR"
     
-    obs, resettable = sample_obs(env, batch_size, agent.device, random=uniform_reset)
+    obs, resettable = sample_obs(env, batch_size, agent.device, random=uniform_reset, naive_grounding=naive_grounding)
 
     if uniform_reset:
         print("USING UNIFORM RESET")

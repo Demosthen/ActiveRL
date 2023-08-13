@@ -206,6 +206,7 @@ env_config = {
 # %%
 from core.uncertain_ppo.uncertain_ppo import UncertainPPOTorchPolicy
 def compute_reward(checkpoint, i, seed, tag):
+    print(i)
     np.random.seed(seed)
     torch.manual_seed(seed)
     env_config["use_rbc"] = (checkpoint == "RBC")
@@ -229,30 +230,30 @@ def compute_reward(checkpoint, i, seed, tag):
     # agent.model = agent.model.to("cuda")
     rew_df = {"rew": [], "x": [], "y": [], "idx": []}
     bad_idx = []
-    try:
-        obs = env.reset(i)
-        done = False
-        avg_rew = 0
-        cnt = 0
-        while not done and (cnt < 10 or not DEBUG_MODE):
-            action = compute_action(obs)
-            action = np.clip(action, -1, 1) # to be consistent with RLLib's automatic action normalization
-            obs, rew, done, info = env.step(action)
-            avg_rew += rew
-            cnt += 1
-        rew_df["rew"].append(avg_rew / cnt)
+    # try:
+    obs = env.reset(i)
+    done = False
+    avg_rew = 0
+    cnt = 0
+    while not done and (cnt < 10 or not DEBUG_MODE):
+        action = compute_action(obs)
+        action = np.clip(action, -1, 1) # to be consistent with RLLib's automatic action normalization
+        obs, rew, done, info = env.step(action)
+        avg_rew += rew
+        cnt += 1
+    rew_df["rew"].append(avg_rew / cnt)
 
-        pca = epw_data.transformed_df.iloc[i]
-        rew_df["x"].append(pca[0])
-        rew_df["y"].append(pca[1])
-        print(cnt)
-    except Exception as e:
-        print(e)
-        print(tag)
-        rew_df["rew"].append(None)
-        rew_df["x"].append(None)
-        rew_df["y"].append(None)
-        bad_idx.append(i)
+    pca = epw_data.transformed_df.iloc[i]
+    rew_df["x"].append(pca[0])
+    rew_df["y"].append(pca[1])
+    print(cnt)
+    # except Exception as e:
+    #     print(e)
+    #     print(tag)
+    #     rew_df["rew"].append(None)
+    #     rew_df["x"].append(None)
+    #     rew_df["y"].append(None)
+    #     bad_idx.append(i)
     rew_df["idx"].append(i)
     env.close()
     return rew_df, bad_idx
@@ -310,6 +311,7 @@ if __name__ == "__main__":
     with ctx.Pool(CPU_COUNT) as workers:
         for tag, checkpoint_list in checkpoints.items():
             for name, checkpoint in checkpoint_list:
+                print(f"Processing {tag} run {name}")
                 for k in range(args.num_repeats):
                     ckpt_save_file = os.path.join(save_dir, f"{prefix}_{name}_{k}.pkl")
                     loaded_file = False
@@ -355,6 +357,7 @@ if __name__ == "__main__":
     if args.use_extreme_weather:
         plot_bars(start, rews, bad_idxs, graph_name=args.graph_name)
     else:
-        plot_scatter(start, rews, bad_idxs)
+        pass
+        #plot_scatter(start, rews, bad_idxs)
 
 

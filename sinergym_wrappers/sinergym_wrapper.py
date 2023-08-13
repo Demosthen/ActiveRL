@@ -6,6 +6,8 @@ import torch
 from core.resettable_env import ResettableEnv
 import sinergym
 import os
+from core.state_generation import generate_states
+from core.utils import states_to_np
 from sinergym_wrappers.sinergym_reward import FangerReward
 from sinergym.utils.controllers import RBC5Zone, RBCDatacenter, RandomController
 from sinergym.utils.wrappers import NormalizeObservation
@@ -95,10 +97,12 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         self.environment_variability_file = config.get("environment_variability_file", "sinergym_wrappers/epw_scraper/US_epw_OU_params.csv")
         self.sample_environments = config.get("sample_environments", False)
         if self.sample_environments:
-            self.OU_param_df = self._load_OU_params(self.environment_variability_file)
+            assert self.environment_variability_file is not None, "Must specify environment_variability_file if sample_environments is True"
+        self.OU_param_df = self._load_OU_params(self.environment_variability_file) if self.environment_variability_file else None
         self.act_repeat = config.get("act_repeat", 1)
         self.random_month = config.get("random_month", False)
         self.only_vary_offset = config.get("only_vary_offset", False)
+        self.offset_by_means = config.get("offset_by_means", False)
 
         self.epw_data = config["epw_data"]
         weather_bounds = {name: (self.epw_data.weather_min[name], self.epw_data.weather_max[name]) for name in self.epw_data.weather_min.index}
@@ -154,6 +158,8 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         
         # The first observation from the default weather variability environment
         self.start_obs = self.reset()
+
+        assert self.only_vary_offset, "Only supporting varying offset for now"
 
     def _augment_obs_space(self, env, config):
         obs_space = env.observation_space
@@ -273,7 +279,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         high = np.ones([reset_dims])
         return low, high
     
-    def _sample_variability(self):
+    def sample_variability(self):
         row = self.OU_param_df.sample(1)
         ret = {}
         for variable in self.variability_noise_idxs.keys():
@@ -296,20 +302,21 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         else:
             raise ValueError(f"Invalid variable {var_name}")
         
+        
     def reset(self, initial_state: Optional[Union[int, np.ndarray]]=None):
         """
         Resets the environment. Pass a tensor with the same shape as the observation as initial_state
         to reset the weather variability to that state. Pass a non-negative int to specify a scenario_idx in the 
         pre-set weather variabilities in the environment. Pass a negative int to sample weather variabilities
-        from a file. Pass nothing to use the default weather variability.
+        from a file. Pass nothing to use the default weather variability. Pass a weather variability dict to just use that.
         """
         
         weather_df = self.env.simulator._config.weather_data.get_weather_series()
         self.weather_means = weather_df.mean(axis=0)
-        first_day_weather = weather_df.iloc[0]
+        base_weather = weather_df.iloc[0] if not self.offset_by_means else self.weather_means
         if isinstance(initial_state, int):
-            if initial_state < 0 and self.sample_environments:
-                curr_weather_variability = self._sample_variability()
+            if initial_state < 0 and self.environment_variability_file is not None:
+                curr_weather_variability = self.sample_variability()
                 print("SAMPLED VARIABILITY", curr_weather_variability)
             elif initial_state >= 0 and initial_state < len(self.weather_variability):
                 # Set to specified weather variability scenario
@@ -319,7 +326,8 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             else:
                 raise ValueError("initial state does not specify a valid weather variability.")
             obs = self.env.reset(weather_variability=curr_weather_variability)
-
+        elif isinstance(initial_state, dict):
+            obs = self.env.reset(weather_variability=initial_state)
         elif initial_state is not None:
             # Reset simulator with specified weather variability
             variability = self._get_variability_from_state(initial_state)
@@ -328,7 +336,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
                 idxs = self.variability_noise_idxs[var_name]
                 idxs = [idx - self.original_obs_space_shape[-1] for idx in idxs]
                 variability_params = variability[idxs]
-                offset = self._get_offset_from_state(initial_state, var_name, first_day_weather)
+                offset = self._get_offset_from_state(initial_state, var_name, base_weather)
                 variability_dict[var_name] = (variability_params[0], offset, variability_params[1])#(variability_params[0], offset, variability_params[1])
             print("ACTIVE VARIABILITY", variability_dict)
             self.last_variability = variability_dict
@@ -342,6 +350,8 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
 
     def _get_variability_from_state(self, initial_state):
         if self.only_vary_offset:
+            # Since we are only varying the offset, the variability params are actually
+            # not in the provided state, so we just use the default variability params
             variability_vec = np.zeros([len(self.active_variables) * 2])
             for i, (key, variability) in enumerate(self.env.weather_variability.items()):
                 variability_vec[2 * i] = variability[0]
@@ -353,12 +363,12 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
             variability_vec = np.clip(variability_vec, self.variability_low, self.variability_high)
         return variability_vec
 
-    def _get_offset_from_state(self, initial_state, var_name, first_day_weather):
+    def _get_offset_from_state(self, initial_state, var_name, base_weather=0):
         offset_idx = self.variability_offset_idxs[var_name]
         offset = np.clip(initial_state[..., offset_idx], 0, 1)
         var_range = self._get_range(var_name)
         offset = offset * (var_range[1] - var_range[0]) + var_range[0]
-        offset -= first_day_weather[var_name]
+        offset -= base_weather[var_name]
         return offset
     
 
@@ -378,7 +388,7 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         else:
             return self.replacement_controller.act(obs)
         
-    def sample_obs(self):
+    def sample_obs(self, naive_grounding=False):
         """Automatically sample an observation to seed state generation"""
         # obs = np.zeros(self.observation_space.shape) + 0.5
 
@@ -388,6 +398,19 @@ class SinergymWrapper(gym.core.ObservationWrapper, ResettableEnv):
         #     var_range = self.env.ranges[REVERSE_WEATHER_MAP[var_name]]
         #     obs[offset_idx] = (self.weather_means[var_name] - var_range[0]) / (var_range[1] - var_range[0])
         obs = self.start_obs
+        if naive_grounding:
+            weather_df = self.env.simulator._config.weather_data.get_weather_series()
+            weather_means = weather_df.mean(axis=0)
+            base_weather = weather_df.iloc[0] if not self.offset_by_means else weather_means
+            variability = self.sample_variability()
+            for i, var_name in enumerate(self.active_variables):
+                offset_idx = self.variability_offset_idxs[var_name]
+                var_range = self._get_range(var_name)
+                offset = variability[var_name][1] + base_weather[var_name] # use index one because that's where the offset is.
+                offset = (offset - var_range[0]) / (var_range[1] - var_range[0])
+                obs[offset_idx] = offset
+                
+             
         return obs
     
 class FlexibleResetConfig(Config):

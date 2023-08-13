@@ -1,6 +1,9 @@
+import numpy as np
 import torch as th
 from ray.rllib.policy.sample_batch import SampleBatch
 from ray.rllib.algorithms.ppo import PPOTorchPolicy
+from ray.rllib.utils.torch_utils import apply_grad_clipping
+import torch.nn as nn
 
 class UncertainPPOTorchPolicy(PPOTorchPolicy):
     """PyTorch policy class used with PPO."""
@@ -14,6 +17,7 @@ class UncertainPPOTorchPolicy(PPOTorchPolicy):
         )
         print(self.model)
         self.num_dropout_evals = config["model"]["num_dropout_evals"]
+        self.stop_gradient=False
         # self.shrink_init = config["model"]["shrink_init"]
         # rbc_agent = RBCAgent(action_space)
         # if self.shrink_init:
@@ -75,3 +79,49 @@ class UncertainPPOTorchPolicy(PPOTorchPolicy):
         self.model.train(orig_mode)
         return uncertainty
 
+
+    def extra_grad_process(self, local_optimizer, loss):
+        if self.stop_gradient:
+            return self.apply_stop_gradient(local_optimizer, loss)
+        else:
+            return apply_grad_clipping(self, local_optimizer, loss)
+    
+    def apply_stop_gradient(self, optimizer, loss):
+        """Sets already computed grads inside `optimizer` to 0.
+
+        Args:
+            policy: The TorchPolicy, which calculated `loss`.
+            optimizer: A local torch optimizer object.
+            loss: The torch loss tensor.
+
+        Returns:
+            An info dict containing the "grad_norm" key and the resulting clipped
+            gradients.
+        """
+        grad_gnorm = 0
+        if self.config["grad_clip"] is not None:
+            clip_value = self.config["grad_clip"]
+        else:
+            clip_value = np.inf
+
+        for param_group in optimizer.param_groups:
+            # Make sure we only pass params with grad != None into torch
+            # clip_grad_norm_. Would fail otherwise.
+            params = list(filter(lambda p: p.grad is not None, param_group["params"]))
+            if params:
+                # PyTorch clips gradients inplace and returns the norm before clipping
+                # We therefore need to compute grad_gnorm further down (fixes #4965)
+                for p in params:
+                    p.grad.detach().mul_(0)
+                global_norm = nn.utils.clip_grad_norm_(params, clip_value)
+
+                if isinstance(global_norm, th.Tensor):
+                    global_norm = global_norm.cpu().numpy()
+
+                grad_gnorm += min(global_norm, clip_value)
+
+        if grad_gnorm > 0:
+            return {"grad_gnorm": grad_gnorm}
+        else:
+            # No grads available
+            return {}
