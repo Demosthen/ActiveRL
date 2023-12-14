@@ -41,7 +41,7 @@ To run an individual run on a cluster using SLURM:
 For example: 
 ./master_sbatch_script_nonsweep.sh "run_experiments.py --num_timesteps=400000 --gw_steps_per_cell=10 --wandb --env=gw --no_coop --gw_filename=gridworlds/good_bubble.txt --num_descent_steps=10 --seed=1234567 --use_activerl=1" 1
 
-If running sinergym, use ./master_singularity_sbatch_script.sh and ./master_singularity_sbatch_nonsweep.sh instead
+If running in a singularity container, use ./master_singularity_sbatch_script.sh and ./master_singularity_sbatch_nonsweep.sh instead
 
 Here are the individual commands that were used to generate data for the paper:
 
