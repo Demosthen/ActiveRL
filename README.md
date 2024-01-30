@@ -1,5 +1,7 @@
 # ActiveRL
 
+This is a repository containing the code that was used to run the experiments for the paper [Active Reinforcement Learning for Robust Building Control](https://arxiv.org/abs/2312.10289).
+
 Instructions for getting this working generally:
 1. Clone repo
 5. Navigate to wherever you cloned the repo
