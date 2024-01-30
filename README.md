@@ -4,7 +4,7 @@ This is a repository containing the code that was used to run the experiments fo
 
 ## Setup
 
-### Instructions for getting this working generally:
+### Instructions for general machines:
 1. Clone repo
 5. Navigate to wherever you cloned the repo
 6. conda env create -f environment.yml
@@ -18,9 +18,8 @@ This is a repository containing the code that was used to run the experiments fo
 13. pip install gym==0.24.1
 14. pip install -e gym-simplegrid
 15. pip install dm_control==1.0.9
-16. python ./download_model.py
 
-### Instructions for getting this working on the Savio compute cluster:
+### Instructions for the Savio compute cluster:
 
 1. Clone repo
 2. cd /global/home/users/$USER/
@@ -35,7 +34,6 @@ This is a repository containing the code that was used to run the experiments fo
 11. pip uninstall pygame
 12. pip install sinergym[extras]
 13. pip install gym==0.24.1
-14. python ./download_model.py
 
 ## Running with SLURM
 To run a wandb sweep on a cluster using SLURM:
