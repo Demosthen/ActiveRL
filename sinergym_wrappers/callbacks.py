@@ -8,25 +8,39 @@ from ray.rllib.evaluation import RolloutWorker
 import numpy as np
 from core.constants import *
 from core.callbacks import ActiveRLCallback
+
+
 class SinergymCallback(ActiveRLCallback):
-    def __init__(self, 
-                 num_descent_steps: int=10, 
-                 batch_size: int=64, 
-                 no_coop: bool=False, 
-                 planning_model=None, 
-                 config={}, 
-                 run_active_rl=0, 
-                 planning_uncertainty_weight=1, 
-                 device="cpu", 
-                 args={}, 
-                 uniform_reset=0):
-        super().__init__(num_descent_steps, batch_size, no_coop, 
-                         planning_model, config, run_active_rl, 
-                         planning_uncertainty_weight, device, args, 
-                         uniform_reset)
+    def __init__(
+        self,
+        num_descent_steps: int = 10,
+        batch_size: int = 64,
+        no_coop: bool = False,
+        planning_model=None,
+        config={},
+        run_active_rl=0,
+        planning_uncertainty_weight=1,
+        device="cpu",
+        args={},
+        uniform_reset=0,
+    ):
+        super().__init__(
+            num_descent_steps,
+            batch_size,
+            no_coop,
+            planning_model,
+            config,
+            run_active_rl,
+            planning_uncertainty_weight,
+            device,
+            args,
+            uniform_reset,
+        )
         self.num_envs = config["num_envs_per_worker"]
         self.env_to_scenario_index = {k: -1 for k in range(self.num_envs)}
-        self.sample_environments = config["env_config"].get("sample_environments", False)
+        self.sample_environments = config["env_config"].get(
+            "sample_environments", False
+        )
         self.scenario_index = 0
 
     def on_episode_start(
@@ -59,7 +73,7 @@ class SinergymCallback(ActiveRLCallback):
         episode.user_data["term_energy"] = []
         episode.user_data["num_comfort_violations"] = 0
         episode.user_data["out_temperature"] = []
-        episode.user_data[f"reward"]= []
+        episode.user_data[f"reward"] = []
 
         env = base_env.get_sub_environments()[env_index]
         # Get the single "default policy"
@@ -68,7 +82,9 @@ class SinergymCallback(ActiveRLCallback):
         if not self.is_evaluating and train_reset:
             self.reset_env(policy, env, episode)
         elif self.is_evaluating:
-            is_default_env_worker = (worker.worker_index == self.eval_worker_ids[0]) and env_index == 0
+            is_default_env_worker = (
+                worker.worker_index == self.eval_worker_ids[0]
+            ) and env_index == 0
             if self.sample_environments and not is_default_env_worker:
                 # Set scenario_index to -2 to sample weather variability.
                 # We also want to make sure the default environment is represented,
@@ -77,11 +93,11 @@ class SinergymCallback(ActiveRLCallback):
                 # self.scenario_index = (self.scenario_index + 1) % (self.num_envs * len(self.eval_worker_ids))
             else:
                 scenario_index = self.scenario_index
-                self.scenario_index = (self.scenario_index + 1) % len(env.weather_variability)
-            print("WHAT IS MY SCENARIO INDEX???", scenario_index)
+                self.scenario_index = (self.scenario_index + 1) % len(
+                    env.weather_variability
+                )
             env.reset(scenario_index)
             self.env_to_scenario_index[env_index] = scenario_index
-            
 
     def on_episode_step(
         self,
@@ -130,7 +146,8 @@ class SinergymCallback(ActiveRLCallback):
         policies: Dict[PolicyID, Policy],
         episode: Union[Episode, EpisodeV2],
         env_index: Optional[int] = None,
-        **kwargs)-> None:
+        **kwargs,
+    ) -> None:
         """
         Runs when an episode is done.
 
@@ -160,16 +177,21 @@ class SinergymCallback(ActiveRLCallback):
         to_log["out_temperature_std"] = np.std(episode.user_data["out_temperature"])
         to_log["reward_mean"] = np.mean(episode.user_data["reward"])
         to_log["reward_sum"] = np.sum(episode.user_data["reward"])
-        episode.hist_data["out_temperature"] = episode.user_data["out_temperature"][::6000]
-        
+        episode.hist_data["out_temperature"] = episode.user_data["out_temperature"][
+            ::6000
+        ]
+
         try:
-            to_log['comfort_violation_time(%)'] = episode.user_data["num_comfort_violations"] / \
-                episode.length * 100
+            to_log["comfort_violation_time(%)"] = (
+                episode.user_data["num_comfort_violations"] / episode.length * 100
+            )
         except ZeroDivisionError:
-            to_log['comfort_violation_time(%)'] = np.nan
+            to_log["comfort_violation_time(%)"] = np.nan
 
         # Log both scenario specific and aggregated logs
         episode.custom_metrics.update(to_log)
         scenario_index = self.env_to_scenario_index[env_index]
-        env_specific_log = {f"env_{scenario_index}_{key}": val for key, val in to_log.items()}
+        env_specific_log = {
+            f"env_{scenario_index}_{key}": val for key, val in to_log.items()
+        }
         episode.custom_metrics.update(env_specific_log)

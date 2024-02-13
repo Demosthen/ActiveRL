@@ -5,6 +5,7 @@ from ray.rllib.algorithms.ppo import PPOTorchPolicy
 from ray.rllib.utils.torch_utils import apply_grad_clipping
 import torch.nn as nn
 
+
 class UncertainPPOTorchPolicy(PPOTorchPolicy):
     """PyTorch policy class used with PPO."""
 
@@ -17,16 +18,8 @@ class UncertainPPOTorchPolicy(PPOTorchPolicy):
         )
         print(self.model)
         self.num_dropout_evals = config["model"]["num_dropout_evals"]
-        self.stop_gradient=False
-        # self.shrink_init = config["model"]["shrink_init"]
-        # rbc_agent = RBCAgent(action_space)
-        # if self.shrink_init:
-        #     print("----------------SHRUNK INIT-------------")
-        #     # #Shrink initial weights to make sure initial actions are close to just passing rbc controller
-        #     # with th.no_grad():
-        #     #     self.model._logits._model[0].weight *= 0# 1000
-        #     #     self.model._logits._model[0].bias *= 0#1000
-    
+        self.stop_gradient = False
+
     def get_value(self, **input_dict):
         input_dict = SampleBatch(input_dict)
         input_dict = self._lazy_tensor_dict(input_dict)
@@ -35,21 +28,21 @@ class UncertainPPOTorchPolicy(PPOTorchPolicy):
 
     def get_action(self, **input_dict):
         input_dict = SampleBatch(input_dict)
-        #input_dict = self._lazy_tensor_dict(input_dict)
+        # input_dict = self._lazy_tensor_dict(input_dict)
         return self.compute_actions_from_input_dict(input_dict)[0]
 
     def compute_value_uncertainty(self, obs_tensor: th.Tensor):
         """
-            Computes the uncertainty of the neural network
-            for this observation by running inference with different
-            dropout masks and measuring the variance of the 
-            critic network's output
+        Computes the uncertainty of the neural network
+        for this observation by running inference with different
+        dropout masks and measuring the variance of the
+        critic network's output
 
-            :param obs_tensor: torch tensor of observation(s) to compute
-                    uncertainty for. Make sure it is on the same device
-                    as the model
-            :return: How uncertain the model is about the value for each
-                    observation
+        :param obs_tensor: torch tensor of observation(s) to compute
+                uncertainty for. Make sure it is on the same device
+                as the model
+        :return: How uncertain the model is about the value for each
+                observation
         """
         orig_mode = self.model.training
         self.model.train()
@@ -62,7 +55,9 @@ class UncertainPPOTorchPolicy(PPOTorchPolicy):
         self.model.train(orig_mode)
         return uncertainty
 
-    def compute_reward_uncertainty(self, obs_tensor: th.Tensor, next_obs_tensor: th.Tensor):
+    def compute_reward_uncertainty(
+        self, obs_tensor: th.Tensor, next_obs_tensor: th.Tensor
+    ):
         orig_mode = self.model.training
         self.model.train()
         rewards = []
@@ -79,13 +74,12 @@ class UncertainPPOTorchPolicy(PPOTorchPolicy):
         self.model.train(orig_mode)
         return uncertainty
 
-
     def extra_grad_process(self, local_optimizer, loss):
         if self.stop_gradient:
             return self.apply_stop_gradient(local_optimizer, loss)
         else:
             return apply_grad_clipping(self, local_optimizer, loss)
-    
+
     def apply_stop_gradient(self, optimizer, loss):
         """Sets already computed grads inside `optimizer` to 0.
 

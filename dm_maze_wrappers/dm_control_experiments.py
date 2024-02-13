@@ -148,8 +148,6 @@ config = {
 }
 env = DM_Maze_Wrapper(config)
 obs = env.reset({"absolute_position": [-1, -3, 0]})
-#print({k: o.shape for k, o in obs.items()})
-#print(obs["absolute_position"])
 imgs = []
 for i in range(1):
   observation, reward, done, info = env.step(env.action_space.sample())
